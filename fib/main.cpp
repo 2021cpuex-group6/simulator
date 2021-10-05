@@ -4,6 +4,5 @@
 
 int main(){
     AssemblyParser parser("fib.s");
-
     
 }
