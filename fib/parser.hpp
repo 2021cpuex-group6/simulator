@@ -5,11 +5,15 @@
 #include <map>
 #include <vector>
 
+
+const int MAX_OPERAND_N = 3;
+
 struct Instruction{
     int type; // 0 instruction, 1 label, 2 comment
-    int oplandN;
-    int opcode;
-    std::string opland[3];
+    int operandN;
+    std::string opcode;
+    std::string operand[MAX_OPERAND_N];
+    int immediate;
     std::string label;
 };
 
@@ -19,10 +23,14 @@ class AssemblyParser{
     public:
         std::vector<Instruction> instructionVector;
         std::map<std::string, int> labelMap;
-        AssemblyParser(std::string);
+        AssemblyParser(const std::string &filePath);
     private:
-        void parseFile(std::string filePath);
+        void parseFile(const std::string &filePath);
+        void instParse(const int lineN, std::string instLine);
         
 };
+
+void parseError(const int &, const std::string&);
+
 
 #endif
