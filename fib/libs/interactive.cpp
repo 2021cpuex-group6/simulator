@@ -50,7 +50,7 @@ void InteractiveShell::start(){
 std::pair<Command, std::vector<int>> InteractiveShell::getInput(){
     // 入力を受け取り、それをパースする
     std::string inputString;
-    std::cout << ">" ;
+    std::cout << ">>>>>" ;
     if(!(std::getline(std::cin, inputString))){
             return {Command::Invalid, {}};
     }
