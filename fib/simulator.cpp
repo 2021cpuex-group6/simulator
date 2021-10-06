@@ -5,7 +5,14 @@
 #include <iomanip>
 
 
-AssemblySimulator::AssemblySimulator(const AssemblyParser& parser): parser(parser), registers({0}), pc(0), end(false){}
+AssemblySimulator::AssemblySimulator(const AssemblyParser& parser): parser(parser), registers({0}), pc(0),
+         end(false), instCount(0), opCounter({}){
+    // opcounterをすべて0に
+    for(const auto & item : opcodeInfoMap){
+        opCounter.insert({item.first, 0});
+    }
+        
+}
 
 
 std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const NumberBase &base, const bool &sign) const {
@@ -104,6 +111,9 @@ void AssemblySimulator::next(){
 void AssemblySimulator::doInst(const Instruction &instruction){
     // 命令を処理
     std::string opcode = instruction.opcode;
+    instCount++;
+    opCounter[opcode] = opCounter[opcode] + 1;
+
     if(opcode == "nop"){
         pc += INST_BYTE_N;
         return;
@@ -214,4 +224,25 @@ void AssemblySimulator::incrementPC(){
         end = true;
         std::cout << FILE_END << std::endl;
     }
+}
+
+void AssemblySimulator::printOpCounter() const{
+    // 実行命令の統計をプリント
+    std::cout << "総実行命令数: " <<  std::to_string(instCount) << std::endl;
+    
+    std::stringstream ss;
+    int count = 0;
+
+    for(auto x:opCounter){
+        ss << std::setw(PRINT_INST_NUM_SIZE)<< x.first <<  ": " << std::setw(PRINT_INST_NUM_SIZE) <<
+             std::internal << x.second << ",     ";
+        
+        if(++count == PRINT_INST_COL){
+            count = 0;
+            std::cout << ss.str() << std::endl;
+            ss.str("");
+            ss.clear(std::stringstream::goodbit);
+        }
+    }
+    
 }

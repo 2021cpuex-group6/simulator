@@ -36,7 +36,6 @@ constexpr int INST_CONTROL = 3;
 constexpr int INST_OTHERS = 4;
 extern std::map<std::string, std::vector<int>> opcodeInfoMap;
 
-extern std::map<std::string, int> opCounter;
 
 class AssemblyParser{
     public:

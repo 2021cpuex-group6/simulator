@@ -9,7 +9,7 @@
 
 
 
-std::map<std::string, int> opCounter = {};
+
 std::map<std::string, std::vector<int>>opcodeInfoMap = {
     // 命令の情報を持つ
     // ind

@@ -13,5 +13,6 @@ int main(int argc, char* argv[]){
     AssemblySimulator simulator(parser);
     simulator.launch();
     simulator.printRegisters(NumberBase::DEC, true);
+    simulator.printOpCounter();
 
 }
