@@ -7,10 +7,6 @@
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser): parser(parser), registers({0}), pc(0){}
 
-void AssemblySimulator::printRegisters(){
-    // レジスタの内容を表示
-    
-}
 
 std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const NunmberBase &base, const bool &sign){
     // レジスタ番号を受け取り、その情報を文字列で返す
@@ -24,7 +20,7 @@ std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const Nunmbe
         ssreg << "x" << std::setw(2) << std::setfill('0') << std::dec << regN;
         regName = ssreg.str();
     }else{
-        regName = "pc";
+        regName = "pc ";
     }
     regName += " ";
 
@@ -53,8 +49,6 @@ std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const Nunmbe
             }else{
                 ss << regName  << std::setw(numSize) << std::internal << (unsigned int) registers[regN];
             }
-
-            
             return ss.str();
             break;
     }
@@ -62,6 +56,23 @@ std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const Nunmbe
     ss << regName <<  prefix << std::setw(numSize) << std::setfill('0') << sin.str();
 
     return ss.str();
+
+}
+
+void AssemblySimulator::printRegisters(const NunmberBase &base, const bool &sign){
+    // レジスタの内容をすべて表示
+    // pc
+    std::cout << getRegisterInfoUnit(REGISTERS_N, base, sign) << std::endl;
+
+    for(int i = 0; i < REGISTERS_N / PRINT_REGISTERS_COL; i++){
+        std::string res;
+        for(int j = 0; j < PRINT_REGISTERS_COL; j++){
+            res += getRegisterInfoUnit(i*PRINT_REGISTERS_COL + j, base, sign) + ", ";
+        }
+        std::cout << res << std::endl;
+        
+    }
+    
 
 }
 

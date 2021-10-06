@@ -22,7 +22,7 @@ class AssemblySimulator{
 
         const AssemblyParser parser;
         AssemblySimulator(const AssemblyParser& parser);
-        void printRegisters();
+        void printRegisters(const NunmberBase&, const bool &sign);
         void launch();
     
     // private:
