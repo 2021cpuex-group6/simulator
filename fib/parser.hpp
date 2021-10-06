@@ -22,6 +22,12 @@ struct Instruction{
     int immediate;
     std::string label;
 };
+constexpr int INST_REGONLY = 0;
+constexpr int INST_REGIMM = 1;
+constexpr int INST_MEM = 2;
+constexpr int INST_CONTROL = 3;
+constexpr int INST_OTHERS = 4;
+extern std::map<std::string, std::vector<int>> opcodeInfoMap;
 
 extern std::map<std::string, int> opCounter;
 

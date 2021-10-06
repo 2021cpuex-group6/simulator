@@ -14,6 +14,7 @@ const std::string INVALID_OPERAND_N = "オペランドの数が合いません";
 
 
 
+
 std::map<std::string, int> opCounter = {};
 std::map<std::string, std::vector<int>>opcodeInfoMap = {
     // 命令の情報を持つ
@@ -22,12 +23,14 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     //  1 ...即値が何番目に入るか（入らなければ-1）
     //  2 ...ラベルが何番目に入るか（入らなければ-1）
     //  3 ...即値のビット数（なければ-1）
-    {"nop",     {0, -1, -1, -1}}, 
-    {"add",     {3, -1, -1, -1}}, 
-    {"addi",    {3, 2, -1, 12}}, 
-    {"blt",     {3, -1, 2, -1}}, 
-    {"beq",     {3, -1, 2, -1}}, 
-    {"j",       {1, -1, -1, -1}}
+    //  4 ...命令種別
+
+    {"nop",     {0, -1, -1, -1, INST_OTHERS}}, 
+    {"add",     {3, -1, -1, -1, INST_REGONLY}}, 
+    {"addi",    {3, 2, -1, 12, INST_REGIMM}}, 
+    {"blt",     {3, -1, 2, -1, INST_CONTROL}}, 
+    {"beq",     {3, -1, 2, -1, INST_CONTROL}}, 
+    {"j",       {1, -1, 0, -1, INST_CONTROL}}
 };
 
 
