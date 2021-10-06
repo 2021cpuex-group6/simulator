@@ -101,10 +101,10 @@ void AssemblyParser::parseFile(const std::string& filePath){
         }else if(std::regex_match(line, m, labelRe)){
             // ラベル
             labelMap.insert({m[1].str(), lineN});
-            Instruction inst = {1};
+            Instruction inst = {InstType::Label};
             instructionVector[lineN-1] = inst;
         }else if(std::regex_match(line, m, spaceRe)){
-            Instruction inst = {2};
+            Instruction inst = {InstType::Comment};
             instructionVector[lineN-1] = inst;
         }else{
             // 不正な行
@@ -124,7 +124,7 @@ void AssemblyParser::instParse(const int lineN, std::string instLine){
     int immediateInd = -1;
     int immediateBitN = -1;
     Instruction inst;
-    inst.type = 0;
+    inst.type = InstType::Inst;
 
     while (std::regex_search(instLine, m, instUnit)) {
         std::string res = m[0].str();

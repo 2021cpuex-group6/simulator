@@ -8,8 +8,14 @@
 
 const int MAX_OPERAND_N = 3;
 
+enum class InstType{
+    Inst, 
+    Label, 
+    Comment
+};
+
 struct Instruction{
-    int type; // 0 instruction, 1 label, 2 comment
+    InstType type; // 0 instruction, 1 label, 2 comment
     int operandN;
     std::string opcode;
     std::string operand[MAX_OPERAND_N];
