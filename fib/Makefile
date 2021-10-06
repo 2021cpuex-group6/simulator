@@ -1,7 +1,7 @@
 CFLAGS := -g
 SRCS := $(wildcard libs/*.cpp) main.cpp
 OBJS :=  $(patsubst %.cpp,%.o,$(SRCS))
-$(warning $(OBJS))
+# $(warning $(OBJS))
 main: $(OBJS)
 	g++ $(CFLAGS) -o $@ $^
 

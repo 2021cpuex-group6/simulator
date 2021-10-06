@@ -1,5 +1,6 @@
 #include "libs/parser.hpp"
 #include "libs/simulator.hpp"
+#include "libs/interactive.hpp"
 #include <iostream>
 #include <cmath>
 
@@ -18,8 +19,11 @@ int main(int argc, char* argv[]){
     std::string fileName = argv[1];
     AssemblyParser parser(fileName);
     AssemblySimulator simulator(parser);
-    simulator.launch();
-    simulator.printRegisters(NumberBase::DEC, true);
-    simulator.printOpCounter();
+
+    InteractiveShell shell(simulator);
+    shell.start();
+    // simulator.launch();
+    // simulator.printRegisters(NumberBase::DEC, true);
+    // simulator.printOpCounter();
 
 }

@@ -3,7 +3,7 @@
 
 #include "parser.hpp"
 #include <array>
-
+#include <set>
 constexpr int REGISTERS_N = 32;
 constexpr int PRINT_REGISTERS_COL = 4;
 constexpr size_t REGISTER_BIT_N = 32;
@@ -32,11 +32,14 @@ class AssemblySimulator{
         int instCount; // 実行命令数
         std::map<std::string, int> opCounter; //実行命令の統計
 
+        std::set<int> breakPoints; // ブレークポイントの集合　行数で管理（1始まり）
         const AssemblyParser parser;
+
         AssemblySimulator(const AssemblyParser& parser);
         void printRegisters(const NumberBase&, const bool &sign) const;
         void printOpCounter()const;
         void next();
+        void doNextBreak();
         void launch();
 
 

@@ -3,10 +3,11 @@
 #include <sstream>
 #include <bitset>
 #include <iomanip>
+#include <set>
 
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser): parser(parser), registers({0}), pc(0),
-         end(false), instCount(0), opCounter({}){
+         end(false), instCount(0), opCounter({}), breakPoints({}){
     // opcounterをすべて0に
     for(const auto & item : opcodeInfoMap){
         opCounter.insert({item.first, 0});
@@ -85,6 +86,19 @@ void AssemblySimulator::launch(){
     while(!end){
         next();
     }
+}
+
+void AssemblySimulator::doNextBreak(){
+    // 次のブレークポイントまで実行
+    int line;
+    while(!end){
+        line = pc / INST_BYTE_N + 1;
+        if(breakPoints.find(line) != breakPoints.end()){
+            break;
+        }
+        next();
+    }
+
 }
 
 void AssemblySimulator::next(){

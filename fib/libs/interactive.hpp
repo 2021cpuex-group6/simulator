@@ -4,6 +4,8 @@
 #include "simulator.hpp"
 #include <vector>
 
+const std::string INVALID_COMMAND = "コマンドの書式が不正です";
+
 const std::string COMMAND_DO_ALL = "a";
 const std::string COMMAND_NEXT_BLOCK = "nb";
 const std::string COMMAND_NEXT = "n";
