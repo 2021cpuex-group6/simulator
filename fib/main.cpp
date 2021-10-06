@@ -9,7 +9,8 @@ int main(int argc, char* argv[]){
     if(argc < 2){
         std::cout << LACK_ARGUMENT << std::endl;
     }
-    AssemblyParser parser("fib.s");
+    std::string fileName = argv[1];
+    AssemblyParser parser(fileName);
     AssemblySimulator simulator(parser);
     simulator.launch();
     simulator.printRegisters(NumberBase::DEC, true);
