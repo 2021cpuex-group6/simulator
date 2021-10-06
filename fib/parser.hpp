@@ -11,6 +11,7 @@ const std::string INVALID_IMMEDIATE_NOT_INT = "即値が入る場所に数以外
 const std::string INVALID_IMMEDIATE_OUT_OF_RANGE = "即値が範囲外です";
 const std::string INVALID_OPERAND_N = "オペランドの数が合いません";
 const std::string FILE_NOTFOUND = "ファイルが見つかりませんでした";
+const std::string DOUBLE_LABEL = "ラベルが重複しています";
 
 const int MAX_OPERAND_N = 3;
 
