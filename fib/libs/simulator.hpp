@@ -16,6 +16,7 @@ const std::string ALREADY_ENDED = "すでに終了しています";
 const std::string INVALID_REGISTER = "レジスタ名が不正です";
 const std::string ZERO_REG_WRITE_ERROR = "x0レジスタに書き込むことはできません";
 const std::string NOT_FOUND_LABEL = "ラベルが見つかりません";
+const std::string OUT_OF_RANGE_BREAKPOINT = "ファイルの行数の範囲外のためブレークポイントは設置できません";
 enum class NumberBase{
     BIN = 2, 
     OCT = 8, 
@@ -40,16 +41,17 @@ class AssemblySimulator{
         void next(const bool&, const bool&);
         void doNextBreak();
         void launch();
-        void printInstruction(const int &, const Instruction &);
+        void printInstruction(const int &, const Instruction &)const;
+        void printBreakList()const;
+        void setBreakPoint(const int &);
 
-
+    // private:
         void doInst(const Instruction &);
         int getRegInd(const std::string &regName);
         void launchError(const std::string &message);
         void doALU(const std::string &opcode, const int &targetR, const int &source0, const int &source1);
         void doControl(const std::string &opcode, const Instruction &instruction);
         void incrementPC();
-    // private:
         std::string getRegisterInfoUnit(const int&, const NumberBase&, const bool &sign) const ;
 };
 

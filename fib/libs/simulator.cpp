@@ -96,9 +96,12 @@ void AssemblySimulator::launch(){
 void AssemblySimulator::doNextBreak(){
     // 次のブレークポイントまで実行
     int line;
+    next(false, false); // 最初の一回は実行可能
     while(!end){
         line = pc / INST_BYTE_N + 1;
         if(breakPoints.find(line) != breakPoints.end()){
+            std::cout << "Stopped: " << std::endl;
+            printInstruction(line, parser.instructionVector[line-1]);
             break;
         }
         next(false, false);
@@ -135,18 +138,49 @@ void AssemblySimulator::next(const bool& jumpComment, const bool& printInst){
 
 }
 
-void AssemblySimulator::printInstruction(const int & lineN, const Instruction &instruction){
+void AssemblySimulator::printInstruction(const int & lineN, const Instruction &instruction)const{
     // 受け取った命令を画面表示
     std::stringstream ss;
     ss << std::setw(PRINT_INST_NUM_SIZE) << std::to_string(lineN) << ":";
-    ss <<  std::setw(PRINT_INST_NUM_SIZE) << instruction.opcode;
-    for(int i = 0; i < instruction.operandN; i++){
-        ss << std::setw(PRINT_INST_NUM_SIZE) << instruction.operand[i];
+    switch (instruction.type){
+        case InstType::Inst:
+            ss <<  std::setw(PRINT_INST_NUM_SIZE) << instruction.opcode;
+            for(int i = 0; i < instruction.operandN; i++){
+                ss << std::setw(PRINT_INST_NUM_SIZE) << instruction.operand[i];
+            }
+            std::cout << ss.str() << std::endl;
+            break;
+        case InstType::Label:
+            ss << " " + instruction.label + ": ";
+            std::cout << ss.str() << std::endl;
+            break;
+        case InstType::Comment:
+            ss << " ** Comment **";
+            std::cout << ss.str() << std::endl;
+            break;
+            
     }
-    std::cout << ss.str() << std::endl;
     
 }
 
+void AssemblySimulator::setBreakPoint(const int &lineN){
+    // ブレークポイントを設置
+    if(lineN > 0 and lineN < parser.instructionVector.size()){
+        breakPoints.insert(lineN);
+    }else{
+        // 範囲外のため設置不可
+        std::cout << OUT_OF_RANGE_BREAKPOINT << std::endl;   
+    }
+}
+
+
+void AssemblySimulator::printBreakList()const{
+    // ブレークポイントの命令を表示
+    for(auto &e: breakPoints){
+        printInstruction(e, parser.instructionVector[e-1]);
+    }
+
+}
 void AssemblySimulator::doInst(const Instruction &instruction){
     // 命令を処理
     std::string opcode = instruction.opcode;
