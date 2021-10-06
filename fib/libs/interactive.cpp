@@ -3,7 +3,7 @@
 #include <iostream>
 #include <vector>
 
-InteractiveShell::InteractiveShell(const AssemblySimulator & sim): simulator(sim){}
+InteractiveShell::InteractiveShell(const AssemblySimulator & sim, const AssemblyParser& parse): simulator(sim), parser(parse){}
 
 void InteractiveShell::start(){
     std::pair<Command, std::vector<int>> input;
@@ -25,7 +25,7 @@ void InteractiveShell::start(){
                 simulator.printOpCounter();
                 break;
             case Command::DoNext:
-                simulator.next();
+                simulator.next(true, true);
                 break;
             case Command::DoNextBreak:
                 simulator.doNextBreak();

@@ -83,8 +83,13 @@ void AssemblySimulator::printRegisters(const NumberBase &base, const bool &sign)
 
 void AssemblySimulator::launch(){
     // 終了まで実行する
+    if(end){
+        // すでに終わっている
+        std::cout << ALREADY_ENDED << std::endl;
+        return;
+    }
     while(!end){
-        next();
+        next(false, false);
     }
 }
 
@@ -96,30 +101,50 @@ void AssemblySimulator::doNextBreak(){
         if(breakPoints.find(line) != breakPoints.end()){
             break;
         }
-        next();
+        next(false, false);
     }
 
 }
 
-void AssemblySimulator::next(){
+void AssemblySimulator::next(const bool& jumpComment, const bool& printInst){
     // 現在PCで示している命令を実行する
-    if(end){
-        // すでに終わっている
-        std::cout << ALREADY_ENDED << std::endl;
-        return;
+    // jumpComment ... コメント、ラベルは飛ばして次の命令も実行する
+    // printInst   ... 命令の内容を表示
+    do{
+        if(end){
+            // すでに終わっている
+            std::cout << ALREADY_ENDED << std::endl;
+            return;
+        }
+
+        int line = pc/INST_BYTE_N;
+        Instruction inst = parser.instructionVector[line];
+        if(inst.type == InstType::Inst){
+            doInst(inst);
+            if(printInst){
+                printInstruction(line+1, inst);
+            }
+
+            return;
+        }else{
+            line ++;;
+
+            incrementPC();
+        }
+    }while(jumpComment);
+
+}
+
+void AssemblySimulator::printInstruction(const int & lineN, const Instruction &instruction){
+    // 受け取った命令を画面表示
+    std::stringstream ss;
+    ss << std::setw(PRINT_INST_NUM_SIZE) << std::to_string(lineN) << ":";
+    ss <<  std::setw(PRINT_INST_NUM_SIZE) << instruction.opcode;
+    for(int i = 0; i < instruction.operandN; i++){
+        ss << std::setw(PRINT_INST_NUM_SIZE) << instruction.operand[i];
     }
-
-    int line = pc/INST_BYTE_N;
-    Instruction inst = parser.instructionVector[line];
-    if(inst.type == InstType::Inst){
-        doInst(inst);
-
-    }else{
-        line ++;;
-
-        incrementPC();
-    }
-
+    std::cout << ss.str() << std::endl;
+    
 }
 
 void AssemblySimulator::doInst(const Instruction &instruction){
@@ -185,7 +210,7 @@ int AssemblySimulator::getRegInd(const std::string &regName){
 
 
 void AssemblySimulator::launchError(const std::string &message){
-    throw std::invalid_argument(std::to_string(pc/4) + "行目:" + message);
+    throw std::invalid_argument(std::to_string(pc/4 + 1) + "行目:" + message);
 }
 
 void AssemblySimulator::doALU(const std::string &opcode, const int &targetR, const int &source0, const int &source1){

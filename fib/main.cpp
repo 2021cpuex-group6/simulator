@@ -20,7 +20,7 @@ int main(int argc, char* argv[]){
     AssemblyParser parser(fileName);
     AssemblySimulator simulator(parser);
 
-    InteractiveShell shell(simulator);
+    InteractiveShell shell(simulator, parser);
     shell.start();
     // simulator.launch();
     // simulator.printRegisters(NumberBase::DEC, true);

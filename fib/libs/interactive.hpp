@@ -36,8 +36,9 @@ private:
     /* data */
 public:
     AssemblySimulator simulator;
+    AssemblyParser parser;
 
-    InteractiveShell(const AssemblySimulator& sim);
+    InteractiveShell(const AssemblySimulator& sim, const AssemblyParser& pars);
     void start();
     std::pair<Command, std::vector<int>> getInput();
 
