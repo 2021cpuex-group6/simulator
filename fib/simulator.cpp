@@ -146,12 +146,15 @@ void AssemblySimulator::doInst(const Instruction &instruction){
 int AssemblySimulator::getRegInd(const std::string &regName){
     if(regName == "pc"){
         return REGISTERS_N;
+    }else if(regName == "zero"){
+        return 0;
     }else{
         try{
             return std::stoi(regName.substr(1));
         }catch(const std::invalid_argument & e){
             // レジスタ名が不正
             launchError(INVALID_REGISTER);
+            return -1;
         }
     }
 }

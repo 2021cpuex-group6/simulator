@@ -6,12 +6,6 @@
 #include <regex>
 #include <cmath>
 
-const std::string INVALID_LINE_MESSAGE = "不正な行です";
-const std::string INVALID_OPCODE_MESSAGE = "不正な命令です";
-const std::string INVALID_IMMEDIATE_NOT_INT = "即値が入る場所に数以外が入っています";
-const std::string INVALID_IMMEDIATE_OUT_OF_RANGE = "即値が範囲外です";
-const std::string INVALID_OPERAND_N = "オペランドの数が合いません";
-
 
 
 
@@ -78,6 +72,9 @@ AssemblyParser::AssemblyParser(const std::string &filePath){
 
 void AssemblyParser::parseFile(const std::string& filePath){
     std::ifstream file(filePath);
+    if(! file.is_open()){
+        throw std::invalid_argument(FILE_NOTFOUND);
+    }
     std::string line;
 
     const std::regex instRe(R"(^\s+(.*))");
