@@ -78,7 +78,7 @@ void AssemblyParser::parseFile(const std::string& filePath){
     std::string line;
 
     const std::regex instRe(R"(^\s+(.*))");
-    const std::regex labelRe(R"(^([0-9a-zA-Z_]+):\s*)");
+    const std::regex labelRe(R"(^([0-9a-zA-Z_]+)\s*:\s*)");
     const std::regex commentRe(R"((.*)\s*#.*)");
     const std::regex spaceRe(R"(\s*)");
 
