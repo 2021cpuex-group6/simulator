@@ -81,6 +81,22 @@ void AssemblySimulator::printRegisters(const NumberBase &base, const bool &sign)
     }
 }
 
+void AssemblySimulator::writeReg(const int &regInd, const int &value){
+    if(regInd < REGISTERS_N){
+        if(regInd == 0){
+            // 0レジスタへの書き込み
+            std::cout << ZERO_REG_WRITE_ERROR << std::endl;
+        }
+        registers[regInd] = value;
+    }else{
+        if(value % INST_BYTE_N != 0){
+            // アラインに合わない値が入力されているので注意
+            std::cout << PC_NOT_ALIGNED_WRITE << std::endl;
+        }
+        pc = value;
+    }
+}
+
 void AssemblySimulator::launch(){
     // 終了まで実行する
     if(end){

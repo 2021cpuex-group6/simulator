@@ -6,6 +6,10 @@
 
 const std::string INVALID_COMMAND = "コマンドの書式が不正です";
 const std::string INVALID_REG_NAME = "レジスタ名が不正です";
+const std::string NOT_SELECTED_REGISTER = "レジスタを指定してください";
+const std::string NOT_SPECIFIED_WRITE_VALUE = "書き込む値を指定してください";
+const std::string NOT_IMPLEMENTED_UNSIGNED = "unsignedでの書き込みは未実装です";
+
 
 const std::string COMMAND_DO_ALL = "a";
 const std::string COMMAND_NEXT_BLOCK = "nb";
@@ -38,7 +42,10 @@ class InteractiveShell
 
 private:
     /* data */
+    static std::pair<int, int> getRROptionInput(std::string);
+    static int getRRRegisterInput(std::string);
     std::pair<Command, std::vector<int>> getRRInput(const std::string &) const;
+    std::pair<Command, std::vector<int>> getRWInput(const std::string &) const;
 public:
     AssemblySimulator simulator;
     AssemblyParser parser;
@@ -46,6 +53,7 @@ public:
     InteractiveShell(const AssemblySimulator& sim, const AssemblyParser& pars);
     void start();
     std::pair<Command, std::vector<int>> getInput()const;
+
 
 };
 

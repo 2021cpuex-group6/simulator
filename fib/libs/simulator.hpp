@@ -15,6 +15,7 @@ const std::string FILE_END = "終了しました";
 const std::string ALREADY_ENDED = "すでに終了しています";
 const std::string INVALID_REGISTER = "レジスタ名が不正です";
 const std::string ZERO_REG_WRITE_ERROR = "x0レジスタに書き込むことはできません";
+const std::string PC_NOT_ALIGNED_WRITE = "Warning: アラインに合わないpcの値が入力されています";
 const std::string NOT_FOUND_LABEL = "ラベルが見つかりません";
 const std::string OUT_OF_RANGE_BREAKPOINT = "ファイルの行数の範囲外のためブレークポイントは設置できません";
 enum class NumberBase{
@@ -45,6 +46,7 @@ class AssemblySimulator{
         void printBreakList()const;
         void setBreakPoint(const int &);
         static int getRegInd(const std::string &regName);
+        void writeReg(const int &, const int &);
 
     // private:
         int getRegIndWithError(const std::string &regName)const;

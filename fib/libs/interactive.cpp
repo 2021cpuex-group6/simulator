@@ -45,9 +45,12 @@ void InteractiveShell::start(){
                     std::cout << simulator.getRegisterInfoUnit(input.second[0],
                                                                  static_cast<NumberBase>(input.second[1]), 
                                                                             input.second[2] == 1) << std::endl;
-                    
                 }
                 break;
+            case Command::RegWrite:
+                simulator.writeReg(input.second[0], input.second[1]);
+                break;
+
         }
 
     }
@@ -83,8 +86,9 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
                 return{Command::Invalid, {}};
             }
         }else if(startsWith(inputString, COMMAND_REG_READ)){
-            // 工事中　とりあえず全部見るモードのみ
             return getRRInput(inputString);
+        }else if(startsWith(inputString, COMMAND_REG_WRITE)){
+            return getRWInput(inputString);
         }
     }
 
@@ -94,23 +98,15 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
     
 }
 
-std::pair<Command, std::vector<int>> InteractiveShell::getRRInput(const std::string &inputString) const{
-    // rr コマンドの引数などを処理する
-    // 返り値のsecondは、
-    //  0 ... 指定されたレジスタのインデックス（指定なしなら全レジスタを示す-1）
-    //  1 ... x進数表記の指定　（指定なしなら10進数）
-    //  2 ... 符号付か符号なしか (指定なしなら符号付)
-    const std::regex optionRe(R"(-[bodhu])");
-    const std::regex regRe(R"(\s+([a-z0-9]+))");
 
+std::pair<int, int> InteractiveShell::getRROptionInput(std::string input){
+    // レジスタ系のコマンドのオプション部分を読み取る
+    const std::regex optionRe(R"(-[bodhu])");
     std::smatch m;
     int optionB = static_cast<int>(NumberBase::DEC);
     int optionS = 1;
-    int regInd = -1;
 
-    std::string inputCopy = inputString;
-
-    while(std::regex_search(inputCopy, m, optionRe)){
+    while(std::regex_search(input, m, optionRe)){
         std::string res = m[0].str();
         if(res == "-b"){
             optionB = static_cast<int>(NumberBase::BIN);
@@ -123,16 +119,76 @@ std::pair<Command, std::vector<int>> InteractiveShell::getRRInput(const std::str
         }else if(res == "-u"){
             optionS = 0;
         }
-        inputCopy = m.suffix();
+        input = m.suffix();
     }
-    inputCopy = inputString.substr(2);
-    if(std::regex_search(inputCopy, m, regRe)){
+    return {optionB, optionS};
+}
+
+int InteractiveShell::getRRRegisterInput(std::string input){
+    // レジスタ系のコマンドのレジスタ部分を読み取る
+    // 指定がない場合は-1を返す
+    const std::regex regRe(R"(\s+([a-z0-9]+))");
+    std::smatch m;
+    input = input.substr(2);
+    int regInd = -1;
+    if(std::regex_search(input, m, regRe)){
         std::string res = m[1].str();
         regInd = AssemblySimulator::getRegInd(res);
         if(regInd < 0){
             std::cout << INVALID_REG_NAME << std::endl;
         }
     }
-    return{Command::RegRead, {regInd, optionB, optionS}};
+    return regInd;
+}
+
+std::pair<Command, std::vector<int>> InteractiveShell::getRWInput(const std::string &inputString) const{
+    // rr コマンドの引数などを処理する
+    // 返り値のsecondは、
+    //  0 ... 指定されたレジスタのインデックス（指定なしならエラー）
+    //  1 ... 書き込むint
+    int writeValue = 0;
+    int regInd = -1;
+
+    auto optionPair = getRROptionInput(inputString);
+    if(optionPair.second == 0){
+        // unsignedは未対応
+        std::cout << NOT_IMPLEMENTED_UNSIGNED << std::endl;
+        return {Command::Invalid, {}};
+    }
+    regInd = getRRRegisterInput(inputString);
+    if(regInd < 0){
+        // レジスタ指定なし
+        std::cout << NOT_SELECTED_REGISTER << std::endl;
+        return {Command::Invalid, {}};
+    }
+
+    const std::regex numRe(R"(\s+([0-9a-f]+))");
+    std::smatch m;
+    if(std::regex_search(inputString, m, numRe)){
+        std::string res = m[1].str();
+        writeValue = std::stoi(res, 0, optionPair.first);
+    }else{
+        // 書き込む値の指定なし
+        std::cout <<  NOT_SPECIFIED_WRITE_VALUE << std::endl;
+        return {Command::Invalid, {}};
+    }
+
+    return {Command::RegWrite, {regInd, writeValue}};
+
+
+}
+
+std::pair<Command, std::vector<int>> InteractiveShell::getRRInput(const std::string &inputString) const{
+    // rr コマンドの引数などを処理する
+    // 返り値のsecondは、
+    //  0 ... 指定されたレジスタのインデックス（指定なしなら全レジスタを示す-1）
+    //  1 ... x進数表記の指定　（指定なしなら10進数）
+    //  2 ... 符号付か符号なしか (指定なしなら符号付)
+
+
+    int regInd = getRRRegisterInput(inputString);
+    auto optionPair = getRROptionInput(inputString);
+    
+    return{Command::RegRead, {regInd, optionPair.first, optionPair.second}};
 
 }
