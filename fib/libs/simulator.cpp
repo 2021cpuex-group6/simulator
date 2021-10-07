@@ -15,6 +15,17 @@ AssemblySimulator::AssemblySimulator(const AssemblyParser& parser): parser(parse
         
 }
 
+void AssemblySimulator::reset(){
+    // 内部状態をリセットし、起動時と同じ状態にする
+    pc = 0;
+    end = false;
+    instCount = 0;
+    for(auto &e: opCounter){
+        opCounter[e.first] = 0;
+    }
+    breakPoints.clear();
+}
+
 
 std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const NumberBase &base, const bool &sign) const {
     // レジスタ番号を受け取り、その情報を文字列で返す
@@ -177,6 +188,13 @@ void AssemblySimulator::printInstruction(const int & lineN, const Instruction &i
             
     }
     
+}
+
+void AssemblySimulator::deleteBreakPoint(const int &lineN){
+    int i = breakPoints.erase(lineN);
+    if(i == 0){
+        std::cout << BREAKPOINT_NOT_FOUND << std::endl;
+    }
 }
 
 void AssemblySimulator::setBreakPoint(const int &lineN){

@@ -50,6 +50,16 @@ void InteractiveShell::start(){
             case Command::RegWrite:
                 simulator.writeReg(input.second[0], input.second[1]);
                 break;
+            case Command::BreakDelete:
+                simulator.deleteBreakPoint(input.second[0]);
+                break;
+            case Command::Info:
+                simulator.printOpCounter();
+                break;
+            case Command::Reset:
+                simulator.reset();
+                break;
+            
 
         }
 
@@ -77,6 +87,10 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
         return {Command::BreakList, {}};
     }else if(inputString == COMMAND_BACK){
         return {Command::Back, {}};
+    }else if(inputString == COMMAND_INFO){
+        return {Command::Info, {}};
+    }else if(inputString == COMMAND_RESET){
+        return {Command::Reset, {}};
     }else{
         if(startsWith(inputString, COMMAND_BREAK_SET)){
             try{
@@ -89,6 +103,8 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
             return getRRInput(inputString);
         }else if(startsWith(inputString, COMMAND_REG_WRITE)){
             return getRWInput(inputString);
+        }else if(startsWith(inputString, COMMAND_BREAK_DELETE)){
+            return getBDInput(inputString);
         }
     }
 
@@ -190,5 +206,33 @@ std::pair<Command, std::vector<int>> InteractiveShell::getRRInput(const std::str
     auto optionPair = getRROptionInput(inputString);
     
     return{Command::RegRead, {regInd, optionPair.first, optionPair.second}};
+
+}
+
+
+std::pair<Command, std::vector<int>> InteractiveShell::getBDInput(const std::string &inputString) const{
+    // bd コマンドの引数などを処理する
+    // 返り値のsecondは、
+    //  0 ... 削除する行
+    int writeValue = 0;
+
+    const std::regex numRe(R"(\s+([0-9]+))");
+    std::smatch m;
+    if(std::regex_search(inputString, m, numRe)){
+        std::string res = m[1].str();
+        try{
+            writeValue = std::stoi(res);
+        }catch(const std::out_of_range & e){
+            std::cout << OUT_OF_RANGE_INT << std::endl;
+            return {Command::Invalid, {}};
+        }
+    }else{
+        // 書き込む値の指定なし
+        std::cout <<  NOT_SPECIFIED_LINE_N << std::endl;
+        return {Command::Invalid, {}};
+    }
+
+    return {Command::BreakDelete, {writeValue}};
+
 
 }

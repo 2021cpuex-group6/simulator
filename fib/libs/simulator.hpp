@@ -11,6 +11,7 @@ constexpr int INST_BYTE_N = 4;
 constexpr int PRINT_INST_COL = 2;
 constexpr int PRINT_INST_NUM_SIZE = 6;
 
+const std::string BREAKPOINT_NOT_FOUND = "ブレークポイントが見つかりませんでした";
 const std::string FILE_END = "終了しました";
 const std::string ALREADY_ENDED = "すでに終了しています";
 const std::string INVALID_REGISTER = "レジスタ名が不正です";
@@ -45,8 +46,10 @@ class AssemblySimulator{
         void printInstruction(const int &, const Instruction &)const;
         void printBreakList()const;
         void setBreakPoint(const int &);
+        void deleteBreakPoint(const int &);
         static int getRegInd(const std::string &regName);
         void writeReg(const int &, const int &);
+        void reset();
 
     // private:
         int getRegIndWithError(const std::string &regName)const;
