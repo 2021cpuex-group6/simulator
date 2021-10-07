@@ -7,7 +7,7 @@
 
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser): parser(parser), registers({0}), pc(0),
-         end(false), instCount(0), opCounter({}), breakPoints({}){
+         end(false), instCount(0), opCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}){
     // opcounterをすべて0に
     for(const auto & item : opcodeInfoMap){
         opCounter.insert({item.first, 0});
@@ -24,6 +24,9 @@ void AssemblySimulator::reset(){
         opCounter[e.first] = 0;
     }
     breakPoints.clear();
+    historyN = 0;
+    historyPoint = 0;
+    beforeHistory.fill({});
 }
 
 
@@ -136,7 +139,7 @@ void AssemblySimulator::doNextBreak(){
 
 }
 
-void AssemblySimulator::next(const bool& jumpComment, const bool& printInst){
+void AssemblySimulator::next(bool jumpComment, const bool& printInst){
     // 現在PCで示している命令を実行する
     // jumpComment ... コメント、ラベルは飛ばして次の命令も実行する
     // printInst   ... 命令の内容を表示
@@ -147,21 +150,66 @@ void AssemblySimulator::next(const bool& jumpComment, const bool& printInst){
             return;
         }
 
+        BeforeData beforeData = {};
+
         int line = pc/INST_BYTE_N;
         Instruction inst = parser.instructionVector[line];
         if(inst.type == InstType::Inst){
-            doInst(inst);
+            jumpComment = false;
+            beforeData = doInst(inst);
             if(printInst){
                 printInstruction(line+1, inst);
             }
-
-            return;
         }else{
             line ++;;
+            beforeData.instruction = "";
+            beforeData.pc = pc;
 
             incrementPC();
         }
+        addHistory(beforeData);
     }while(jumpComment);
+
+}
+
+void AssemblySimulator::addHistory(const BeforeData &input){
+    // 履歴を追加
+    beforeHistory[historyPoint] = input;
+    historyPoint = (historyPoint + 1) % HISTORY_RESERVE_N;
+    historyN = historyN >= HISTORY_RESERVE_N ? HISTORY_RESERVE_N : historyN +1;
+}
+
+BeforeData AssemblySimulator::popHistory(){
+    // 履歴をポップする　もう履歴がなければout_of_range例外を送る
+    if(historyN==0){
+        throw std::out_of_range(NO_HISTORY);
+    }
+    historyN --;
+    historyPoint = (historyPoint-1 + HISTORY_RESERVE_N) % HISTORY_RESERVE_N;
+    return beforeHistory[historyPoint];
+}
+
+void AssemblySimulator::back(){
+    // ひとつ前に戻る
+    BeforeData before;
+    try{
+        before = popHistory();
+    }catch (const std::out_of_range & e){
+        std::cout << NO_HISTORY << std::endl;
+        return;        
+    }
+    end = false;
+    pc = before.pc;
+    if(before.instruction != ""){
+        instCount--;
+        opCounter[before.instruction] = opCounter[before.instruction] -1;
+        if(before.regInd >= 0){
+            registers[before.regInd] = before.regValue;
+        }
+    }else{
+        // 前の命令はコメントやラベルだった
+    }
+
 
 }
 
@@ -215,23 +263,24 @@ void AssemblySimulator::printBreakList()const{
     }
 
 }
-void AssemblySimulator::doInst(const Instruction &instruction){
+BeforeData AssemblySimulator::doInst(const Instruction &instruction){
     // 命令を処理
     std::string opcode = instruction.opcode;
     instCount++;
     opCounter[opcode] = opCounter[opcode] + 1;
 
     if(opcode == "nop"){
+        BeforeData ans = {"nop", pc, -1};
         pc += INST_BYTE_N;
-        return;
+        return ans;
     }
     std::vector<int> opInfo = opcodeInfoMap[opcode];
     int opKind = opInfo[4];
     if(opKind == INST_CONTROL){
-        doControl(opcode, instruction);
-        return;
+        return doControl(opcode, instruction);
 
     }else{
+        BeforeData ans = {};
         if(opKind == INST_MEM){
             
 
@@ -251,9 +300,15 @@ void AssemblySimulator::doInst(const Instruction &instruction){
             }else{
                 source1 = instruction.immediate;
             }
+            // ここで前のデータを保存
+            ans.instruction = opcode;
+            ans.pc = pc;
+            ans.regInd = targetR;
+            ans.regValue = registers[targetR];
             doALU(opcode, targetR, source0, source1);
         }
         incrementPC();
+        return ans;
     }
 
 
@@ -305,7 +360,7 @@ void AssemblySimulator::doALU(const std::string &opcode, const int &targetR, con
 
 }
 
-void AssemblySimulator::doControl(const std::string &opcode, const Instruction &instruction){
+BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruction &instruction){
     // 制御系の命令実行
     // 次命令がpc+4かは不明なのでここでpcの更新をする
     std::vector<int> opInfo = opcodeInfoMap[opcode];
@@ -324,14 +379,19 @@ void AssemblySimulator::doControl(const std::string &opcode, const Instruction &
 
     if(jumpFlag){
         try{
+            BeforeData ans = {opcode, pc, -1};
             int nextLine = parser.labelMap.at(instruction.label);
             pc = nextLine * INST_BYTE_N;
+            return ans;
         }catch(const std::out_of_range &e){
             launchError(NOT_FOUND_LABEL);
+            return{};
         }
 
     }else{
+        BeforeData ans = {opcode, pc, -1};
         incrementPC();
+        return ans;
     }
 
 }

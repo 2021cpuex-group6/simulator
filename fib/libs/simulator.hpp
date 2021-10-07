@@ -10,6 +10,7 @@ constexpr size_t REGISTER_BIT_N = 32;
 constexpr int INST_BYTE_N = 4;
 constexpr int PRINT_INST_COL = 2;
 constexpr int PRINT_INST_NUM_SIZE = 6;
+constexpr int HISTORY_RESERVE_N = 1024;
 
 const std::string BREAKPOINT_NOT_FOUND = "ブレークポイントが見つかりませんでした";
 const std::string FILE_END = "終了しました";
@@ -19,12 +20,22 @@ const std::string ZERO_REG_WRITE_ERROR = "x0レジスタに書き込むことは
 const std::string PC_NOT_ALIGNED_WRITE = "Warning: アラインに合わないpcの値が入力されています";
 const std::string NOT_FOUND_LABEL = "ラベルが見つかりません";
 const std::string OUT_OF_RANGE_BREAKPOINT = "ファイルの行数の範囲外のためブレークポイントは設置できません";
+const std::string NO_HISTORY = "もう履歴はありません";
 enum class NumberBase{
     BIN = 2, 
     OCT = 8, 
     DEC = 10, 
     HEX = 16
 };
+
+// 前回の状態に戻すのに必要なデータ
+struct BeforeData{
+    std::string instruction;
+    int pc;
+    int regInd;  //書き込んだレジスタ。書き込みナシなら-1
+    int regValue;
+};
+
 
 class AssemblySimulator{
     public:
@@ -35,12 +46,15 @@ class AssemblySimulator{
         std::map<std::string, int> opCounter; //実行命令の統計
 
         std::set<int> breakPoints; // ブレークポイントの集合　行数で管理（1始まり）
+        int historyN;   // 現在保持している履歴の数
+        int historyPoint; // 次に履歴を保存するインデックス
+        std::array<BeforeData, HISTORY_RESERVE_N> beforeHistory; // もとに戻れるようにデータをとる
         const AssemblyParser parser;
 
         AssemblySimulator(const AssemblyParser& parser);
         void printRegisters(const NumberBase&, const bool &sign) const;
         void printOpCounter()const;
-        void next(const bool&, const bool&);
+        void next(bool, const bool&);
         void doNextBreak();
         void launch();
         void printInstruction(const int &, const Instruction &)const;
@@ -50,13 +64,16 @@ class AssemblySimulator{
         static int getRegInd(const std::string &regName);
         void writeReg(const int &, const int &);
         void reset();
+        void addHistory(const BeforeData &);
+        void back();
+        BeforeData popHistory();
 
     // private:
         int getRegIndWithError(const std::string &regName)const;
-        void doInst(const Instruction &);
+        BeforeData doInst(const Instruction &);
         void launchError(const std::string &message)const;
         void doALU(const std::string &opcode, const int &targetR, const int &source0, const int &source1);
-        void doControl(const std::string &opcode, const Instruction &instruction);
+        BeforeData doControl(const std::string &opcode, const Instruction &instruction);
         void incrementPC();
         std::string getRegisterInfoUnit(const int&, const NumberBase&, const bool &sign) const ;
 };

@@ -59,7 +59,9 @@ void InteractiveShell::start(){
             case Command::Reset:
                 simulator.reset();
                 break;
-            
+            case Command::Back:
+                simulator.back();
+                break;
 
         }
 
