@@ -205,15 +205,15 @@ void AssemblySimulator::doInst(const Instruction &instruction){
 
         }else{
             // 演算命令
-            int targetR = getRegInd(instruction.operand[0]);
+            int targetR = getRegIndWithError(instruction.operand[0]);
             if(targetR == 0){
                 // x0レジスタへの書き込み
                 launchError(ZERO_REG_WRITE_ERROR);
             }
-            int source0 = registers[getRegInd(instruction.operand[1])];
+            int source0 = registers[getRegIndWithError(instruction.operand[1])];
             int source1 = 0;
             if(opKind == INST_REGONLY){
-                source1 = registers[getRegInd(instruction.operand[2])];
+                source1 = registers[getRegIndWithError(instruction.operand[2])];
             }else{
                 source1 = instruction.immediate;
             }
@@ -225,7 +225,6 @@ void AssemblySimulator::doInst(const Instruction &instruction){
 
 
 }
-
 int AssemblySimulator::getRegInd(const std::string &regName){
     if(regName == "pc"){
         return REGISTERS_N;
@@ -236,14 +235,29 @@ int AssemblySimulator::getRegInd(const std::string &regName){
             return std::stoi(regName.substr(1));
         }catch(const std::invalid_argument & e){
             // レジスタ名が不正
-            launchError(INVALID_REGISTER);
+            return -1;
+        }catch(const std::out_of_range & e){
+            // レジスタ名が不正
             return -1;
         }
     }
 }
 
 
-void AssemblySimulator::launchError(const std::string &message){
+int AssemblySimulator::getRegIndWithError(const std::string &regName)const{
+    int ind = getRegInd(regName);
+    if(ind < 0){
+        launchError(INVALID_REGISTER);
+        return -1;
+
+    }
+    return ind;
+}
+
+
+
+
+void AssemblySimulator::launchError(const std::string &message)const{
     throw std::invalid_argument(std::to_string(pc/4 + 1) + "行目:" + message);
 }
 
@@ -263,8 +277,8 @@ void AssemblySimulator::doControl(const std::string &opcode, const Instruction &
     std::vector<int> opInfo = opcodeInfoMap[opcode];
     bool jumpFlag = false;
     if(opInfo[0] == 3){
-        int reg0 = registers[getRegInd(instruction.operand[0])];
-        int reg1 = registers[getRegInd(instruction.operand[1])];
+        int reg0 = registers[getRegIndWithError(instruction.operand[0])];
+        int reg1 = registers[getRegIndWithError(instruction.operand[1])];
         if(opcode == "blt"){
             jumpFlag = reg0 < reg1;
         }else if(opcode == "beq"){

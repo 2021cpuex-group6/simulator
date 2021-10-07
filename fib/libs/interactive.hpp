@@ -5,6 +5,7 @@
 #include <vector>
 
 const std::string INVALID_COMMAND = "コマンドの書式が不正です";
+const std::string INVALID_REG_NAME = "レジスタ名が不正です";
 
 const std::string COMMAND_DO_ALL = "a";
 const std::string COMMAND_NEXT_BLOCK = "nb";
@@ -20,10 +21,13 @@ enum class Command{
     DoNextBreak, 
     DoNext, 
     BreakSet, 
-    BreakList, 
+    BreakList,
+    BreakDelete,  
     RegRead, 
     RegWrite, 
     Back, 
+    Reset,  // 初期状態へ
+    CountRead, //統計データを見る
     Invalid
 };
 
@@ -34,13 +38,14 @@ class InteractiveShell
 
 private:
     /* data */
+    std::pair<Command, std::vector<int>> getRRInput(const std::string &) const;
 public:
     AssemblySimulator simulator;
     AssemblyParser parser;
 
     InteractiveShell(const AssemblySimulator& sim, const AssemblyParser& pars);
     void start();
-    std::pair<Command, std::vector<int>> getInput();
+    std::pair<Command, std::vector<int>> getInput()const;
 
 };
 

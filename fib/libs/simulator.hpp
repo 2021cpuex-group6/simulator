@@ -44,11 +44,12 @@ class AssemblySimulator{
         void printInstruction(const int &, const Instruction &)const;
         void printBreakList()const;
         void setBreakPoint(const int &);
+        static int getRegInd(const std::string &regName);
 
     // private:
+        int getRegIndWithError(const std::string &regName)const;
         void doInst(const Instruction &);
-        int getRegInd(const std::string &regName);
-        void launchError(const std::string &message);
+        void launchError(const std::string &message)const;
         void doALU(const std::string &opcode, const int &targetR, const int &source0, const int &source1);
         void doControl(const std::string &opcode, const Instruction &instruction);
         void incrementPC();
