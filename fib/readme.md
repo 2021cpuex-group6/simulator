@@ -9,11 +9,13 @@ makeコマンドでmainファイルを作成し、「`./main fib.s`」のよう�
 - `bs [lineN]` ... (break set) `[lineN]`行目にブレークポイントを追加
 - `bl`  ... (break list) ブレークポイントのリストを表示
 - `rr`  ... (register read) レジスタ一覧を表示 (進法指定などは後々)
+- `rw　[regName] [value] (-[base])`  ... (register write) `[regName]`のレジスタに`[base]`進法で`[value]`の値を書き込む。`[base]`はb, o, d, h (デフォルトはd)から選ぶ。unsignedは実装していません。
+- `bd [lineN]` ... (break delete) `[lineN]`行目のブレークポイントを削除
+- `i`   ... (info) これまでの実行命令数などの情報を表示
+- `re`  ... (reset) レジスタ群、ブレークポイント、統計情報などのデータをリセットして初期状態に戻す
 
 以下追加予定
-- `bd [lineN]` ... (break delete) `[lineN]`行目のブレークポイントを削除
-- `rw`  ... (register write) レジスタ書き込み
-- `b`   ... 1命令もとに戻す（使用回数制限あり）
+- `b`   ... (back) 1命令もとに戻す（使用回数制限あり）
 
 ## 注意
 - g++, makeを実行できる環境が必要です。（aptなどでインストールしてください。）
