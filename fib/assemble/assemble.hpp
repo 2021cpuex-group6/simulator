@@ -28,7 +28,7 @@ static int32_t get_J_imm(int32_t);
 static int32_t get_B_imm(int32_t);
 
 static int8_t register_to_binary(std::string reg_name, const int &line);
-static std::int32_t assemble_op(const std::string &op, const int &line, const int& addr);
+static std::int32_t assemble_op(const std::string &op, const int &line, const int addr);
 static void assemble_error(const std::string &message, const int & line);
 static int32_t get_relative_address_with_check(const std::string &label,
                                 const int & now_addr, const int & max_bit, const int &line);

@@ -1,4 +1,4 @@
-CFLAGS := -g -Wall
+CFLAGS := -g -Wall -O0
 SIMSRCS := $(wildcard sims/*.cpp) $(wildcard utils/*.cpp) main.cpp
 ASSEMSRCS := $(wildcard assemble/*.cpp) $(wildcard utils/*.cpp) assembler.cpp
 SIMOBJS :=  $(patsubst %.cpp,%.o,$(SIMSRCS))

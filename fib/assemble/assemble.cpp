@@ -27,7 +27,7 @@ bool assembler_main(std::ofstream& ofs, std::istream& ifs) {
                 // 1バイトずつ出力
                 byte = (binary_op >> (8*(3-i))) & 0xff;
                 ofs << std::hex << byte << std::endl;
-                std::cout << (unsigned int)byte << std::endl;
+                std::cout << std::hex << (unsigned int)byte << std::endl;
             }
         }else{
             // 出力しない場合、行数だけインクリメントし、命令アドレスは動かさない
@@ -45,7 +45,7 @@ bool assembler_main(std::ofstream& ofs, std::istream& ifs) {
 }
 
 
-static std::int32_t assemble_op(const std::string & op, const int& line, const int &addr) {
+static std::int32_t assemble_op(const std::string & op, const int& line, const int addr) {
     // 一行をパースし、命令の数値表現を返す
     int32_t output = 0;
     std::istringstream iss(op);
@@ -83,25 +83,24 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
         std::string op1, op2;
         if(opecode == "j"){
             iss >> op1;
-            int32_t addr = get_relative_address_with_check(op1, addr, 21, line);
-            addr = get_J_imm(addr);
-            output |= addr;
+            int32_t label_addr = get_relative_address_with_check(op1, addr, 21, line);
+            label_addr = get_J_imm(label_addr);
+            output |= label_addr;
         }else if(opecode == "jal"){
             iss >> op1 >> op2;
             int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
-            int32_t addr = get_relative_address_with_check(op2, addr, 21, line);
-            addr = get_J_imm(addr);
-            output |= addr | (rg1 << 7);
+            int32_t label_addr = get_relative_address_with_check(op2, addr, 21, line);
+            label_addr = get_J_imm(label_addr);
+            output |= label_addr | (rg1 << 7);
         }
-
     } else if(style == B){
         std::string op1, op2, op3;
         iss >> op1 >> op2 >> op3;
         int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
         int32_t rg2 = static_cast<int32_t>(register_to_binary(op2, line));
-        int32_t addr = get_relative_address_with_check(op3, addr, 13, line);
-        addr = get_B_imm(addr);
-        output |= addr | (rg1 << 15) | (rg2 << 20);
+        int32_t label_addr = get_relative_address_with_check(op3, addr, 13, line);
+        label_addr = get_B_imm(label_addr);
+        output |= label_addr | (rg1 << 15) | (rg2 << 20);
 
     } else {
         output = NOP;
