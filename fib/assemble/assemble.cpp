@@ -4,10 +4,17 @@
 #include <sstream>
 #include <map>
 #include <tuple>
+#include <regex>
 #include "../utils/utils.hpp"
 
+constexpr bool ELIMINATE_NOP = false; // NOP命令を飛ばすか
+constexpr int START_ADDRESS = 0; //ファイルのはじめの命令が配置されるアドレス
 constexpr int INSTRUCTION_BYTE_N = 4;
+constexpr int32_t NOP = 0x13;
 const std::string INVALID_REGISTER = "不正なレジスタ名です";
+const std::string DOUBLE_LABEL = "ラベルが重複しています";
+
+const std::regex label_re(R"(^([0-9a-zA-Z_]+)\s*:\s*)");
 
 enum op_style {
     R,
@@ -18,38 +25,52 @@ enum op_style {
     J
 };
 
-std::map<std::string, std::tuple<op_style, int32_t>> opcode_map;
+std::map<std::string, int> label_map; // ラベル情報を保持
+std::map<std::string, std::tuple<op_style, int32_t>> opcode_map; //各命令の情報を保持
 
 
 static int8_t register_to_binary(std::string reg_name, const int &line);
-static int32_t assemble_op(const std::string &op, const int &line);
+static std::int32_t assemble_op(const std::string &op, const int &line, const int& addr);
 static void assemble_error(const std::string &message, const int & line);
 
 
 
 bool assembler_main(std::ofstream& ofs, std::istream& ifs) {
     // 一行ずつアセンブル
-    int lineCount = 0;
+    int line_count = 1;             // 読み込んだファイルの行数
+    int addr_count = START_ADDRESS; // 出力する命令のアドレス
     while(!ifs.eof()) {
-        lineCount ++;
         std::string op;
         std::getline(ifs,op);
-        int32_t binary_op = assemble_op(op, lineCount);
+        const int32_t & binary_op  = assemble_op(op, line_count, addr_count);
+
         int32_t byte;
-        for (int i = 0; i < INSTRUCTION_BYTE_N; i++) {
-            // 1バイトずつ出力
-            byte = (binary_op >> (8*(3-i))) & 0xff;
-            ofs << std::hex << byte << std::endl;
-            std::cout << (unsigned int)byte << std::endl;
+        if(binary_op != NOP || ELIMINATE_NOP){
+            // 通常の命令かNOPを出力する設定の時
+            for (int i = 0; i < INSTRUCTION_BYTE_N; i++) {
+                // 1バイトずつ出力
+                byte = (binary_op >> (8*(3-i))) & 0xff;
+                ofs << std::hex << byte << std::endl;
+                std::cout << (unsigned int)byte << std::endl;
+            }
+        }else{
+            // 出力しない場合、行数だけインクリメントし、命令アドレスは動かさない
+            line_count ++;
+            std::cout << op << " " << std::hex << binary_op << std::endl;
+            continue;
+            
         }
+        line_count ++;
+        addr_count += INSTRUCTION_BYTE_N;
         std::cout << op << " " << std::hex << binary_op << std::endl;
+
     }
     return true;
 }
 
 
-static int32_t assemble_op(const std::string & op, const int& line) {
-
+static std::int32_t assemble_op(const std::string & op, const int& line, const int &addr) {
+    // 一行をパースし、命令の数値表現を返す
     int32_t output = 0;
     std::istringstream iss(op);
     std::string opecode;
@@ -61,12 +82,19 @@ static int32_t assemble_op(const std::string & op, const int& line) {
         style = std::get<op_style>(opcode_data);
         output = std::get<int32_t>(opcode_data);
     }catch (const std::out_of_range & e){
-        // 登録外ならnop
+        // 登録外
+        std::smatch m;
+        if(std::regex_match(op, m, label_re)){
+            // ラベル
+            auto pib =  label_map.insert({m[1].str(), addr});
+            if(! pib.second){
+                // ラベルの重複
+                assemble_error(DOUBLE_LABEL, line);
+        }
         output = 0x00000013;
         std::cout << "nop" << std::endl;
         return output;
     }
-
 
     if (style == R) {
         std::string op1, op2, op3;
@@ -83,12 +111,15 @@ static int32_t assemble_op(const std::string & op, const int& line) {
         int32_t rg2 = static_cast<int32_t>(register_to_binary(op2, line));
         imm &= 0xfff;
         output |= (rg1 << 7) | (rg2 << 15) | (imm << 20);
+    } else if(style == J){
+    } else if(style == B){
     } else {
-        output = 0x00000013;
+        output = NOP;
         std::cout << "nop" << std::endl;
         return output;
     }
     return output;
+    }
 }
 
 static int8_t register_to_binary(std::string reg_name, const int &line) {
