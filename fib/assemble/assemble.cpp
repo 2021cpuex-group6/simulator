@@ -4,24 +4,8 @@
 #include <sstream>
 #include "../utils/utils.hpp"
 
-static int8_t register_to_binary(std::string reg_name);
-static int32_t assemble_op(std::string op);
-
-bool assembler_main(std::ofstream& ofs, std::istream& ifs) {
-    while(!ifs.eof()) {
-        std::string op;
-        std::getline(ifs,op);
-        int32_t binary_op = assemble_op(op);
-        int32_t byte;
-        for (int i = 0; i < 4; i++) {
-            byte = (binary_op >> (8*(3-i))) & 0xff;
-            ofs << std::hex << byte << std::endl;
-            std::cout << (unsigned int)byte << std::endl;
-        }
-        std::cout << op << " " << std::hex << binary_op << std::endl;
-    }
-    return true;
-}
+constexpr int INSTRUCTION_BYTE_N = 4;
+const std::string INVALID_REGISTER = "不正なレジスタ名です";
 
 enum op_style {
     R,
@@ -32,7 +16,33 @@ enum op_style {
     J
 };
 
-static int32_t assemble_op(std::string op) {
+static int8_t register_to_binary(std::string reg_name, const int &line);
+static int32_t assemble_op(const std::string &op, const int &line);
+static void assemble_error(const std::string &message, const int & line);
+
+bool assembler_main(std::ofstream& ofs, std::istream& ifs) {
+    // 一行ずつアセンブル
+    int lineCount = 0;
+    while(!ifs.eof()) {
+        lineCount ++;
+        std::string op;
+        std::getline(ifs,op);
+        int32_t binary_op = assemble_op(op, lineCount);
+        int32_t byte;
+        for (int i = 0; i < INSTRUCTION_BYTE_N; i++) {
+            // 1バイトずつ出力
+            byte = (binary_op >> (8*(3-i))) & 0xff;
+            ofs << std::hex << byte << std::endl;
+            std::cout << (unsigned int)byte << std::endl;
+        }
+        std::cout << op << " " << std::hex << binary_op << std::endl;
+    }
+    return true;
+}
+
+
+static int32_t assemble_op(const std::string & op, const int& line) {
+
     int32_t output = 0;
     std::istringstream iss(op);
     std::string opecode;
@@ -89,13 +99,21 @@ static int32_t assemble_op(std::string op) {
     return output;
 }
 
-static int8_t register_to_binary(std::string reg_name) {
+static int8_t register_to_binary(std::string reg_name, const int &line) {
     //　レジスタ名をデコード
     //  とりあえずpc, x0~x31の名前にする
     int8_t output = 0;
     if(startsWith(reg_name, "x")){
         output = std::stoi(reg_name.substr(1));
+    }else{
+        // レジスタ名が不正
+        assemble_error(INVALID_REGISTER, line);
     }
 
     return output;
+}
+
+static void assemble_error(const std::string &message, const int & line){
+    // アセンブル中に発生したエラーを表示
+    throw std::invalid_argument(std::to_string(line) + "行目:" + message);
 }
