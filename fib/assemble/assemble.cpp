@@ -5,34 +5,9 @@
 #include <map>
 #include <tuple>
 #include <regex>
+#include <cmath>
 #include "../utils/utils.hpp"
-
-constexpr bool ELIMINATE_NOP = false; // NOP命令を飛ばすか
-constexpr int START_ADDRESS = 0; //ファイルのはじめの命令が配置されるアドレス
-constexpr int INSTRUCTION_BYTE_N = 4;
-constexpr int32_t NOP = 0x13;
-const std::string INVALID_REGISTER = "不正なレジスタ名です";
-const std::string DOUBLE_LABEL = "ラベルが重複しています";
-
-const std::regex label_re(R"(^([0-9a-zA-Z_]+)\s*:\s*)");
-
-enum op_style {
-    R,
-    I,
-    S,
-    B,
-    U,
-    J
-};
-
-std::map<std::string, int> label_map; // ラベル情報を保持
-std::map<std::string, std::tuple<op_style, int32_t>> opcode_map; //各命令の情報を保持
-
-
-static int8_t register_to_binary(std::string reg_name, const int &line);
-static std::int32_t assemble_op(const std::string &op, const int &line, const int& addr);
-static void assemble_error(const std::string &message, const int & line);
-
+#include "assemble.hpp"
 
 
 bool assembler_main(std::ofstream& ofs, std::istream& ifs) {
@@ -78,9 +53,9 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
     enum op_style style;
     try{
         // mapからオペコードの情報を取得
-        const auto & opcode_data = opcode_map.at(opecode);
-        style = std::get<op_style>(opcode_data);
-        output = std::get<int32_t>(opcode_data);
+        const auto & opecode_data = opecode_map.at(opecode);
+        style = std::get<op_style>(opecode_data);
+        output = std::get<int32_t>(opecode_data);
     }catch (const std::out_of_range & e){
         // 登録外
         std::smatch m;
@@ -112,7 +87,29 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
         imm &= 0xfff;
         output |= (rg1 << 7) | (rg2 << 15) | (imm << 20);
     } else if(style == J){
+        std::string op1, op2;
+        if(opecode == "j"){
+            iss >> op1;
+            int32_t addr = get_relative_address_with_check(op1, addr, 21, line);
+            addr = get_J_imm(addr);
+            output |= addr;
+        }else if(opecode == "jal"){
+            iss >> op1 >> op2;
+            int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+            int32_t addr = get_relative_address_with_check(op2, addr, 21, line);
+            addr = get_J_imm(addr);
+            output |= addr | (rg1 << 7);
+        }
+
     } else if(style == B){
+        std::string op1, op2, op3;
+        iss >> op1 >> op2 >> op3;
+        int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+        int32_t rg2 = static_cast<int32_t>(register_to_binary(op2, line));
+        int32_t addr = get_relative_address_with_check(op3, addr, 13, line);
+        addr = get_B_imm(addr);
+        output |= addr | (rg1 << 15) | (rg2 << 20);
+
     } else {
         output = NOP;
         std::cout << "nop" << std::endl;
@@ -143,38 +140,80 @@ static void assemble_error(const std::string &message, const int & line){
     throw std::invalid_argument(std::to_string(line) + "行目:" + message);
 }
 
+static int32_t get_relative_address_with_check(const std::string &label, 
+                        const int & now_addr, const int & max_bit, const int & line){
+    // ラベル名から相対アドレスを手に入れる。(1ビット右シフト済)
+    // その際、既定の範囲内かも調べ、そうでなかったらエラーを出す
+    int32_t address;
+    try{
+        address = label_map.at(label);
+    }catch(const std::out_of_range &e){
+        assemble_error(LABEL_NOT_FOUND, line);
+    }
+    address -= now_addr;
+    if(address < -1 * std::pow(2, max_bit-1) || address >= std::pow(2, max_bit-1)){
+        // 範囲外だった
+        assemble_error(LABEL_TOO_FAR, line);
+    }
+    int32_t mask = (MASK_BITS>>(32-max_bit)); // 負数の右シフトが不定だったので、この実装になった
+
+    return (address >> 1) & MASK_BITS;
+
+
+}
+
+static int32_t get_J_imm(int32_t  input){
+    // J形式の即値を並び変える
+    // すでに1ビット省略しているので、20ビットの入力
+    int32_t ans = (input << 12 ) & (~MASK_BITS); //20
+    ans |= (input & 0x3ff) << 21; //10-1
+    ans |= (input & 0x400) << 10; //11
+    ans |= (input & 0x7f800) << 1; // 19-12
+    return ans;
+}
+
+static int32_t get_B_imm(int32_t  input){
+    // B形式の即値を並び変える
+    // すでに1ビット省略しているので、12ビットの入力
+    int32_t ans = (input << 20 ) & (~MASK_BITS); //12
+    ans |= (input & 0x3f0) << 21; //10-5
+    ans |= (input & 0xf) << 8; //4-1
+    ans |= (input & 0x400) >> 3; // 11
+    return ans;
+}
+
 void init_opcode_map(){
-    // opcode_mapに値を設定して使えるようにする。
+    // opecode_mapに値を設定して使えるようにする。
     // アセンブルする前に必ず実行すること。
     int32_t output = 0;
     output = 0b0010011;
     output |= (0b000 << 12);
-    opcode_map.insert({"addi", {I, output}});
+    opecode_map.insert({"addi", {I, output}});
     output = 0b0010011;
     output |= (0b010 << 12);
-    opcode_map.insert({"slti", {I, output}});
+    opecode_map.insert({"slti", {I, output}});
     output = 0b0010011;
     output |= (0b011 << 12);
-    opcode_map.insert({"sltiu", {I, output}});
+    opecode_map.insert({"sltiu", {I, output}});
     output = 0b0110011;
     output |= (0b000 << 12);
     output |= (0b0000000 << 25);
-    opcode_map.insert({"add", {R, output}});
+    opecode_map.insert({"add", {R, output}});
     output = 0b0110011;
     output |= (0b000 << 12);
     output |= (0b0100000 << 25);
-    opcode_map.insert({"sub", {R, output}});
+    opecode_map.insert({"sub", {R, output}});
     // jはjalの書き込みレジスタx0版
     output = 0b1101111;
-    opcode_map.insert({"j", {J, output}});
-    opcode_map.insert({"jal", {J, output}});
+    opecode_map.insert({"j", {J, output}});
+    opecode_map.insert({"jal", {J, output}});
     output = 0b1100011;
-    opcode_map.insert({"beq", {B, output}});
+    opecode_map.insert({"beq", {B, output}});
     output |= (0b001 << 12);
-    opcode_map.insert({"bne", {B, output}});
+    opecode_map.insert({"bne", {B, output}});
     output = 0b1100011;
     output |= (0b100 << 12);
-    opcode_map.insert({"blt", {B, output}});
+    opecode_map.insert({"blt", {B, output}});
     output |= (0b1 << 12);
-    opcode_map.insert({"bge", {B, output}});
+    opecode_map.insert({"bge", {B, output}});
 }
