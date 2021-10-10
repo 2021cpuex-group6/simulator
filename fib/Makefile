@@ -1,12 +1,17 @@
-CFLAGS := -g
-SRCS := $(wildcard libs/*.cpp) main.cpp
-OBJS :=  $(patsubst %.cpp,%.o,$(SRCS))
+CFLAGS := -g -Wall
+SIMSRCS := $(wildcard sims/*.cpp) $(wildcard utils/*.cpp) main.cpp
+ASSEMSRCS := $(wildcard assemble/*.cpp) $(wildcard utils/*.cpp) assembler.cpp
+SIMOBJS :=  $(patsubst %.cpp,%.o,$(SIMSRCS))
+ASSEMOBJS :=  $(patsubst %.cpp,%.o,$(ASSEMSRCS))
 # $(warning $(OBJS))
-main: $(OBJS)
+main: $(SIMOBJS)
+	g++ $(CFLAGS) -o $@ $^
+
+assembler: $(ASSEMOBJS)
 	g++ $(CFLAGS) -o $@ $^
 
 %.o: %.cpp
 	g++ $(CFLAGS) -o $@ -c $<
 
 clean:
-	rm  libs/*.o *.o main
+	rm  $(SIMOBJS) $(ASSEMOBJS) main assembler code

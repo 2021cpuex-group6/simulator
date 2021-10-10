@@ -1,6 +1,6 @@
-#include "libs/parser.hpp"
-#include "libs/simulator.hpp"
-#include "libs/interactive.hpp"
+#include "sims/parser.hpp"
+#include "sims/simulator.hpp"
+#include "sims/interactive.hpp"
 #include <iostream>
 #include <cmath>
 

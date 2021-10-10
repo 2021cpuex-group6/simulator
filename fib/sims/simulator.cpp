@@ -100,6 +100,7 @@ void AssemblySimulator::writeReg(const int &regInd, const int &value){
         if(regInd == 0){
             // 0レジスタへの書き込み
             std::cout << ZERO_REG_WRITE_ERROR << std::endl;
+            return;
         }
         registers[regInd] = value;
     }else{

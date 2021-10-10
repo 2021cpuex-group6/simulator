@@ -12,7 +12,7 @@ loop             :               #x2は今何番目のフィボナッチ数を�
 #わーい       add addi zero 
   
     
-                        
+                                
    add x5 x3 x4    #x3, x4は前回、前々回のフィボナッチ数を保持
            addi x3 x4 0
  addi x4 x5 0
