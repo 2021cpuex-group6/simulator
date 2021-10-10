@@ -6,6 +6,7 @@
 int main() {
     std::string file_path;
     std::string target_path;
+    init_opcode_map();
     std::cout << "Hello World!" << std::endl;
     std::cout << "Please enter input file path (default: ./assemble.txt) : ";
     std::getline(std::cin, file_path);

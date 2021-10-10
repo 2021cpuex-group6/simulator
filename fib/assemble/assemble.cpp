@@ -2,6 +2,8 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <map>
+#include <tuple>
 #include "../utils/utils.hpp"
 
 constexpr int INSTRUCTION_BYTE_N = 4;
@@ -16,9 +18,14 @@ enum op_style {
     J
 };
 
+std::map<std::string, std::tuple<op_style, int32_t>> opcode_map;
+
+
 static int8_t register_to_binary(std::string reg_name, const int &line);
 static int32_t assemble_op(const std::string &op, const int &line);
 static void assemble_error(const std::string &message, const int & line);
+
+
 
 bool assembler_main(std::ofstream& ofs, std::istream& ifs) {
     // 一行ずつアセンブル
@@ -48,33 +55,18 @@ static int32_t assemble_op(const std::string & op, const int& line) {
     std::string opecode;
     iss >> opecode;
     enum op_style style;
-    if (opecode == "addi") {
-        style = I;
-        output |= 0b0010011;
-        output |= (0b000 << 12);
-    } else if (opecode == "slti") {
-        style = I;
-        output |= 0b0010011;
-        output |= (0b010 << 12);
-    } else if (opecode == "sltiu") {
-        style = I;
-        output |= 0b0010011;
-        output |= (0b011 << 12);
-    } else if (opecode == "add") {
-        style = R;
-        output |= 0b0110011;
-        output |= (0b000 << 12);
-        output |= (0b0000000 << 25);
-    } else if (opecode == "sub") {
-        style = R;
-        output |= 0b0110011;
-        output |= (0b000 << 12);
-        output |= (0b0100000 << 25);
-    } else {
+    try{
+        // mapからオペコードの情報を取得
+        const auto & opcode_data = opcode_map.at(opecode);
+        style = std::get<op_style>(opcode_data);
+        output = std::get<int32_t>(opcode_data);
+    }catch (const std::out_of_range & e){
+        // 登録外ならnop
         output = 0x00000013;
         std::cout << "nop" << std::endl;
         return output;
     }
+
 
     if (style == R) {
         std::string op1, op2, op3;
@@ -118,4 +110,28 @@ static int8_t register_to_binary(std::string reg_name, const int &line) {
 static void assemble_error(const std::string &message, const int & line){
     // アセンブル中に発生したエラーを表示
     throw std::invalid_argument(std::to_string(line) + "行目:" + message);
+}
+
+void init_opcode_map(){
+    // opcode_mapに値を設定して使えるようにする。
+    // アセンブルする前に必ず実行すること。
+    int32_t output = 0;
+    output = 0b0010011;
+    output |= (0b000 << 12);
+    opcode_map.insert({"addi", {I, output}});
+    output = 0b0010011;
+    output |= (0b010 << 12);
+    opcode_map.insert({"slti", {I, output}});
+    output = 0b0010011;
+    output |= (0b011 << 12);
+    opcode_map.insert({"sltiu", {I, output}});
+    output = 0b0110011;
+    output |= (0b000 << 12);
+    output |= (0b0000000 << 25);
+    opcode_map.insert({"add", {R, output}});
+    output = 0b0110011;
+    output |= (0b000 << 12);
+    output |= (0b0100000 << 25);
+    opcode_map.insert({"sub", {R, output}});
+
 }
