@@ -133,5 +133,17 @@ void init_opcode_map(){
     output |= (0b000 << 12);
     output |= (0b0100000 << 25);
     opcode_map.insert({"sub", {R, output}});
-
+    // jはjalの書き込みレジスタx0版
+    output = 0b1101111;
+    opcode_map.insert({"j", {J, output}});
+    opcode_map.insert({"jal", {J, output}});
+    output = 0b1100011;
+    opcode_map.insert({"beq", {B, output}});
+    output |= (0b001 << 12);
+    opcode_map.insert({"bne", {B, output}});
+    output = 0b1100011;
+    output |= (0b100 << 12);
+    opcode_map.insert({"blt", {B, output}});
+    output |= (0b1 << 12);
+    opcode_map.insert({"bge", {B, output}});
 }
