@@ -1,0 +1,101 @@
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <sstream>
+#include "../utils/utils.hpp"
+
+static int8_t register_to_binary(std::string reg_name);
+static int32_t assemble_op(std::string op);
+
+bool assembler_main(std::ofstream& ofs, std::istream& ifs) {
+    while(!ifs.eof()) {
+        std::string op;
+        std::getline(ifs,op);
+        int32_t binary_op = assemble_op(op);
+        int32_t byte;
+        for (int i = 0; i < 4; i++) {
+            byte = (binary_op >> (8*(3-i))) & 0xff;
+            ofs << std::hex << byte << std::endl;
+            std::cout << (unsigned int)byte << std::endl;
+        }
+        std::cout << op << " " << std::hex << binary_op << std::endl;
+    }
+    return true;
+}
+
+enum op_style {
+    R,
+    I,
+    S,
+    B,
+    U,
+    J
+};
+
+static int32_t assemble_op(std::string op) {
+    int32_t output = 0;
+    std::istringstream iss(op);
+    std::string opecode;
+    iss >> opecode;
+    enum op_style style;
+    if (opecode == "addi") {
+        style = I;
+        output |= 0b0010011;
+        output |= (0b000 << 12);
+    } else if (opecode == "slti") {
+        style = I;
+        output |= 0b0010011;
+        output |= (0b010 << 12);
+    } else if (opecode == "sltiu") {
+        style = I;
+        output |= 0b0010011;
+        output |= (0b011 << 12);
+    } else if (opecode == "add") {
+        style = R;
+        output |= 0b0110011;
+        output |= (0b000 << 12);
+        output |= (0b0000000 << 25);
+    } else if (opecode == "sub") {
+        style = R;
+        output |= 0b0110011;
+        output |= (0b000 << 12);
+        output |= (0b0100000 << 25);
+    } else {
+        output = 0x00000013;
+        std::cout << "nop" << std::endl;
+        return output;
+    }
+
+    if (style == R) {
+        std::string op1, op2, op3;
+        iss >> op1 >> op2 >> op3;
+        int32_t rg1 = static_cast<int32_t>(register_to_binary(op1));
+        int32_t rg2 = static_cast<int32_t>(register_to_binary(op2));
+        int32_t rg3 = static_cast<int32_t>(register_to_binary(op3));
+        output |= (rg1 << 7) | (rg2 << 15) | (rg3 << 20);
+    } else if (style == I) {
+        std::string op1, op2;
+        int32_t imm;
+        iss >> op1 >> op2 >> imm;
+        int32_t rg1 = static_cast<int32_t>(register_to_binary(op1));
+        int32_t rg2 = static_cast<int32_t>(register_to_binary(op2));
+        imm &= 0xfff;
+        output |= (rg1 << 7) | (rg2 << 15) | (imm << 20);
+    } else {
+        output = 0x00000013;
+        std::cout << "nop" << std::endl;
+        return output;
+    }
+    return output;
+}
+
+static int8_t register_to_binary(std::string reg_name) {
+    //　レジスタ名をデコード
+    //  とりあえずpc, x0~x31の名前にする
+    int8_t output = 0;
+    if(startsWith(reg_name, "x")){
+        output = std::stoi(reg_name.substr(1));
+    }
+
+    return output;
+}
