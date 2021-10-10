@@ -79,16 +79,16 @@ static int32_t assemble_op(const std::string & op, const int& line) {
     if (style == R) {
         std::string op1, op2, op3;
         iss >> op1 >> op2 >> op3;
-        int32_t rg1 = static_cast<int32_t>(register_to_binary(op1));
-        int32_t rg2 = static_cast<int32_t>(register_to_binary(op2));
-        int32_t rg3 = static_cast<int32_t>(register_to_binary(op3));
+        int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+        int32_t rg2 = static_cast<int32_t>(register_to_binary(op2, line));
+        int32_t rg3 = static_cast<int32_t>(register_to_binary(op3, line));
         output |= (rg1 << 7) | (rg2 << 15) | (rg3 << 20);
     } else if (style == I) {
         std::string op1, op2;
         int32_t imm;
         iss >> op1 >> op2 >> imm;
-        int32_t rg1 = static_cast<int32_t>(register_to_binary(op1));
-        int32_t rg2 = static_cast<int32_t>(register_to_binary(op2));
+        int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+        int32_t rg2 = static_cast<int32_t>(register_to_binary(op2, line));
         imm &= 0xfff;
         output |= (rg1 << 7) | (rg2 << 15) | (imm << 20);
     } else {
