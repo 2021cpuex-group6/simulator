@@ -12,7 +12,7 @@ static const std::string INVALID_REGISTER = "不正なレジスタ名です";
 static const std::string DOUBLE_LABEL = "ラベルが重複しています";
 static const std::string LABEL_NOT_FOUND = "ラベルが見つかりませんでした";
 static const std::string LABEL_TOO_FAR = "遷移先のラベルが遠すぎます。実装を見直してください。";
-static const std::regex label_re(R"(^([0-9a-zA-Z_]+)\s*:\s*)");
+static const std::regex label_re(R"(^([0-9a-zA-Z_]+)\s*:\s*(#.*)*)");
 enum op_style {
     R,
     I,
@@ -32,7 +32,7 @@ static std::int32_t assemble_op(const std::string &op, const int &line, const in
 static void assemble_error(const std::string &message, const int & line);
 static int32_t get_relative_address_with_check(const std::string &label,
                                 const int & now_addr, const int & max_bit, const int &line);
-
+static void check_labels(std::istream& ifs);
 
 
 bool assembler_main(std::ofstream& ofs, std::istream& ifs);

@@ -12,6 +12,7 @@
 
 bool assembler_main(std::ofstream& ofs, std::istream& ifs) {
     // 一行ずつアセンブル
+    check_labels(ifs);
     int line_count = 1;             // 読み込んだファイルの行数
     int addr_count = START_ADDRESS; // 出力する命令のアドレス
     while(!ifs.eof()) {
@@ -20,7 +21,7 @@ bool assembler_main(std::ofstream& ofs, std::istream& ifs) {
         const int32_t & binary_op  = assemble_op(op, line_count, addr_count);
 
         int32_t byte;
-        if(binary_op != NOP || ELIMINATE_NOP){
+        if(binary_op != NOP || !ELIMINATE_NOP){
             // 通常の命令かNOPを出力する設定の時
             for (int i = 0; i < INSTRUCTION_BYTE_N; i++) {
                 // 1バイトずつ出力
@@ -58,14 +59,6 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
         output = std::get<int32_t>(opecode_data);
     }catch (const std::out_of_range & e){
         // 登録外
-        std::smatch m;
-        if(std::regex_match(op, m, label_re)){
-            // ラベル
-            auto pib =  label_map.insert({m[1].str(), addr});
-            if(! pib.second){
-                // ラベルの重複
-                assemble_error(DOUBLE_LABEL, line);
-        }
         output = 0x00000013;
         std::cout << "nop" << std::endl;
         return output;
@@ -116,7 +109,7 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
         return output;
     }
     return output;
-    }
+    
 }
 
 static int8_t register_to_binary(std::string reg_name, const int &line) {
@@ -140,6 +133,45 @@ static void assemble_error(const std::string &message, const int & line){
     throw std::invalid_argument(std::to_string(line) + "行目:" + message);
 }
 
+static void check_labels(std::istream& ifs){
+    // 初めにファイルを全探索してラベルを探す
+    // そのあと、ファイルポインタをもとにもどす
+    int line_count = 1;
+    int addr_count = START_ADDRESS;
+    while(!ifs.eof()) {
+        std::string op;
+        std::getline(ifs,op);
+
+        std::istringstream iss(op);
+        std::string opecode;
+        iss >> opecode;
+        try{
+            // mapからオペコードの情報を取得
+            const auto & opecode_data = opecode_map.at(opecode);
+        }catch (const std::out_of_range & e){
+            // NOPのとき
+            std::smatch m;
+            if(std::regex_match(op, m, label_re)){
+                // ラベル
+                auto pib =  label_map.insert({m[1].str(), addr_count});
+                if(! pib.second){
+                    // ラベルの重複
+                    assemble_error(DOUBLE_LABEL, line_count);
+                }
+            }
+            if( ELIMINATE_NOP){
+                // 出力しない場合、行数だけインクリメントし、命令アドレスは動かさない
+                line_count ++;
+                continue;
+            }
+        }
+        line_count ++;
+        addr_count += INSTRUCTION_BYTE_N;
+    }
+    ifs.clear();
+    ifs.seekg(0, std::ios_base::beg);
+}
+
 static int32_t get_relative_address_with_check(const std::string &label, 
                         const int & now_addr, const int & max_bit, const int & line){
     // ラベル名から相対アドレスを手に入れる。(1ビット右シフト済)
@@ -157,7 +189,7 @@ static int32_t get_relative_address_with_check(const std::string &label,
     }
     int32_t mask = (MASK_BITS>>(32-max_bit)); // 負数の右シフトが不定だったので、この実装になった
 
-    return (address >> 1) & MASK_BITS;
+    return (address >> 1) & mask;
 
 
 }
