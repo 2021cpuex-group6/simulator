@@ -105,6 +105,8 @@ static int8_t register_to_binary(std::string reg_name, const int &line) {
     int8_t output = 0;
     if(startsWith(reg_name, "x")){
         output = std::stoi(reg_name.substr(1));
+    }else if(reg_name == "zero"){
+        output = 0;
     }else{
         // レジスタ名が不正
         assemble_error(INVALID_REGISTER, line);
