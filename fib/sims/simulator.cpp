@@ -290,23 +290,24 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
         }else{
             // 演算命令
             int targetR = getRegIndWithError(instruction.operand[0]);
-            if(targetR == 0){
-                // x0レジスタへの書き込み
-                launchError(ZERO_REG_WRITE_ERROR);
-            }
-            int source0 = registers[getRegIndWithError(instruction.operand[1])];
-            int source1 = 0;
-            if(opKind == INST_REGONLY){
-                source1 = registers[getRegIndWithError(instruction.operand[2])];
-            }else{
-                source1 = instruction.immediate;
-            }
             // ここで前のデータを保存
             ans.instruction = opcode;
             ans.pc = pc;
             ans.regInd = targetR;
             ans.regValue = registers[targetR];
-            doALU(opcode, targetR, source0, source1);
+            if(targetR == 0){
+                // x0レジスタへの書き込み
+                launchWarning(ZERO_REG_WRITE_ERROR);
+            }else{
+                int source0 = registers[getRegIndWithError(instruction.operand[1])];
+                int source1 = 0;
+                if(opKind == INST_REGONLY){
+                    source1 = registers[getRegIndWithError(instruction.operand[2])];
+                }else{
+                    source1 = instruction.immediate;
+                }
+                doALU(opcode, targetR, source0, source1);
+            }
         }
         incrementPC();
         return ans;
@@ -349,6 +350,12 @@ int AssemblySimulator::getRegIndWithError(const std::string &regName)const{
 
 void AssemblySimulator::launchError(const std::string &message)const{
     throw std::invalid_argument(std::to_string(pc/4 + 1) + "行目:" + message);
+}
+void AssemblySimulator::launchWarning(const std::string &message)const{
+    if(onWarning){
+        std::cout << "Warning: " +  std::to_string(pc/4 + 1) + "行目:" + message << std::endl;
+
+    }
 }
 
 void AssemblySimulator::doALU(const std::string &opcode, const int &targetR, const int &source0, const int &source1){

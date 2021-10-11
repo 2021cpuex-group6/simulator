@@ -17,6 +17,7 @@ const std::string FILE_END = "終了しました";
 const std::string ALREADY_ENDED = "すでに終了しています";
 const std::string INVALID_REGISTER = "レジスタ名が不正です";
 const std::string ZERO_REG_WRITE_ERROR = "x0レジスタに書き込むことはできません";
+const std::string ZERO_REG_WRITE_WARNING = "x0レジスタに入力しています";
 const std::string PC_NOT_ALIGNED_WRITE = "Warning: アラインに合わないpcの値が入力されています";
 const std::string NOT_FOUND_LABEL = "ラベルが見つかりません";
 const std::string OUT_OF_RANGE_BREAKPOINT = "ファイルの行数の範囲外のためブレークポイントは設置できません";
@@ -39,6 +40,7 @@ struct BeforeData{
 
 class AssemblySimulator{
     public:
+        bool onWarning = true;
         std::array<int, REGISTERS_N> registers;
         int pc; //pcはメモリアドレスを表すので、アセンブリファイルの行数-1の4倍
         bool end; //終了フラグ
@@ -72,6 +74,7 @@ class AssemblySimulator{
         int getRegIndWithError(const std::string &regName)const;
         BeforeData doInst(const Instruction &);
         void launchError(const std::string &message)const;
+        void launchWarning(const std::string &message)const;
         void doALU(const std::string &opcode, const int &targetR, const int &source0, const int &source1);
         BeforeData doControl(const std::string &opcode, const Instruction &instruction);
         void incrementPC();
