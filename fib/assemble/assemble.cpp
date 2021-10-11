@@ -71,6 +71,9 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
         int32_t rg2 = static_cast<int32_t>(register_to_binary(op2, line));
         int32_t rg3 = static_cast<int32_t>(register_to_binary(op3, line));
         output |= (rg1 << 7) | (rg2 << 15) | (rg3 << 20);
+    } else if (style == RF){
+
+
     } else if (style == I) {
         std::string op1, op2;
         int32_t imm;
@@ -82,7 +85,12 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
     } else if(style == IL){
         std::string op1, op2;
         iss >> op1 >> op2 ;
-        int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+        int32_t rg1;
+        if(opecode == "flw"){
+            rg1 = static_cast<int32_t>(fregister_to_binary(op1, line));
+        }else{
+            rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+        }
         auto address = get_address_reg_imm(op2, line, true);
         output |= (rg1 << 7) | (address.second << 20) | (address.first);
 
@@ -113,7 +121,12 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
         // x1 0(x1)のような書式
         std::string op1, op2;
         iss >> op1 >> op2 ;
-        int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+        int32_t rg1;
+        if(opecode == "fsw"){
+            rg1 = static_cast<int32_t>(fregister_to_binary(op1, line));
+        }else{
+            rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+        }
         auto address = get_address_reg_imm(op2, line, false);
         output |= (rg1 << 15) | (address.second << 20) | (address.first);
 
@@ -124,6 +137,20 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
     }
     return output;
     
+}
+
+static int8_t register_to_binary(std::string reg_name, const int &line) {
+    //　浮動小数点レジスタ名をデコード
+    //  とりあえずf0~f31の名前にする
+    int8_t output = 0;
+    if(startsWith(reg_name, "f")){
+        output = std::stoi(reg_name.substr(1));
+    }else{
+        // レジスタ名が不正
+        assemble_error(INVALID_REGISTER, line);
+    }
+
+    return output;
 }
 
 static int8_t register_to_binary(std::string reg_name, const int &line) {
@@ -292,6 +319,9 @@ void init_opcode_map(){
     output = 0b0000011;
     output |= (0b100 << 12);
     opecode_map.insert({"lbu", {IL, output}});
+    output = 0b0000111;
+    output |= (0b010 << 12);
+    opecode_map.insert({"flw", {IL, output}});
     output = 0b0110011;
     output |= (0b000 << 12);
     output |= (0b0000000 << 25);
@@ -313,6 +343,15 @@ void init_opcode_map(){
     opecode_map.insert({"mul", {R, output}});
     output |= (0b100 << 12);
     opecode_map.insert({"div", {R, output}});
+    output = 0b1010011;
+    opecode_map.insert({"fadd", {RF, output}});
+    output |= (0b0100<< 25);
+    opecode_map.insert({"fsub", {RF, output}});
+    output = 0b1010011;
+    output |= (0b1000<< 25);
+    opecode_map.insert({"fmul", {RF, output}});
+    output |= (0b1100<< 25);
+    opecode_map.insert({"fdiv", {RF, output}});
     // jはjalの書き込みレジスタx0版
     output = 0b1101111;
     opecode_map.insert({"j", {J, output}});
@@ -334,5 +373,7 @@ void init_opcode_map(){
     opecode_map.insert({"sb", {S, output}});
     output |= (0b010 << 12);
     opecode_map.insert({"sw", {S, output}});
-
+    output = 0b0100111;
+    output |= (0b010 << 12);
+    opecode_map.insert({"fsw", {S, output}});
 }

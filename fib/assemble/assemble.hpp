@@ -18,6 +18,7 @@ static const std::regex label_re(R"(^([0-9a-zA-Z_]+)\s*:\s*(#.*)*)");
 static const std::regex address_re(R"(\s([0-9]+)\(([a-z]+[0-9]*)\))");
 enum op_style {
     R,
+    RF, //R形式の中で浮動小数点命令
     I,
     IL, //I形式の中でload系の命令
     S,
@@ -37,6 +38,7 @@ static std::pair<int32_t, int32_t> get_address_reg_imm(const std::string &input,
 
 
 static int8_t register_to_binary(std::string reg_name, const int &line);
+static int8_t fregister_to_binary(std::string reg_name, const int &line);
 static std::int32_t assemble_op(const std::string &op, const int &line, const int addr);
 static void assemble_error(const std::string &message, const int & line);
 static int32_t get_relative_address_with_check(const std::string &label,
