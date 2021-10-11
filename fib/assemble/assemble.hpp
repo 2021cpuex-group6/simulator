@@ -27,6 +27,7 @@ enum op_style {
     J
 };
 
+static int8_t rounding_mode = 0x000; // 浮動小数点演算の丸め方
 static std::map<std::string, int> label_map; // ラベル情報を保持
 static std::map<std::string, std::tuple<op_style, int32_t>> opecode_map; //各命令の情報を保持
 static int32_t get_J_imm(int32_t);

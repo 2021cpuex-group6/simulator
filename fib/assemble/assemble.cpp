@@ -72,7 +72,13 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
         int32_t rg3 = static_cast<int32_t>(register_to_binary(op3, line));
         output |= (rg1 << 7) | (rg2 << 15) | (rg3 << 20);
     } else if (style == RF){
-
+        std::string op1, op2, op3;
+        iss >> op1 >> op2 >> op3;
+        int32_t rg1 = static_cast<int32_t>(fregister_to_binary(op1, line));
+        int32_t rg2 = static_cast<int32_t>(fregister_to_binary(op2, line));
+        int32_t rg3 = static_cast<int32_t>(fregister_to_binary(op3, line));
+        output |= rounding_mode <<12;
+        output |= (rg1 << 7) | (rg2 << 15) | (rg3 << 20);
 
     } else if (style == I) {
         std::string op1, op2;
