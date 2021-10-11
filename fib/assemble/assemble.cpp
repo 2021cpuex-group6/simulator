@@ -77,8 +77,15 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
         iss >> op1 >> op2 >> imm;
         int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
         int32_t rg2 = static_cast<int32_t>(register_to_binary(op2, line));
-        imm &= 0xfff;
-        output |= (rg1 << 7) | (rg2 << 15) | (imm << 20);
+        imm = get_I_imm(imm, line);
+        output |= (rg1 << 7) | (rg2 << 15) | imm;
+    } else if(style == IL){
+        std::string op1, op2;
+        iss >> op1 >> op2 ;
+        int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+        auto address = get_address_reg_imm(op2, line, true);
+        output |= (rg1 << 7) | (address.second << 20) | (address.first);
+
     } else if(style == J){
         std::string op1, op2;
         if(opecode == "j"){
@@ -102,7 +109,15 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
         label_addr = get_B_imm(label_addr);
         output |= label_addr | (rg1 << 15) | (rg2 << 20);
 
-    } else {
+    } else if(style == S){
+        // x1 0(x1)のような書式
+        std::string op1, op2;
+        iss >> op1 >> op2 ;
+        int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+        auto address = get_address_reg_imm(op2, line, false);
+        output |= (rg1 << 15) | (address.second << 20) | (address.first);
+
+    }else {
         output = NOP;
         std::cout << "nop" << std::endl;
         return output;
@@ -213,6 +228,44 @@ static int32_t get_B_imm(int32_t  input){
     return ans;
 }
 
+static int32_t get_I_imm(int32_t input, const int &line){
+    // I形式の即値をチェック、シフトする
+    if(input < -1 * std::pow(2, 11) || input >= std::pow(2, 11)){
+        assemble_error(OUT_OF_RANGE_IMM, line);
+    }
+    input &= 0xfff;
+    return input << 20;
+}
+
+static int32_t get_S_imm(int32_t input, const int &line){
+    // S形式の即値をチェック、シフトする
+    if(input < -1 * std::pow(2, 11) || input >= std::pow(2, 11)){
+        assemble_error(OUT_OF_RANGE_IMM, line);
+    }
+    int32_t ans = (input & 0xfe0) << 20;
+    ans |= input & 0x1f << 7;
+    return ans;
+}
+
+static std::pair<int32_t, int32_t> get_address_reg_imm(const std::string &input, const int & line, const bool & forI){
+    // store, loadの第二引数（メモリアドレスのベースレジスタとオフセット）をパースする
+    std::smatch m;
+    if(std::regex_match(input, m, address_re)){
+        // ラベル
+        int32_t imm = std::stoi(m[1].str());
+        if(forI){
+            imm = get_I_imm(imm, line);
+        }else {
+            imm = get_S_imm(imm, line);
+        }
+        int32_t rg = static_cast<int32_t>(register_to_binary(m[2].str(), line));
+        return {imm, rg};
+        
+    }else{
+        assemble_error(INVALID_ADDRESSING, line);
+    }
+}
+
 void init_opcode_map(){
     // opecode_mapに値を設定して使えるようにする。
     // アセンブルする前に必ず実行すること。
@@ -226,6 +279,19 @@ void init_opcode_map(){
     output = 0b0010011;
     output |= (0b011 << 12);
     opecode_map.insert({"sltiu", {I, output}});
+    output = 0b0010011;
+    output |= (0b100 << 12);
+    opecode_map.insert({"xori", {I, output}});
+    output |= (0b110 << 12);
+    opecode_map.insert({"ori", {I, output}});
+    output |= (0b111 << 12);
+    opecode_map.insert({"andi", {I, output}});
+    output = 0b0000011;
+    output |= (0b010 << 12);
+    opecode_map.insert({"lw", {IL, output}});
+    output = 0b0000011;
+    output |= (0b100 << 12);
+    opecode_map.insert({"lbu", {IL, output}});
     output = 0b0110011;
     output |= (0b000 << 12);
     output |= (0b0000000 << 25);
@@ -234,10 +300,27 @@ void init_opcode_map(){
     output |= (0b000 << 12);
     output |= (0b0100000 << 25);
     opecode_map.insert({"sub", {R, output}});
+    output = 0b0110011;
+    output |= (0b100 << 12);
+    opecode_map.insert({"xor", {R, output}});
+    output |= (0b110 << 12);
+    opecode_map.insert({"or", {R, output}});
+    output |= (0b111 << 12);
+    opecode_map.insert({"and", {R, output}});
+    output = 0b0110011;
+    output |= (0b000 << 12);
+    output |= (0b0000001 << 25);
+    opecode_map.insert({"mul", {R, output}});
+    output |= (0b100 << 12);
+    opecode_map.insert({"div", {R, output}});
     // jはjalの書き込みレジスタx0版
     output = 0b1101111;
     opecode_map.insert({"j", {J, output}});
     opecode_map.insert({"jal", {J, output}});
+    // jrもjalrの書き込みレジスタx0版
+    output = 0b1100111;
+    opecode_map.insert({"jalr", {I, output}});
+    opecode_map.insert({"jr", {I, output}});
     output = 0b1100011;
     opecode_map.insert({"beq", {B, output}});
     output |= (0b001 << 12);
@@ -245,6 +328,11 @@ void init_opcode_map(){
     output = 0b1100011;
     output |= (0b100 << 12);
     opecode_map.insert({"blt", {B, output}});
-    output |= (0b1 << 12);
-    opecode_map.insert({"bge", {B, output}});
+    // output |= (0b1 << 12);
+    // opecode_map.insert({"bge", {B, output}});
+    output = 0b0100011;
+    opecode_map.insert({"sb", {S, output}});
+    output |= (0b010 << 12);
+    opecode_map.insert({"sw", {S, output}});
+
 }
