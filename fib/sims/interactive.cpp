@@ -110,7 +110,7 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
     }else if(inputString == COMMAND_RESET){
         return {Command::Reset, {}};
     }else if(inputString == COMMAND_NEXT){
-        return {Command::DoNext, {}};
+        return {Command::DoNext, {0}};
     }else{
         if(startsWith(inputString, COMMAND_NEXT)){
             std::istringstream stream(inputString.substr(2));

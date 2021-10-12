@@ -23,6 +23,7 @@ void AssemblySimulator::reset(){
     for(auto &e: opCounter){
         opCounter[e.first] = 0;
     }
+    registers.fill(0);
     breakPoints.clear();
     historyN = 0;
     historyPoint = 0;
@@ -160,6 +161,7 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
             beforeData = doInst(inst);
             if(printInst){
                 printInstruction(line+1, inst);
+                printDif(beforeData);
             }
         }else{
             line ++;;
@@ -264,6 +266,28 @@ void AssemblySimulator::printBreakList()const{
     }
 
 }
+
+void AssemblySimulator::printDif(const BeforeData & before)const{
+    // 差分を表示
+    std::cout << "  ";
+    if(before.instruction != "nop"){
+        if(before.pc != pc -4){
+            std::cout << "pc:" <<  std::setw(11) << std::internal <<before.pc << " -> " 
+                << std::setw(11) << std::internal << pc  << std::endl;
+                return;
+        }else if(before.regInd >= 0){
+            std::string regInfo = getRegisterInfoUnit(before.regInd, NumberBase::DEC, true);
+            std::cout << regInfo.substr(0, 3) << std::setw(11) << std::internal << 
+             before.regValue << " -> " << regInfo.substr(3) << std::endl;
+             return;
+        }
+    }
+    std::cout << "--- No Change ---" << std::endl;
+    
+    return;
+
+}
+
 BeforeData AssemblySimulator::doInst(const Instruction &instruction){
     // 命令を処理
     std::string opcode = instruction.opcode;

@@ -62,6 +62,7 @@ class AssemblySimulator{
         void launch();
         void printInstruction(const int &, const Instruction &)const;
         void printBreakList()const;
+        void printDif(const BeforeData &before)const;
         void setBreakPoint(const int &);
         void deleteBreakPoint(const int &);
         static int getRegInd(const std::string &regName);
