@@ -21,6 +21,9 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
 
     {"nop",     {0, -1, -1, -1, INST_OTHERS}}, 
     {"add",     {3, -1, -1, -1, INST_REGONLY}}, 
+    {"sub",     {3, -1, -1, -1, INST_REGONLY}},
+    {"mul",     {3, -1, -1, -1, INST_REGONLY}},
+    {"div",     {3, -1, -1, -1, INST_REGONLY}},
     {"addi",    {3, 2, -1, 12, INST_REGIMM}}, 
     {"blt",     {3, -1, 2, -1, INST_CONTROL}}, 
     {"beq",     {3, -1, 2, -1, INST_CONTROL}}, 

@@ -282,7 +282,7 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
 
     }else{
         BeforeData ans = {};
-        if(opKind == INST_MEM){
+        if(opKind == INST_LOAD){
             
 
         }else if(opKind == INST_OTHERS){
@@ -364,6 +364,12 @@ void AssemblySimulator::doALU(const std::string &opcode, const int &targetR, con
     if(opcode == "add" || opcode == "addi"){
         // オーバーフローは考慮しない（仕様通り？）
         registers[targetR] = source0 + source1;
+    }else if(opcode == "sub"){
+        registers[targetR] = source0 - source1;
+    }else if(opcode == "mul"){
+        registers[targetR] = source0 * source1;
+    }else if(opcode == "div"){
+        registers[targetR] = source0 / source1;
     }
 
 }
