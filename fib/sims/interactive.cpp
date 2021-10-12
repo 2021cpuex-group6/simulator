@@ -27,6 +27,11 @@ void InteractiveShell::start(){
                 break;
             case Command::DoNext:
                 simulator.next(true, true);
+                if(input.second[0] == 1){
+                    simulator.printRegisters(NumberBase::HEX, true);
+                }else{
+
+                }
                 break;
             case Command::DoNextBreak:
                 simulator.doNextBreak();
@@ -83,8 +88,6 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
         return {Command::DoAll, {}};
     }else if(inputString == COMMAND_NEXT_BLOCK){
         return {Command::DoNextBreak, {}};
-    }else if(inputString == COMMAND_NEXT){
-        return {Command::DoNext, {}};
     }else if(inputString == COMMAND_BREAK_LIST){
         return {Command::BreakList, {}};
     }else if(inputString == COMMAND_BACK){
@@ -93,8 +96,19 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
         return {Command::Info, {}};
     }else if(inputString == COMMAND_RESET){
         return {Command::Reset, {}};
+    }else if(inputString == COMMAND_NEXT){
+        return {Command::DoNext, {}};
     }else{
-        if(startsWith(inputString, COMMAND_BREAK_SET)){
+        if(startsWith(inputString, COMMAND_NEXT)){
+            std::istringstream stream(inputString.substr(2));
+            std::string option;
+            stream >> option;
+            if(option == "-rh"){
+                return {Command::DoNext, {1, 1}};
+            }else{
+                return {Command::DoNext, {}};
+            }
+        } else if(startsWith(inputString, COMMAND_BREAK_SET)){
             try{
                 int line = std::stoi(inputString.substr(2));
                 return {Command::BreakSet, {line}};

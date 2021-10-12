@@ -40,6 +40,7 @@ struct BeforeData{
 
 class AssemblySimulator{
     public:
+        bool useBinary = false;
         bool onWarning = true;
         std::array<int, REGISTERS_N> registers;
         int pc; //pcはメモリアドレスを表すので、アセンブリファイルの行数-1の4倍
@@ -53,7 +54,7 @@ class AssemblySimulator{
         std::array<BeforeData, HISTORY_RESERVE_N> beforeHistory; // もとに戻れるようにデータをとる
         const AssemblyParser parser;
 
-        AssemblySimulator(const AssemblyParser& parser);
+        AssemblySimulator(const AssemblyParser& parser, const bool &useBin);
         void printRegisters(const NumberBase&, const bool &sign) const;
         void printOpCounter()const;
         void next(bool, const bool&);

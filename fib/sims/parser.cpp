@@ -24,6 +24,9 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     {"sub",     {3, -1, -1, -1, INST_REGONLY}},
     {"mul",     {3, -1, -1, -1, INST_REGONLY}},
     {"div",     {3, -1, -1, -1, INST_REGONLY}},
+    {"and",     {3, -1, -1, -1, INST_REGONLY}}, 
+    {"or",      {3, -1, -1, -1, INST_REGONLY}}, 
+    {"xor",     {3, -1, -1, -1, INST_REGONLY}},
     {"addi",    {3, 2, -1, 12, INST_REGIMM}}, 
     {"blt",     {3, -1, 2, -1, INST_CONTROL}}, 
     {"beq",     {3, -1, 2, -1, INST_CONTROL}}, 
@@ -66,10 +69,15 @@ void parseError(const int& lineN, const std::string& error){
 }
 
 
-AssemblyParser::AssemblyParser(const std::string &filePath){
+AssemblyParser::AssemblyParser(const std::string &filePath, const bool &useBinary){
     int len = getFileLen(filePath);
+    useBin = useBinary;
     instructionVector.resize(len);
-    parseFile(filePath);
+    if(useBin){
+
+    }else{
+        parseFile(filePath);
+    }
 
 }
 

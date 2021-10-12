@@ -6,7 +6,7 @@
 #include <set>
 
 
-AssemblySimulator::AssemblySimulator(const AssemblyParser& parser): parser(parser), registers({0}), pc(0),
+AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin): parser(parser), registers({0}), pc(0),
          end(false), instCount(0), opCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}){
     // opcounterをすべて0に
     for(const auto & item : opcodeInfoMap){

@@ -40,11 +40,14 @@ extern std::map<std::string, std::vector<int>> opcodeInfoMap;
 
 class AssemblyParser{
     public:
+    
         std::vector<Instruction> instructionVector;
         std::map<std::string, int> labelMap;
-        AssemblyParser(const std::string &filePath);
+        AssemblyParser(const std::string &filePath, const bool &useBin);
     private:
+        bool useBin;
         void parseFile(const std::string &filePath);
+        void parseBinFile(const std::string &filePath);
         void instParse(const int lineN, std::string instLine);
         
 };
