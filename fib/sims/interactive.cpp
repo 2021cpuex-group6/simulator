@@ -28,9 +28,22 @@ void InteractiveShell::start(){
             case Command::DoNext:
                 simulator.next(true, true);
                 if(input.second[0] == 1){
-                    simulator.printRegisters(NumberBase::HEX, true);
+                    switch(input.second[1]){
+                        case static_cast<int>(NumberBase::HEX):
+                            simulator.printRegisters(NumberBase::HEX, input.second[2] == 1);
+                            break;
+                        case static_cast<int>(NumberBase::DEC):
+                            simulator.printRegisters(NumberBase::DEC, input.second[2] == 1);
+                            break;
+                        case static_cast<int>(NumberBase::BIN):
+                            simulator.printRegisters(NumberBase::BIN, input.second[2] == 1);
+                            break;
+                        case static_cast<int>(NumberBase::OCT):
+                            simulator.printRegisters(NumberBase::OCT, input.second[2] == 1);
+                            break;
+                    }
                 }else{
-
+                    simulator.printRegisters(NumberBase::DEC, input.second[2] == 1);
                 }
                 break;
             case Command::DoNextBreak:
@@ -104,9 +117,17 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
             std::string option;
             stream >> option;
             if(option == "-rh"){
-                return {Command::DoNext, {1, 1}};
-            }else{
-                return {Command::DoNext, {}};
+                return {Command::DoNext, {1, static_cast<int>(NumberBase::HEX), 1}};
+            }else if(option == "-ro"){
+                return {Command::DoNext, {1, static_cast<int>(NumberBase::OCT), 1}};
+            }else if(option == "-rb"){
+                return {Command::DoNext, {1, static_cast<int>(NumberBase::BIN), 1}};
+            }else if(option == "-ru"){
+                return {Command::DoNext, {1, static_cast<int>(NumberBase::DEC), 0}};
+            }else if(option == "-r"){
+                return {Command::DoNext, {1, static_cast<int>(NumberBase::DEC), 1}};
+            }else {
+                return {Command::DoNext, {0}};
             }
         } else if(startsWith(inputString, COMMAND_BREAK_SET)){
             try{
