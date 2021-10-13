@@ -164,8 +164,8 @@ void AssemblySimulator::doNextBreak(){
                 std::cout << GUI_STOP << std::endl;
             }else{
                 std::cout << "Stopped: " << std::endl;
+                printInstruction(line, parser.instructionVector[line-1]);
             }
-            printInstruction(line, parser.instructionVector[line-1]);
             break;
         }
         next(false, false);
