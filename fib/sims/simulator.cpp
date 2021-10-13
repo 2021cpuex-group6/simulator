@@ -298,7 +298,7 @@ void AssemblySimulator::deleteBreakPoint(const int &lineN){
 
 void AssemblySimulator::setBreakPoint(const int &lineN){
     // ブレークポイントを設置
-    if(lineN > 0 and lineN < parser.instructionVector.size()){
+    if(lineN > 0 && lineN < parser.instructionVector.size()){
         breakPoints.insert(lineN);
     }else{
         // 範囲外のため設置不可
