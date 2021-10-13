@@ -6,8 +6,8 @@
 #include <set>
 
 
-AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin): parser(parser), registers({0}), pc(0),
-         end(false), instCount(0), opCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}){
+AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI): parser(parser), registers({0}), pc(0),
+         end(false), instCount(0), opCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}), forGUI(forGUI){
     // opcounterをすべて0に
     for(const auto & item : opcodeInfoMap){
         opCounter.insert({item.first, 0});
@@ -38,14 +38,24 @@ std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const Number
     std::stringstream ssreg;
     std::string regName;
     std::string prefix;
-
-    if(regN < REGISTERS_N){
-        ssreg << "x" << std::setw(2) << std::setfill('0') << std::dec << regN;
-        regName = ssreg.str();
+    if(!forGUI){
+        // GUI用でなければレジスタ名も表示
+        if(regN < REGISTERS_N){
+            ssreg << "x" << std::setw(2) << std::setfill('0') << std::dec << regN;
+            regName = ssreg.str();
+        }else{
+            regName = "pc ";
+        }
+        regName += " ";
     }else{
-        regName = "pc ";
+        if(regN < REGISTERS_N){
+            return std::to_string(registers[regN]);
+        }else{
+            return std::to_string(pc);
+        }
+
     }
-    regName += " ";
+
 
     unsigned int  numSize = 0;
     switch (base){
@@ -84,28 +94,41 @@ std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const Number
 
 void AssemblySimulator::printRegisters(const NumberBase &base, const bool &sign) const {
     // レジスタの内容をすべて表示
+    // GUI用には 1行目 pcのみ　2行目 x0~x31レジスタを空白文字による分割で
     // pc
     std::cout << getRegisterInfoUnit(REGISTERS_N, base, sign) << std::endl;
 
-    for(int i = 0; i < REGISTERS_N / PRINT_REGISTERS_COL; i++){
-        std::string res;
-        for(int j = 0; j < PRINT_REGISTERS_COL; j++){
-            res += getRegisterInfoUnit(i*PRINT_REGISTERS_COL + j, base, sign) + ", ";
+    if(forGUI){
+        std::stringstream ss;
+        for(int i = 0; i < REGISTERS_N; i++){
+            ss << getRegisterInfoUnit(i, NumberBase::DEC, true) << " ";
         }
-        std::cout << res << std::endl;   
+        std::cout << ss.str() << std::endl;
+        return;
+        
+
+    }else{
+        for(int i = 0; i < REGISTERS_N / PRINT_REGISTERS_COL; i++){
+            std::string res;
+            for(int j = 0; j < PRINT_REGISTERS_COL; j++){
+                res += getRegisterInfoUnit(i*PRINT_REGISTERS_COL + j, base, sign) + ", ";
+            }
+            std::cout << res << std::endl;   
+        }
     }
+
 }
 
 void AssemblySimulator::writeReg(const int &regInd, const int &value){
     if(regInd < REGISTERS_N){
-        if(regInd == 0){
+        if(regInd == 0 && !forGUI){
             // 0レジスタへの書き込み
             std::cout << ZERO_REG_WRITE_ERROR << std::endl;
             return;
         }
         registers[regInd] = value;
     }else{
-        if(value % INST_BYTE_N != 0){
+        if(value % INST_BYTE_N != 0  && !forGUI){
             // アラインに合わない値が入力されているので注意
             std::cout << PC_NOT_ALIGNED_WRITE << std::endl;
         }
@@ -117,7 +140,12 @@ void AssemblySimulator::launch(){
     // 終了まで実行する
     if(end){
         // すでに終わっている
-        std::cout << ALREADY_ENDED << std::endl;
+        if(forGUI){
+            std::cout << GUI_ALREADY_END << std::endl;
+            
+        }else{
+            std::cout << ALREADY_ENDED << std::endl;
+        }
         return;
     }
     while(!end){
@@ -132,7 +160,11 @@ void AssemblySimulator::doNextBreak(){
     while(!end){
         line = pc / INST_BYTE_N + 1;
         if(breakPoints.find(line) != breakPoints.end()){
-            std::cout << "Stopped: " << std::endl;
+            if(forGUI){
+                std::cout << GUI_STOP << std::endl;
+            }else{
+                std::cout << "Stopped: " << std::endl;
+            }
             printInstruction(line, parser.instructionVector[line-1]);
             break;
         }
@@ -148,7 +180,13 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
     do{
         if(end){
             // すでに終わっている
-            std::cout << ALREADY_ENDED << std::endl;
+            if(forGUI){
+                std::cout << GUI_ALREADY_END << std::endl;
+                
+            }else{
+                std::cout << ALREADY_ENDED << std::endl;
+
+            }
             return;
         }
 
@@ -159,8 +197,10 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
         if(inst.type == InstType::Inst){
             jumpComment = false;
             beforeData = doInst(inst);
-            if(printInst){
+            if(printInst && !forGUI){
                 printInstruction(line+1, inst);
+                printDif(beforeData);
+            }else if(printInst){
                 printDif(beforeData);
             }
         }else{
@@ -198,7 +238,11 @@ void AssemblySimulator::back(){
     try{
         before = popHistory();
     }catch (const std::out_of_range & e){
-        std::cout << NO_HISTORY << std::endl;
+        if(forGUI){
+            std::cout << GUI_NO_HISTORY << std::endl;
+        }else{
+            std::cout << NO_HISTORY << std::endl;
+        }
         return;        
     }
     end = false;
@@ -244,7 +288,11 @@ void AssemblySimulator::printInstruction(const int & lineN, const Instruction &i
 void AssemblySimulator::deleteBreakPoint(const int &lineN){
     int i = breakPoints.erase(lineN);
     if(i == 0){
-        std::cout << BREAKPOINT_NOT_FOUND << std::endl;
+        if(forGUI){
+            std::cout << GUI_WARNING << std::endl;
+        }else{
+            std::cout << BREAKPOINT_NOT_FOUND << std::endl;
+        }
     }
 }
 
@@ -254,7 +302,11 @@ void AssemblySimulator::setBreakPoint(const int &lineN){
         breakPoints.insert(lineN);
     }else{
         // 範囲外のため設置不可
-        std::cout << OUT_OF_RANGE_BREAKPOINT << std::endl;   
+        if(forGUI){
+            std::cout << GUI_WARNING << std::endl;
+        }else{
+            std::cout << OUT_OF_RANGE_BREAKPOINT << std::endl;   
+        }
     }
 }
 
@@ -269,21 +321,40 @@ void AssemblySimulator::printBreakList()const{
 
 void AssemblySimulator::printDif(const BeforeData & before)const{
     // 差分を表示
-    std::cout << "  ";
-    if(before.instruction != "nop"){
-        if(before.pc != pc -4){
-            std::cout << "pc:" <<  std::setw(11) << std::internal <<before.pc << " -> " 
-                << std::setw(11) << std::internal << pc  << std::endl;
+    if(forGUI){
+        // 変化のあったレジスタ名のみ表示
+        if(before.instruction != "nop"){
+            if(before.pc != pc -4){
+                std::cout << "pc " << std::endl;
                 return;
-        }else if(before.regInd >= 0){
-            std::string regInfo = getRegisterInfoUnit(before.regInd, NumberBase::DEC, true);
-            std::cout << regInfo.substr(0, 3) << std::setw(11) << std::internal << 
-             before.regValue << " -> " << regInfo.substr(3) << std::endl;
-             return;
+            }else if(before.regInd >= 0){
+                std::cout <<"x"<< std::setw(2) << std::setfill('0') <<  std::internal << before.regInd << std::endl;
+                return;
+            }else{
+                std::cout << GUI_NO_CHANGE << std::endl;
+                
+            }
+        }else{
+             std::cout << GUI_NO_CHANGE << std::endl;
         }
+    }else{
+        std::cout << "  ";
+        if(before.instruction != "nop"){
+            if(before.pc != pc -4){
+                std::cout << "pc:" <<  std::setw(11) << std::internal <<before.pc << " -> " 
+                    << std::setw(11) << std::internal << pc  << std::endl;
+                    return;
+            }else if(before.regInd >= 0){
+                std::string regInfo = getRegisterInfoUnit(before.regInd, NumberBase::DEC, true);
+                std::cout << regInfo.substr(0, 3) << std::setw(11) << std::internal << 
+                before.regValue << " -> " << regInfo.substr(3) << std::endl;
+                return;
+            }
+        }
+        std::cout << "--- No Change ---" << std::endl;
+        
+        
     }
-    std::cout << "--- No Change ---" << std::endl;
-    
     return;
 
 }
@@ -373,10 +444,17 @@ int AssemblySimulator::getRegIndWithError(const std::string &regName)const{
 
 
 void AssemblySimulator::launchError(const std::string &message)const{
+    if(forGUI){
+        // GUI用にエラー通知
+        std::cout << GUI_ERROR << std::endl;
+        std::cout << pc/4 + 1 << std::endl;
+        std::cout << message << std::endl;
+        
+    }
     throw std::invalid_argument(std::to_string(pc/4 + 1) + "行目:" + message);
 }
 void AssemblySimulator::launchWarning(const std::string &message)const{
-    if(onWarning){
+    if(onWarning && forGUI){
         std::cout << "Warning: " +  std::to_string(pc/4 + 1) + "行目:" + message << std::endl;
 
     }
@@ -441,26 +519,40 @@ void AssemblySimulator::incrementPC(){
     if(pc == parser.instructionVector.size() * 4){
         // 末端に到着
         end = true;
-        std::cout << FILE_END << std::endl;
+        if(forGUI){
+            std::cout << GUI_END << std::endl;
+        }else{
+            std::cout << FILE_END << std::endl;
+        }
     }
 }
 
 void AssemblySimulator::printOpCounter() const{
     // 実行命令の統計をプリント
-    std::cout << "総実行命令数: " <<  std::to_string(instCount) << std::endl;
+    if(forGUI){
+        std::cout << instCount << std::endl;
+    }else{
+        std::cout << "総実行命令数: " <<  std::to_string(instCount) << std::endl;
+    }
     
     std::stringstream ss;
     int count = 0;
 
     for(auto x:opCounter){
-        ss << std::setw(PRINT_INST_NUM_SIZE)<< x.first <<  ": " << std::setw(PRINT_INST_NUM_SIZE) <<
-             std::internal << x.second << ",     ";
-        
-        if(++count == PRINT_INST_COL){
-            count = 0;
-            std::cout << ss.str() << std::endl;
-            ss.str("");
-            ss.clear(std::stringstream::goodbit);
+        if(forGUI){
+            // 各命令につき一行
+            std::cout << x.first << " " << x.second << std::endl;
+            
+        }else{
+            ss << std::setw(PRINT_INST_NUM_SIZE)<< x.first <<  ": " << std::setw(PRINT_INST_NUM_SIZE) <<
+                std::internal << x.second << ",     ";
+            
+            if(++count == PRINT_INST_COL){
+                count = 0;
+                std::cout << ss.str() << std::endl;
+                ss.str("");
+                ss.clear(std::stringstream::goodbit);
+            }
         }
     }
     

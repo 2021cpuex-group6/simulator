@@ -4,19 +4,24 @@
 #include <vector>
 #include <regex>
 
-InteractiveShell::InteractiveShell(const AssemblySimulator & sim, const AssemblyParser& parse): simulator(sim), parser(parse){}
+InteractiveShell::InteractiveShell(const AssemblySimulator & sim, const AssemblyParser& parse, const bool &  forGUI): simulator(sim), parser(parse), forGUI(forGUI){}
 
 void InteractiveShell::start(){
     std::pair<Command, std::vector<int>> input;
 
-    while(true){
+    bool continueFlag = true;
+    while(continueFlag){
         while (true){
             // 正しい入力が入るまでループ
             input = getInput();
             if(input.first != Command::Invalid){
                 break;
             }
-            std::cout << INVALID_COMMAND << std::endl;
+            if(forGUI){
+                printGUIError(INVALID_COMMAND);
+            }else{
+                std::cout << INVALID_COMMAND << std::endl;
+            }
         }
 
         switch(input.first){
@@ -42,8 +47,6 @@ void InteractiveShell::start(){
                             simulator.printRegisters(NumberBase::OCT, input.second[2] == 1);
                             break;
                     }
-                }else{
-                    simulator.printRegisters(NumberBase::DEC, input.second[2] == 1);
                 }
                 break;
             case Command::DoNextBreak:
@@ -80,6 +83,10 @@ void InteractiveShell::start(){
             case Command::Back:
                 simulator.back();
                 break;
+            case Command::Quit:
+                continueFlag = false;
+                break;
+
 
         }
 
@@ -92,7 +99,7 @@ void InteractiveShell::start(){
 std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
     // 入力を受け取り、それをパースする
     std::string inputString;
-    std::cout << ">>>>>" ;
+    if(!forGUI) std::cout << ">>>>>" ;
     if(!(std::getline(std::cin, inputString))){
             return {Command::Invalid, {}};
     }
@@ -111,6 +118,8 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
         return {Command::Reset, {}};
     }else if(inputString == COMMAND_NEXT){
         return {Command::DoNext, {0}};
+    }else if(inputString == COMMAND_QUIT){
+        return {Command::Quit, {}};
     }else{
         if(startsWith(inputString, COMMAND_NEXT)){
             std::istringstream stream(inputString.substr(2));
@@ -152,7 +161,7 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
 }
 
 
-std::pair<int, int> InteractiveShell::getRROptionInput(std::string input){
+std::pair<int, int> InteractiveShell::getRROptionInput(std::string input)const{
     // レジスタ系のコマンドのオプション部分を読み取る
     const std::regex optionRe(R"(-[bodhu])");
     std::smatch m;
@@ -177,7 +186,7 @@ std::pair<int, int> InteractiveShell::getRROptionInput(std::string input){
     return {optionB, optionS};
 }
 
-int InteractiveShell::getRRRegisterInput(std::string input){
+int InteractiveShell::getRRRegisterInput(std::string input)const{
     // レジスタ系のコマンドのレジスタ部分を読み取る
     // 指定がない場合は-1を返す
     const std::regex regRe(R"(\s+([a-z0-9]+))");
@@ -188,7 +197,11 @@ int InteractiveShell::getRRRegisterInput(std::string input){
         std::string res = m[1].str();
         regInd = AssemblySimulator::getRegInd(res);
         if(regInd < 0){
-            std::cout << INVALID_REG_NAME << std::endl;
+            if(forGUI){
+                printGUIError(INVALID_REG_NAME);
+            }else{
+                std::cout << INVALID_REG_NAME << std::endl;
+            }
         }
     }
     return regInd;
@@ -205,13 +218,21 @@ std::pair<Command, std::vector<int>> InteractiveShell::getRWInput(const std::str
     auto optionPair = getRROptionInput(inputString);
     if(optionPair.second == 0){
         // unsignedは未対応
-        std::cout << NOT_IMPLEMENTED_UNSIGNED << std::endl;
+        if(forGUI){
+            printGUIError(NOT_IMPLEMENTED_UNSIGNED);
+        }else{
+            std::cout << NOT_IMPLEMENTED_UNSIGNED << std::endl;
+        }
         return {Command::Invalid, {}};
     }
     regInd = getRRRegisterInput(inputString);
     if(regInd < 0){
         // レジスタ指定なし
-        std::cout << NOT_SELECTED_REGISTER << std::endl;
+        if(forGUI){
+            printGUIError(NOT_SELECTED_REGISTER);
+        }else{
+            std::cout << NOT_SELECTED_REGISTER << std::endl;
+        }
         return {Command::Invalid, {}};
     }
 
@@ -222,7 +243,11 @@ std::pair<Command, std::vector<int>> InteractiveShell::getRWInput(const std::str
         writeValue = std::stoi(res, 0, optionPair.first);
     }else{
         // 書き込む値の指定なし
-        std::cout <<  NOT_SPECIFIED_WRITE_VALUE << std::endl;
+        if(forGUI){
+            printGUIError(NOT_SPECIFIED_WRITE_VALUE);
+        }else{
+            std::cout <<  NOT_SPECIFIED_WRITE_VALUE << std::endl;
+        }
         return {Command::Invalid, {}};
     }
 
@@ -260,12 +285,20 @@ std::pair<Command, std::vector<int>> InteractiveShell::getBDInput(const std::str
         try{
             writeValue = std::stoi(res);
         }catch(const std::out_of_range & e){
-            std::cout << OUT_OF_RANGE_INT << std::endl;
+            if(forGUI){
+                printGUIError(OUT_OF_RANGE_INT);
+            }else{
+                std::cout << OUT_OF_RANGE_INT << std::endl;
+            }
             return {Command::Invalid, {}};
         }
     }else{
         // 書き込む値の指定なし
-        std::cout <<  NOT_SPECIFIED_LINE_N << std::endl;
+        if(forGUI){
+            printGUIError(NOT_SPECIFIED_LINE_N);
+        }else{
+            std::cout <<  NOT_SPECIFIED_LINE_N << std::endl;
+        }
         return {Command::Invalid, {}};
     }
 
@@ -273,3 +306,12 @@ std::pair<Command, std::vector<int>> InteractiveShell::getBDInput(const std::str
 
 
 }
+
+void InteractiveShell::printGUIError(const std::string &message)const{
+    // GUIからのコマンドが間違っていた時のエラー表示
+    std::cout << GUI_ERROR << std::endl;
+    std::cout << -1 << std::endl;
+    std::cout << message << std::endl;
+
+}
+

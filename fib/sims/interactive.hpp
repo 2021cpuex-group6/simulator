@@ -23,6 +23,9 @@ const std::string COMMAND_REG_WRITE = "rw";
 const std::string COMMAND_BACK = "ba";
 const std::string COMMAND_RESET = "re";
 const std::string COMMAND_INFO = "i";
+const std::string COMMAND_QUIT = "quit";
+
+// const std::string GUI_ERROR = "Error";
 
 enum class Command{
     DoAll, 
@@ -36,6 +39,7 @@ enum class Command{
     Back, 
     Reset,  // 初期状態へ
     Info, //統計データを見る
+    Quit,
     Invalid
 };
 
@@ -46,16 +50,18 @@ class InteractiveShell
 
 private:
     /* data */
-    static std::pair<int, int> getRROptionInput(std::string);
-    static int getRRRegisterInput(std::string);
+    bool forGUI;
+    std::pair<int, int> getRROptionInput(std::string)const;
+    int getRRRegisterInput(std::string)const;
     std::pair<Command, std::vector<int>> getRRInput(const std::string &) const;
     std::pair<Command, std::vector<int>> getRWInput(const std::string &) const;
     std::pair<Command, std::vector<int>> getBDInput(const std::string &) const;
+    void printGUIError(const std::string &message)const;
 public:
     AssemblySimulator simulator;
     AssemblyParser parser;
 
-    InteractiveShell(const AssemblySimulator& sim, const AssemblyParser& pars);
+    InteractiveShell(const AssemblySimulator& sim, const AssemblyParser& pars, const bool &forGUI);
     void start();
     std::pair<Command, std::vector<int>> getInput()const;
 

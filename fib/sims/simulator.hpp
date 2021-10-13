@@ -22,6 +22,14 @@ const std::string PC_NOT_ALIGNED_WRITE = "Warning: アラインに合わないpc
 const std::string NOT_FOUND_LABEL = "ラベルが見つかりません";
 const std::string OUT_OF_RANGE_BREAKPOINT = "ファイルの行数の範囲外のためブレークポイントは設置できません";
 const std::string NO_HISTORY = "もう履歴はありません";
+
+const std::string GUI_NO_HISTORY = "NoHis";
+const std::string GUI_END = "End";
+const std::string GUI_ALREADY_END = "AEnd";
+const std::string GUI_STOP = "Stop";
+const std::string GUI_WARNING = "Warning";
+const std::string GUI_NO_CHANGE = "No";
+const std::string GUI_ERROR = "Error";
 enum class NumberBase{
     BIN = 2, 
     OCT = 8, 
@@ -41,6 +49,7 @@ struct BeforeData{
 class AssemblySimulator{
     public:
         bool useBinary = false;
+        bool forGUI = false;
         bool onWarning = true;
         std::array<int, REGISTERS_N> registers;
         int pc; //pcはメモリアドレスを表すので、アセンブリファイルの行数-1の4倍
@@ -54,7 +63,7 @@ class AssemblySimulator{
         std::array<BeforeData, HISTORY_RESERVE_N> beforeHistory; // もとに戻れるようにデータをとる
         const AssemblyParser parser;
 
-        AssemblySimulator(const AssemblyParser& parser, const bool &useBin);
+        AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI);
         void printRegisters(const NumberBase&, const bool &sign) const;
         void printOpCounter()const;
         void next(bool, const bool&);
