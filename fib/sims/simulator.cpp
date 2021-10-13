@@ -322,13 +322,14 @@ void AssemblySimulator::printBreakList()const{
 void AssemblySimulator::printDif(const BeforeData & before)const{
     // 差分を表示
     if(forGUI){
-        // 変化のあったレジスタ名のみ表示
+        // 変化のあったレジスタ名とその変化後の値を表示
         if(before.instruction != "nop"){
             if(before.pc != pc -4){
-                std::cout << "pc " << std::endl;
+                std::cout << "pc " << pc << std::endl;
                 return;
             }else if(before.regInd >= 0){
-                std::cout <<"x"<< std::setw(2) << std::setfill('0') <<  std::internal << before.regInd << std::endl;
+                std::cout <<"x"<< std::setw(2) << std::setfill('0') <<  std::internal << before.regInd 
+                    << " " << registers[before.regInd] <<  std::endl;
                 return;
             }else{
                 std::cout << GUI_NO_CHANGE << std::endl;
