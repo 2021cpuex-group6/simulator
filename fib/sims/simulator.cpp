@@ -199,9 +199,9 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
             beforeData = doInst(inst);
             if(printInst && !forGUI){
                 printInstruction(line+1, inst);
-                printDif(beforeData);
+                printDif(beforeData, false);
             }else if(printInst){
-                printDif(beforeData);
+                printDif(beforeData, false);
             }
         }else{
             line ++;;
@@ -252,6 +252,9 @@ void AssemblySimulator::back(){
         }
         return;        
     }
+    if(before.instruction != "" &&  forGUI){
+        printDif(before, true);
+    }
     end = false;
     pc = before.pc;
     if(before.instruction != ""){
@@ -260,8 +263,13 @@ void AssemblySimulator::back(){
         if(before.regInd >= 0){
             registers[before.regInd] = before.regValue;
         }
+
     }else{
         // 前の命令はコメントやラベルだった
+        if(forGUI){
+            std::cout << GUI_NO_CHANGE << std::endl;
+            
+        }
     }
 
 
@@ -326,17 +334,27 @@ void AssemblySimulator::printBreakList()const{
 
 }
 
-void AssemblySimulator::printDif(const BeforeData & before)const{
-    // 差分を表示
+void AssemblySimulator::printDif(const BeforeData & before, const bool &back)const{
+    // 差分を表示 GUI用にbackのときも実装
     if(forGUI){
         // 変化のあったレジスタ名とその変化後の値を表示
         if(before.instruction != "nop"){
             if(before.pc != pc -4){
-                std::cout << "pc " << pc << std::endl;
+                if(back){
+                    std::cout << "pc " << before.pc << std::endl;
+                }else{
+                    std::cout << "pc " << pc << std::endl;
+                }
                 return;
             }else if(before.regInd >= 0){
+                int change = 0;
+                if(back){
+                    change = before.regValue;
+                }else{
+                    change = registers[before.regInd];
+                }
                 std::cout <<"x"<< std::setw(2) << std::setfill('0') <<  std::internal << before.regInd 
-                    << " " << registers[before.regInd] <<  std::endl;
+                    << " " << change <<  std::endl;
                 return;
             }else{
                 std::cout << GUI_NO_CHANGE << std::endl;
