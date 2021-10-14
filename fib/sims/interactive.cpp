@@ -33,7 +33,7 @@ void InteractiveShell::start(){
                 }
                 break;
             case Command::DoNext:
-                simulator.next(true, true);
+                simulator.next(false, true);
                 if(input.second[0] == 1){
                     switch(input.second[1]){
                         case static_cast<int>(NumberBase::HEX):
