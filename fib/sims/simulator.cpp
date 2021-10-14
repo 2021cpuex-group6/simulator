@@ -207,7 +207,7 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
             line ++;;
             beforeData.instruction = "";
             beforeData.pc = pc;
-            if(!jumpComment){
+            if(!jumpComment && printInst){
                 if(forGUI){
                     std::cout << GUI_NO_CHANGE << std::endl;
                 }else{
