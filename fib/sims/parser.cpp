@@ -25,12 +25,29 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     {"mul",     {3, -1, -1, -1, INST_REGONLY}},
     {"div",     {3, -1, -1, -1, INST_REGONLY}},
     {"and",     {3, -1, -1, -1, INST_REGONLY}}, 
+    {"sltu",     {3, -1, -1, -1, INST_REGONLY}}, 
+    {"sll",     {3, -1, -1, -1, INST_REGONLY}}, 
+    {"sra",     {3, -1, -1, -1, INST_REGONLY}}, 
+    {"srl",     {3, -1, -1, -1, INST_REGONLY}}, 
     {"or",      {3, -1, -1, -1, INST_REGONLY}}, 
     {"xor",     {3, -1, -1, -1, INST_REGONLY}},
     {"addi",    {3, 2, -1, 12, INST_REGIMM}}, 
+    {"andi",    {3, 2, -1, 12, INST_REGIMM}}, 
+    {"ori",    {3, 2, -1, 12, INST_REGIMM}}, 
+    {"xori",    {3, 2, -1, 12, INST_REGIMM}}, 
     {"blt",     {3, -1, 2, -1, INST_CONTROL}}, 
     {"beq",     {3, -1, 2, -1, INST_CONTROL}}, 
-    {"j",       {1, -1, 0, -1, INST_CONTROL}}
+    {"bne",     {3, -1, 2, -1, INST_CONTROL}}, 
+    {"j",       {1, -1, 0, -1, INST_CONTROL}},
+    {"jal",      {2, -1, 1, -1, INST_CONTROL}}, 
+    {"jr",       {1, -1, -1, -1, INST_CONTROL}}, 
+    {"jalr",     {2, -1, -1, -1, INST_CONTROL}}, 
+    {"lw",       {2, -1, -1, 12, INST_LOAD}}, 
+    {"lbu",       {2, -1, -1, 12, INST_LOAD}},
+    {"flw",       {2, -1, -1, 12, INST_LOAD}},
+    {"sw",       {2, -1, -1, 12, INST_STORE}},
+    {"sb",       {2, -1, -1, 12, INST_STORE}},
+    {"fsw",       {2, -1, -1, 12, INST_STORE}}
 };
 
 
