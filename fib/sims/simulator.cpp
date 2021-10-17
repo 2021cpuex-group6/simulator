@@ -489,16 +489,50 @@ void AssemblySimulator::launchWarning(const std::string &message)const{
 void AssemblySimulator::doALU(const std::string &opcode, const int &targetR, const int &source0, const int &source1){
     // ターゲットレジスタのインデックス、入力２つを受け取り、演算、レジスタへの書き込みを行う
     // PCの更新はここでは行わない
+    int ans = 0;
     if(opcode == "add" || opcode == "addi"){
         // オーバーフローは考慮しない（仕様通り？）
-        registers[targetR] = source0 + source1;
+        ans = source0 + source1;
     }else if(opcode == "sub"){
-        registers[targetR] = source0 - source1;
+        ans = source0 - source1;
     }else if(opcode == "mul"){
-        registers[targetR] = source0 * source1;
+        ans = source0 * source1;
     }else if(opcode == "div"){
-        registers[targetR] = source0 / source1;
+        ans = source0 / source1;
+    }else if(opcode == "and" || opcode == "andi"){
+        ans = source0 & source1;
+    }else if(opcode == "or" || opcode == "ori"){
+        ans = source0 | source1;
+    }else if(opcode == "xor" || opcode == "xori"){
+        ans = source0 ^ source1;
+    }else if(opcode == "slt"){
+        ans = source0 < source1 ? 1 : 0;
+    }else if(opcode == "sltu"){
+        ans = ((unsigned int) source0) < ((unsigned int) source1) ? 1 : 0; 
+    // 以下、シフト演算
+    // RISC-Vではsource1の下位5ビットを（符号なし整数ととらえて？）シフトする 
+    // C, C++では負数の右シフトが算術シフトか論理シフトかは実装依存()なので、無理やり合わせる
+    }else{
+        unsigned int shiftN = source1 & SHIFT_MASK5;
+        if(opcode == "sll"){
+            ans = source0 << shiftN;
+        }else{
+            // まず右シフト
+            ans = source0 >> shiftN;
+            if(opcode == "srl"){
+                if(shiftN != 0){
+                    // SHIFT_MASK31はMSBが0
+                    ans &= SHIFT_MASK31 >> (shiftN-1);
+                }
+            }else if(opcode == "sra"){
+                if(source0 < 0){
+                    //負数のシフトだったらMSBのほうに1を追加
+                    ans |= (~0) << (REGISTER_BIT_N-shiftN);
+                }
+            }
+        }
     }
+    registers[targetR] = ans;
 
 }
 

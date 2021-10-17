@@ -25,6 +25,7 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     {"mul",     {3, -1, -1, -1, INST_REGONLY}},
     {"div",     {3, -1, -1, -1, INST_REGONLY}},
     {"and",     {3, -1, -1, -1, INST_REGONLY}}, 
+    {"slt",     {3, -1, -1, -1, INST_REGONLY}},
     {"sltu",     {3, -1, -1, -1, INST_REGONLY}}, 
     {"sll",     {3, -1, -1, -1, INST_REGONLY}}, 
     {"sra",     {3, -1, -1, -1, INST_REGONLY}}, 
