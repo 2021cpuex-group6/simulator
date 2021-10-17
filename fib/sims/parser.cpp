@@ -13,7 +13,7 @@
 std::map<std::string, std::vector<int>>opcodeInfoMap = {
     // 命令の情報を持つ
     // ind
-    //  0 ...受け取るオペコード数
+    //  0 ...受け取るオペコード数 (4(x2)のような場合はまとめて一つとする)
     //  1 ...即値が何番目に入るか（入らなければ-1）
     //  2 ...ラベルが何番目に入るか（入らなければ-1）
     //  3 ...即値のビット数（なければ-1）
@@ -41,8 +41,8 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     {"bne",     {3, -1, 2, -1, INST_CONTROL}}, 
     {"j",       {1, -1, 0, -1, INST_CONTROL}},
     {"jal",      {2, -1, 1, -1, INST_CONTROL}}, 
-    {"jr",       {1, -1, -1, -1, INST_CONTROL}}, 
-    {"jalr",     {2, -1, -1, -1, INST_CONTROL}}, 
+    {"jr",       {1, 0, -1, 12, INST_CONTROL}}, 
+    {"jalr",     {2, 1, -1, 12, INST_CONTROL}}, 
     {"lw",       {2, -1, -1, 12, INST_LOAD}}, 
     {"lbu",       {2, -1, -1, 12, INST_LOAD}},
     {"flw",       {2, -1, -1, 12, INST_LOAD}},
@@ -157,6 +157,7 @@ void AssemblyParser::instParse(const int lineN, std::string instLine){
     int labelInd = -1;
     int immediateInd = -1;
     int immediateBitN = -1;
+    int instKind = -1;
     Instruction inst;
     inst.type = InstType::Inst;
 
@@ -170,6 +171,7 @@ void AssemblyParser::instParse(const int lineN, std::string instLine){
                 immediateInd = info[1];
                 labelInd = info[2];
                 immediateBitN = info[3];
+                instKind = info[4];
             }catch(const std::out_of_range& e){
                 // 不正なオペコード
                 parseError(lineN, INVALID_OPCODE_MESSAGE); 
@@ -178,7 +180,18 @@ void AssemblyParser::instParse(const int lineN, std::string instLine){
             if(count == labelInd){
                 inst.label = res;
             }else if(count == immediateInd){
-                inst.immediate = getImmediate(lineN, immediateBitN,  res);
+                if(instKind == INST_CONTROL || instKind == INST_LOAD || INST_STORE){
+                    // 即値とレジスタで4(x02)のようになっているとき
+                    // 即値＋レジスタの形は命令の最後にしか現れないので、
+                    // レジスタ名、即値の順でinst.operandに追加
+                    // レジスタ名の追加は以下でまとめて行われるので、即値のみここで追加する
+                    auto address = parseOffsetAndRegister(res, lineN);
+                    res = address.first;
+                    inst.operand[count+1] = address.second;
+                    inst.immediate = address.second;
+                }else{
+                    inst.immediate = getImmediate(lineN, immediateBitN,  res);
+                }
             }else if(count == MAX_OPERAND_N){
                 parseError(lineN, INVALID_OPERAND_N);
             }
@@ -194,4 +207,15 @@ void AssemblyParser::instParse(const int lineN, std::string instLine){
 }
 
 
-
+std::pair<std::string , int> AssemblyParser::parseOffsetAndRegister(const std::string &input, const int &lineN)const{
+    // 即値＋レジスタの形をパース
+    std::smatch m;
+    if(std::regex_match(input, m, offsetRe)){
+        // ラベル
+        int imm = std::stoi(m[1].str());
+        std::string reg = m[2].str();
+        return {reg, imm};
+    }else{
+        parseError(lineN, INVALID_OPERAND_FORMAT);
+    }
+}

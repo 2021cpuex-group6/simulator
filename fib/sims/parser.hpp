@@ -4,14 +4,19 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <regex>
 
 const std::string INVALID_LINE_MESSAGE = "不正な行です";
 const std::string INVALID_OPCODE_MESSAGE = "不正な命令です";
 const std::string INVALID_IMMEDIATE_NOT_INT = "即値が入る場所に数以外が入っています";
 const std::string INVALID_IMMEDIATE_OUT_OF_RANGE = "即値が範囲外です";
 const std::string INVALID_OPERAND_N = "オペランドの数が合いません";
+const std::string INVALID_OPERAND_FORMAT = "オペランドの形式が不正です";
 const std::string FILE_NOTFOUND = "ファイルが見つかりませんでした";
 const std::string DOUBLE_LABEL = "ラベルが重複しています";
+
+static const std::regex offsetRe(R"(\s*([0-9]+)\(\s*([a-z0-9]+)\s*\)\s*)");
+
 
 const int MAX_OPERAND_N = 3;
 
@@ -49,6 +54,7 @@ class AssemblyParser{
         void parseFile(const std::string &filePath);
         void parseBinFile(const std::string &filePath);
         void instParse(const int lineN, std::string instLine);
+        std::pair<std::string , int> parseOffsetAndRegister(const std::string & input, const int &lineN)const;
         
 };
 
