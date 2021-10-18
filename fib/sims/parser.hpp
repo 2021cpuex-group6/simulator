@@ -14,6 +14,7 @@ const std::string INVALID_OPERAND_N = "オペランドの数が合いません";
 const std::string INVALID_OPERAND_FORMAT = "オペランドの形式が不正です";
 const std::string FILE_NOTFOUND = "ファイルが見つかりませんでした";
 const std::string DOUBLE_LABEL = "ラベルが重複しています";
+static const std::string  GUI_ERROR_TOP = "Error";
 
 static const std::regex offsetRe(R"(\s*([0-9]+)\(\s*([a-z0-9]+)\s*\)\s*)");
 
@@ -45,20 +46,18 @@ extern std::map<std::string, std::vector<int>> opcodeInfoMap;
 
 class AssemblyParser{
     public:
-    
         std::vector<Instruction> instructionVector;
         std::map<std::string, int> labelMap;
-        AssemblyParser(const std::string &filePath, const bool &useBin);
+        AssemblyParser(const std::string &filePath, const bool &useBin, const bool &forGUI);
     private:
+        bool forGUI;
         bool useBin;
         void parseFile(const std::string &filePath);
         void parseBinFile(const std::string &filePath);
         void instParse(const int lineN, std::string instLine);
         std::pair<std::string , int> parseOffsetAndRegister(const std::string & input, const int &lineN)const;
+        void parseError(const int &, const std::string&)const;
+        int getImmediate(const int& lineN, const int& immediateBitN, const std::string& intStr)const;
         
 };
-
-void parseError(const int &, const std::string&);
-
-
 #endif

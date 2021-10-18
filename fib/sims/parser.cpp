@@ -62,7 +62,7 @@ int getFileLen(const std::string& filePath){
     return ans;
 }
 
-int getImmediate(const int& lineN, const int& immediateBitN, const std::string& intStr){
+int AssemblyParser::getImmediate(const int& lineN, const int& immediateBitN, const std::string& intStr)const {
     // 即値を示す文字をintに変換
     // その際、即値が範囲内かも判定
     // 即値はすべて符号付
@@ -81,15 +81,18 @@ int getImmediate(const int& lineN, const int& immediateBitN, const std::string& 
     return res;
 }
 
-void parseError(const int& lineN, const std::string& error){
+void AssemblyParser::parseError(const int& lineN, const std::string& error)const{
     // エラーが起きた行数とともに知らせる
+    if(forGUI){
+        std::cout << GUI_ERROR_TOP << std::endl;
+    }
     throw std::invalid_argument(std::to_string(lineN) + "行目:" + error);
 }
 
 
-AssemblyParser::AssemblyParser(const std::string &filePath, const bool &useBinary){
+AssemblyParser::AssemblyParser(const std::string &filePath, const bool &useBinary,
+         const bool& forGUI): forGUI(forGUI), useBin(useBinary){
     int len = getFileLen(filePath);
-    useBin = useBinary;
     instructionVector.resize(len);
     if(useBin){
 
@@ -180,7 +183,7 @@ void AssemblyParser::instParse(const int lineN, std::string instLine){
             if(count == labelInd){
                 inst.label = res;
             }else if(count == immediateInd){
-                if(instKind == INST_CONTROL || instKind == INST_LOAD || INST_STORE){
+                if(instKind == INST_CONTROL || instKind == INST_LOAD || instKind == INST_STORE){
                     // 即値とレジスタで4(x02)のようになっているとき
                     // 即値＋レジスタの形は命令の最後にしか現れないので、
                     // レジスタ名、即値の順でinst.operandに追加

@@ -32,7 +32,7 @@ int main(int argc, char* argv[]){
     }
     std::string fileName = argv[1];
 
-    AssemblyParser parser(fileName, useBin);
+    AssemblyParser parser(fileName, useBin, forGUI);
     AssemblySimulator simulator(parser, useBin, forGUI);
 
     InteractiveShell shell(simulator, parser, forGUI);
