@@ -345,6 +345,16 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back)con
                 }else{
                     std::cout << "pc " << pc << std::endl;
                 }
+                if(before.regInd >= 0){
+                    int change = 0;
+                    if(back){
+                        change = before.regValue;
+                    }else{
+                        change = registers[before.regInd];
+                    }
+                    std::cout <<"x"<< std::setw(2) << std::setfill('0') <<  std::internal << before.regInd 
+                        << " " << change <<  std::endl;
+                }
                 return;
             }else if(before.regInd >= 0){
                 int change = 0;
@@ -369,7 +379,12 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back)con
             if(before.pc != pc -4){
                 std::cout << "pc:" <<  std::setw(11) << std::internal <<before.pc << " -> " 
                     << std::setw(11) << std::internal << pc  << std::endl;
-                    return;
+                if(before.regInd >= 0){
+                    std::string regInfo = getRegisterInfoUnit(before.regInd, NumberBase::DEC, true);
+                    std::cout << regInfo.substr(0, 3) << std::setw(11) << std::internal << 
+                    before.regValue << " -> " << regInfo.substr(3) << std::endl;
+                }
+                return;
             }else if(before.regInd >= 0){
                 std::string regInfo = getRegisterInfoUnit(before.regInd, NumberBase::DEC, true);
                 std::cout << regInfo.substr(0, 3) << std::setw(11) << std::internal << 
@@ -548,6 +563,8 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
             jumpFlag = reg0 < reg1;
         }else if(opcode == "beq"){
             jumpFlag = reg0 == reg1;
+        }else if(opcode == "bne"){
+            jumpFlag = reg0 != reg1;
         }
     }else{
         jumpFlag = true;
@@ -556,8 +573,32 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
     if(jumpFlag){
         try{
             BeforeData ans = {opcode, pc, -1};
-            int nextLine = parser.labelMap.at(instruction.label);
-            pc = nextLine * INST_BYTE_N;
+            if(opcode == "jal" || opcode == "jalr"){
+                // レジスタへの書き込み
+                int regd = getRegIndWithError(instruction.operand[0]);
+                if(regd != 0){
+                    writeReg(regd, pc+INST_BYTE_N);
+                    ans.regInd = regd;
+                    ans.regValue = pc+INST_BYTE_N;
+                }
+
+            }
+            if(opcode =="jr" || opcode == "jalr"){
+                // 即値とレジスタの値を足して最下位ビットを0にした値がジャンプ先
+                // しかしこのシミュレータは4バイトの固定長命令を使うことを暗に仮定しているので、もう1ビットも0にする
+                int nextPC = instruction.immediate;
+                if(opcode == "jr"){
+                    nextPC += registers[getRegIndWithError(instruction.operand[0])];
+                }else{
+                    nextPC += registers[getRegIndWithError(instruction.operand[1])];
+                }
+                nextPC &= (~0) << 2;
+                pc = nextPC;
+
+            }else{
+                int nextLine = parser.labelMap.at(instruction.label);
+                pc = nextLine * INST_BYTE_N;
+            }
             return ans;
         }catch(const std::out_of_range &e){
             launchError(NOT_FOUND_LABEL);
