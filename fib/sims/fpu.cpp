@@ -1,8 +1,10 @@
 #include <cstdint>
 #include "../utils/utils.hpp"
 #include "fpu.hpp"
-
+#include <random>
 #include <vector>
+#include <iostream>
+#include <bitset>
 
 std::vector<uint32_t> separateFloat(const uint32_t &input){
     // inputに入った32ビットfloatを符号，指数部，仮数部に分離する
@@ -76,8 +78,27 @@ uint32_t fsub(const uint32_t & x1, const uint32_t& x2){
     return faddsub(x1, x2, true);
 }
 
-bool plusCheck(uint32_t input1, uint32_t input2){
+bool addSubCheck(const uint32_t& input1, const uint32_t& input2,
+                    const bool& isSub){
     // 加算の結果が合うかを調べる
+    // c++の実装の結果で答えが非正規化数になるものは結果によらずtrue
+    Float32 in1, in2;
+    in1.u32 = input1;
+    in2.u32 = input2;
+
+    float ans;
+    if(isSub){
+        ans = in1.f32 - in2.f32;
+    }else{
+        ans = in1.f32 + in2.f32;
+    }
+    if(!isNormalized(ans)){
+        return true;
+    }
+    uint32_t myAns = faddsub(in1.u32, in2.u32, isSub);
+    Float32 myAns_;
+    myAns_.u32 = myAns;
+    return ans == myAns_.f32;
 }
 
 bool isNormalized(const float & input){
@@ -92,5 +113,28 @@ bool isNormalized(const float & input){
         return false;
     }
     return true;
+}
+
+void addSubAllCheck(const int iterN, const bool &isSub){
+    // ランダムでadd, subの実装とc++の結果を比べる
+    std::random_device rnd;
+    int checkedN = 0;
+    for(int i=0; i < iterN; i++){
+        Float32 f1, f2;
+        f1.u32 = rnd();
+        f2.u32 = rnd();
+        if(isNormalized(f1.f32) && isNormalized(f2.f32)){
+            checkedN ++;
+            if(!addSubCheck(f1.u32, f2.u32, isSub)){
+                std::cout << f1.f32 << " " << f2.f32 << std::endl;
+                std::cout << std::bitset<32>(f1.f32) << " " 
+                        << std::bitset<32>(f2.f32) << std::endl;
+                
+            }
+        }
+    }
+    std::cout << "checkedN: " << checkedN << std::endl;
+    
+
 
 }
