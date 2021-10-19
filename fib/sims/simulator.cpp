@@ -1,4 +1,5 @@
 #include "simulator.hpp"
+#include "../utils/utils.hpp"
 #include <iostream>
 #include <sstream>
 #include <bitset>
@@ -531,20 +532,10 @@ void AssemblySimulator::doALU(const std::string &opcode, const int &targetR, con
         unsigned int shiftN = source1 & SHIFT_MASK5;
         if(opcode == "sll"){
             ans = source0 << shiftN;
-        }else{
-            // まず右シフト
-            ans = source0 >> shiftN;
-            if(opcode == "srl"){
-                if(shiftN != 0){
-                    // SHIFT_MASK31はMSBが0
-                    ans &= SHIFT_MASK31 >> (shiftN-1);
-                }
-            }else if(opcode == "sra"){
-                if(source0 < 0){
-                    //負数のシフトだったらMSBのほうに1を追加
-                    ans |= (~0) << (REGISTER_BIT_N-shiftN);
-                }
-            }
+        }else if(opcode == "srl"){
+            ans = shiftRightLogical(source0, shiftN);
+        }else if(opcode == "sra"){
+            ans = shiftRightArithmatic(source0, shiftN);
         }
     }
     registers[targetR] = ans;
