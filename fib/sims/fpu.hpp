@@ -2,7 +2,14 @@
 #define FPU_H
 #include <cstdint>
 
-int32_t fadd(const int32_t & x1, const int32_t& x2);
+uint32_t fadd(const uint32_t & x1, const uint32_t& x2);
+uint32_t fsub(const uint32_t & x1, const uint32_t& x2);
+
+typedef union
+{
+    uint32_t u32;
+    float f32;
+}Float32;
 
 
 #endif
