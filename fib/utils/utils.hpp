@@ -9,6 +9,6 @@ static constexpr int INT_BIT_N = 32;
 
 bool startsWith(const std::string &, const std::string &);
 
-int32_t shiftRightLogical(const int32_t &input, unsigned int & shiftN);
-int32_t shiftRightArithmatic(const int32_t &input, unsigned int & shiftN);
+int32_t shiftRightLogical(const int32_t &input, const unsigned int & shiftN);
+int32_t shiftRightArithmatic(const int32_t &input, const unsigned int & shiftN);
 #endif
