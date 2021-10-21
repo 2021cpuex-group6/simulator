@@ -4,6 +4,7 @@
 
 uint32_t fadd(const uint32_t & x1, const uint32_t& x2);
 uint32_t fsub(const uint32_t & x1, const uint32_t& x2);
+void addSubRandomCheck(const int iterN, const bool &isSub);
 
 typedef union
 {

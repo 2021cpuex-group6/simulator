@@ -10,7 +10,7 @@ std::vector<uint32_t> separateFloat(const uint32_t &input){
     // inputに入った32ビットfloatを符号，指数部，仮数部に分離する
     uint32_t sign = input  & (0b1 << (INT_BIT_N-1));
     uint32_t exp = input & (0b11111111 << (INT_BIT_N - 9));
-    uint32_t mantissa = input & (shiftRightLogical(~0, 9));
+    uint32_t mantissa = input & (shiftRightLogical(~0u, 9));
     return {sign, exp, mantissa};
 }
 
@@ -34,8 +34,8 @@ uint32_t faddsub(const uint32_t & x1, const uint32_t& x2, const bool &isSub){
 
     bool f1 = ((e1 << 23) | m1) > ((e2 << 23) | m2);
 
-    uint32_t de1 = e1 - e2;
-    uint32_t de2 = e2 - e1;
+    uint32_t de1 = 0b11111111 & (e1 - e2);
+    uint32_t de2 = 0b11111111 & (e2 - e1);
     uint32_t de = (e1 > e2) ? de1 : de2;
     uint32_t stm1 = shiftRightLogical(tm1, de);
     uint32_t stm2 = shiftRightLogical(tm2, de);
@@ -44,12 +44,12 @@ uint32_t faddsub(const uint32_t & x1, const uint32_t& x2, const bool &isSub){
 
     uint32_t bm = f1 ? tm1 : tm2;
     uint32_t sm = f1 ? sm2 : sm1;
-    uint32_t be = f1 ? x1_[1] : e2;
+    uint32_t be = f1 ? e1 : e2;
     uint32_t bs = f1 ? s1 : s2;
     
     bool f2 = (s1 != s2) != isSub;
-    uint32_t add = bm + sm;
-    uint32_t sub = bm - sm;
+    uint32_t add = shiftRightLogical(~0u, 7) & (bm + sm);
+    uint32_t sub = shiftRightLogical(~0u, 7) & (bm - sm);
     uint32_t res = f2 ? sub : add;
 
     uint32_t nz = 25;
@@ -62,10 +62,10 @@ uint32_t faddsub(const uint32_t & x1, const uint32_t& x2, const bool &isSub){
         nz_mask >>= 1;
     }
 
-    uint32_t ie = be + 1;
-    uint32_t my = res << nz;
+    uint32_t ie = 0b111111111 & (be + 1);
+    uint32_t my = shiftRightLogical(~0u, 8) & (res << nz);
     uint32_t se = ie - nz;
-    uint32_t sy = ((se & 0b1 << 9) | nz == 25u) ? 0 : (se & 0b1111111);
+    uint32_t sy = ((se & (0b1 << 9)) !=0 || nz == 25u) ? 0 : (se & 0b11111111);
 
     return (bs << (INT_BIT_N-1)) | (sy << (INT_BIT_N -9)) | my;
     
@@ -76,6 +76,19 @@ uint32_t fadd(const uint32_t & x1, const uint32_t& x2){
 }
 uint32_t fsub(const uint32_t & x1, const uint32_t& x2){
     return faddsub(x1, x2, true);
+}
+bool isNormalized(const float & input){
+    // 入力された値が正規化数か調べる
+    Float32 float32;
+    float32.f32 = input;
+    uint32_t exp = (float32.u32 >> 23u) & 0xff;
+    if(exp == 0u){
+        // 仮数が全部0なら正規化数
+        return (float32.u32 & 0x7ffu) == 0;
+    }else if(exp == 0xffu){
+        return false;
+    }
+    return true;
 }
 
 bool addSubCheck(const uint32_t& input1, const uint32_t& input2,
@@ -101,24 +114,12 @@ bool addSubCheck(const uint32_t& input1, const uint32_t& input2,
     return ans == myAns_.f32;
 }
 
-bool isNormalized(const float & input){
-    // 入力された値が正規化数か調べる
-    Float32 float32;
-    float32.f32 = input;
-    uint32_t exp = (float32.u32 >> 23u) & 0xff;
-    if(exp == 0u){
-        // 仮数が全部0なら正規化数
-        return (float32.u32 & 0x7ffu) == 0;
-    }else if(exp == 0xffu){
-        return false;
-    }
-    return true;
-}
 
-void addSubAllCheck(const int iterN, const bool &isSub){
+void addSubRandomCheck(const int iterN, const bool &isSub){
     // ランダムでadd, subの実装とc++の結果を比べる
     std::random_device rnd;
     int checkedN = 0;
+    int wrongN = 0;
     for(int i=0; i < iterN; i++){
         Float32 f1, f2;
         f1.u32 = rnd();
@@ -126,15 +127,22 @@ void addSubAllCheck(const int iterN, const bool &isSub){
         if(isNormalized(f1.f32) && isNormalized(f2.f32)){
             checkedN ++;
             if(!addSubCheck(f1.u32, f2.u32, isSub)){
-                std::cout << f1.f32 << " " << f2.f32 << std::endl;
-                std::cout << std::bitset<32>(f1.f32) << " " 
-                        << std::bitset<32>(f2.f32) << std::endl;
+                wrongN ++;
+                Float32 myAns, trueAns;
+                myAns.u32 = faddsub(f1.u32, f2.u32, isSub);
+                trueAns.f32 = f1.f32 + f2.f32;
+                std::cout << f1.f32 << " " << f2.f32 << " " << trueAns.f32
+                    << " " << myAns.f32  << std::endl;
+                std::cout << std::bitset<32>(f1.u32) << " " 
+                    << std::bitset<32>(f2.u32) << std::endl;
+                std::cout << std::bitset<32>(trueAns.u32) << std::endl;
+                std::cout << std::bitset<32>(myAns.u32) <<  std::endl;
                 
             }
         }
     }
     std::cout << "checkedN: " << checkedN << std::endl;
-    
+    std::cout << "wrongN: " << wrongN << std::endl;
 
 
 }

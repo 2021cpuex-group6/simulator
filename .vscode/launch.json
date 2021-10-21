@@ -1,0 +1,91 @@
+{
+    // IntelliSense を使用して利用可能な属性を学べます。
+    // 既存の属性の説明をホバーして表示します。
+    // 詳細情報は次を確認してください: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "g++ - アクティブ ファイルのビルドとデバッグ",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${fileDirname}/${fileBasenameNoExtension}",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "gdb の再フォーマットを有効にする",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "C/C++: g++ アクティブなファイルのビルド",
+            "miDebuggerPath": "/usr/bin/gdb"
+        }, 
+       {
+            "name": "sim debug ",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/fib/main",
+            "args": ["fib.s"], 
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/fib",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "gdb の再フォーマットを有効にする",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "sim build",
+            "miDebuggerPath": "/usr/bin/gdb"
+        }, 
+        {
+            "name": "fpu debug ",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/fib/fpuChecker",
+            "args": [""], 
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/fib",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "gdb の再フォーマットを有効にする",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "fpu build",
+            "miDebuggerPath": "/usr/bin/gdb"
+        }, 
+        {
+            "name": "assem debug ",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/fib/assembler",
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/fib",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "gdb の再フォーマットを有効にする",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "assem build",
+            "miDebuggerPath": "/usr/bin/gdb"
+        }
+    ]
+}
