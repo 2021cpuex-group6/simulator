@@ -5,6 +5,7 @@
 #include <vector>
 #include <iostream>
 #include <bitset>
+#include <math.h>
 
 std::vector<uint32_t> separateFloat(const uint32_t &input){
     // inputに入った32ビットfloatを符号，指数部，仮数部に分離する
@@ -111,7 +112,11 @@ bool addSubCheck(const uint32_t& input1, const uint32_t& input2,
     uint32_t myAns = faddsub(in1.u32, in2.u32, isSub);
     Float32 myAns_;
     myAns_.u32 = myAns;
-    return ans == myAns_.f32;
+    float dif = fabs(myAns_.f32 - ans);
+    float factor = pow(2, -23);
+    float standard = fmax(fmax(fabs(in1.f32) * factor, fabs(in2.f32) * factor), fmax(fabs(ans) * factor, pow(2, -126)));
+
+    return dif < standard;
 }
 
 
