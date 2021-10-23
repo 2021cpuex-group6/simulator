@@ -70,6 +70,18 @@ void InteractiveShell::start(){
                                                                             input.second[2] == 1) << std::endl;
                 }
                 break;
+            case Command::MemRead:
+                if(input.second[0] + WORD_BYTE_N * input.second[1] >= MEM_BYTE_N || 
+                    input.second[0] < 0){
+                    // 範囲外までアクセス
+                    interactiveErrorWithGUI(OUT_OF_RANGE_MEMORY);
+                }else if(input.second[1] < 0){
+                    interactiveErrorWithGUI(INVALID_COMMAND);
+                }else{
+                    int lineN = forGUI ? MEM_PRINT_LINE_GUI : MEM_PRINT_LINE_CLI;
+                    simulator.printMem(input.second[0], input.second[1], lineN);
+                }
+                break;
             case Command::RegWrite:
                 simulator.writeReg(input.second[0], input.second[1]);
                 break;
@@ -87,6 +99,7 @@ void InteractiveShell::start(){
                 break;
             case Command::Quit:
                 continueFlag = false;
+
                 break;
 
 
@@ -153,6 +166,8 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
             return getRWInput(inputString);
         }else if(startsWith(inputString, COMMAND_BREAK_DELETE)){
             return getBDInput(inputString);
+        }else if(startsWith(inputString, COMMAND_MEM_READ)){
+            return getMRInput(inputString);
         }
     }
 
@@ -309,6 +324,43 @@ std::pair<Command, std::vector<int>> InteractiveShell::getBDInput(const std::str
 
 }
 
+std::pair<Command, std::vector<int>> InteractiveShell::getMRInput(const std::string &inputString) const{
+    // メモリ表示命令のコマンドのパース
+    // 返り値(vec)
+    // 0 ... メモリアドレス
+    // 1 ... ワードサイズ
+    std::istringstream stream(inputString.substr(3));
+    std::string str ;
+    std::vector<int> ans;
+    try{
+        int inputN = 0;
+        while(stream >> str){
+            ans.emplace_back(std::stoi(str));
+            inputN++;
+        }
+        if(inputN == 1) ans.emplace_back(1);
+        return {Command::MemRead, ans};
+
+    }catch(const std::invalid_argument &e){
+        if(forGUI){
+            printGUIError(INVALID_COMMAND);
+        }else{
+            std::cout << INVALID_COMMAND << std::endl;
+        }
+        return {Command::Invalid, {}};
+    }catch(const std::out_of_range &e){
+        if(forGUI){
+            printGUIError(OUT_OF_RANGE_INT);
+        }else{
+            std::cout << OUT_OF_RANGE_INT << std::endl;
+        }
+        return {Command::Invalid, {}};
+    }
+
+
+
+}
+
 void InteractiveShell::printGUIError(const std::string &message)const{
     // GUIからのコマンドが間違っていた時のエラー表示
     std::cout << GUI_ERROR << std::endl;
@@ -316,4 +368,13 @@ void InteractiveShell::printGUIError(const std::string &message)const{
     std::cout << message << std::endl;
 
 }
+
+void InteractiveShell::interactiveErrorWithGUI(const std::string &message)const{
+    // GUIの場合とCLIの場合で場合分けしてエラー表示
+    if(forGUI){
+        printGUIError(message);
+    }else{
+        std::cout << message << std::endl;
+    }
+};
 

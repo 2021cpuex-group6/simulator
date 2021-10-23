@@ -4,6 +4,9 @@
 #include "simulator.hpp"
 #include <vector>
 
+constexpr int MEM_PRINT_LINE_CLI = 2;
+constexpr int MEM_PRINT_LINE_GUI = 4;
+
 const std::string INVALID_COMMAND = "コマンドの書式が不正です";
 const std::string INVALID_REG_NAME = "レジスタ名が不正です";
 const std::string NOT_SELECTED_REGISTER = "レジスタを指定してください";
@@ -11,6 +14,7 @@ const std::string NOT_SPECIFIED_WRITE_VALUE = "書き込む値を指定してく
 const std::string NOT_IMPLEMENTED_UNSIGNED = "unsignedでの書き込みは未実装です";
 const std::string NOT_SPECIFIED_LINE_N = "行数を指定してください";
 const std::string OUT_OF_RANGE_INT = "入力がintの範囲外です";
+const std::string OUT_OF_RANGE_MEMORY = "メモリの範囲外まで参照しています";
 
 const std::string COMMAND_DO_ALL = "a";
 const std::string COMMAND_NEXT_BLOCK = "nb";
@@ -24,7 +28,7 @@ const std::string COMMAND_BACK = "ba";
 const std::string COMMAND_RESET = "re";
 const std::string COMMAND_INFO = "i";
 const std::string COMMAND_QUIT = "quit";
-
+const std::string COMMAND_MEM_READ = "mr";
 // const std::string GUI_ERROR = "Error";
 
 enum class Command{
@@ -39,6 +43,7 @@ enum class Command{
     Back, 
     Reset,  // 初期状態へ
     Info, //統計データを見る
+    MemRead,
     Quit,
     Invalid
 };
@@ -56,7 +61,9 @@ private:
     std::pair<Command, std::vector<int>> getRRInput(const std::string &) const;
     std::pair<Command, std::vector<int>> getRWInput(const std::string &) const;
     std::pair<Command, std::vector<int>> getBDInput(const std::string &) const;
+    std::pair<Command, std::vector<int>> getMRInput(const std::string &) const;
     void printGUIError(const std::string &message)const;
+    void interactiveErrorWithGUI(const std::string &message)const;
 public:
     AssemblySimulator &simulator;
     AssemblyParser &parser;
