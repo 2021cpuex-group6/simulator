@@ -17,11 +17,7 @@ void InteractiveShell::start(){
             if(input.first != Command::Invalid){
                 break;
             }
-            if(forGUI){
-                printGUIError(INVALID_COMMAND);
-            }else{
-                std::cout << INVALID_COMMAND << std::endl;
-            }
+            interactiveErrorWithGUI(INVALID_COMMAND);
         }
 
         switch(input.first){
@@ -214,11 +210,7 @@ int InteractiveShell::getRRRegisterInput(std::string input)const{
         std::string res = m[1].str();
         regInd = AssemblySimulator::getRegInd(res);
         if(regInd < 0){
-            if(forGUI){
-                printGUIError(INVALID_REG_NAME);
-            }else{
-                std::cout << INVALID_REG_NAME << std::endl;
-            }
+            interactiveErrorWithGUI(INVALID_REG_NAME);
         }
     }
     return regInd;
@@ -235,21 +227,13 @@ std::pair<Command, std::vector<int>> InteractiveShell::getRWInput(const std::str
     auto optionPair = getRROptionInput(inputString);
     if(optionPair.second == 0){
         // unsignedは未対応
-        if(forGUI){
-            printGUIError(NOT_IMPLEMENTED_UNSIGNED);
-        }else{
-            std::cout << NOT_IMPLEMENTED_UNSIGNED << std::endl;
-        }
+        interactiveErrorWithGUI(NOT_IMPLEMENTED_UNSIGNED);
         return {Command::Invalid, {}};
     }
     regInd = getRRRegisterInput(inputString);
     if(regInd < 0){
         // レジスタ指定なし
-        if(forGUI){
-            printGUIError(NOT_SELECTED_REGISTER);
-        }else{
-            std::cout << NOT_SELECTED_REGISTER << std::endl;
-        }
+        interactiveErrorWithGUI(NOT_SELECTED_REGISTER);
         return {Command::Invalid, {}};
     }
 
@@ -260,11 +244,7 @@ std::pair<Command, std::vector<int>> InteractiveShell::getRWInput(const std::str
         writeValue = std::stoi(res, 0, optionPair.first);
     }else{
         // 書き込む値の指定なし
-        if(forGUI){
-            printGUIError(NOT_SPECIFIED_WRITE_VALUE);
-        }else{
-            std::cout <<  NOT_SPECIFIED_WRITE_VALUE << std::endl;
-        }
+        interactiveErrorWithGUI(NOT_SPECIFIED_WRITE_VALUE);
         return {Command::Invalid, {}};
     }
 
@@ -302,11 +282,7 @@ std::pair<Command, std::vector<int>> InteractiveShell::getBDInput(const std::str
         try{
             writeValue = std::stoi(res);
         }catch(const std::out_of_range & e){
-            if(forGUI){
-                printGUIError(OUT_OF_RANGE_INT);
-            }else{
-                std::cout << OUT_OF_RANGE_INT << std::endl;
-            }
+            interactiveErrorWithGUI(OUT_OF_RANGE_INT);
             return {Command::Invalid, {}};
         }
     }else{
@@ -342,18 +318,10 @@ std::pair<Command, std::vector<int>> InteractiveShell::getMRInput(const std::str
         return {Command::MemRead, ans};
 
     }catch(const std::invalid_argument &e){
-        if(forGUI){
-            printGUIError(INVALID_COMMAND);
-        }else{
-            std::cout << INVALID_COMMAND << std::endl;
-        }
+        interactiveErrorWithGUI(INVALID_COMMAND);
         return {Command::Invalid, {}};
     }catch(const std::out_of_range &e){
-        if(forGUI){
-            printGUIError(OUT_OF_RANGE_INT);
-        }else{
-            std::cout << OUT_OF_RANGE_INT << std::endl;
-        }
+        interactiveErrorWithGUI(OUT_OF_RANGE_INT);
         return {Command::Invalid, {}};
     }
 
