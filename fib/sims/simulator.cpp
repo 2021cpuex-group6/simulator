@@ -652,16 +652,47 @@ void AssemblySimulator::printOpCounter() const{
 }
 
 uint32_t AssemblySimulator::readMem(const uint32_t& address, const MemAccess &memAccess)const{
+    // メモリ読み込み
+    if(address > MEM_BYTE_N || address + static_cast<unsigned int>(memAccess) > MEM_BYTE_N){
+        //範囲外
+        launchError(OUT_OF_RANGE_MEMORY);
+    }
+    uint32_t mainAddress = address / WORD_BYTE_N;
+    uint32_t subAddress = address % WORD_BYTE_N;
+    switch(memAccess){
+        case MemAccess::WORD:
+            if(subAddress != 0) launchError(ILEGAL_WORD_ACCESS);
+            return dram[mainAddress].i;
+            break;
+        case MemAccess::BYTE:
+            return static_cast<uint32_t>(dram[mainAddress].b[subAddress]);
+            break;
+        default:
+            launchError(IMPLEMENT_ERROR);
+            break;
+    }
+
+}
+void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAccess, const uint32_t value){
+    // メモリ書き込み
     if(address > MEM_BYTE_N || address + static_cast<unsigned int>(memAccess) > MEM_BYTE_N){
         //範囲外
         launchError(OUT_OF_RANGE_MEMORY);
     }
 
-}
-void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAccess, const uint32_t value){
-    if(address > MEM_BYTE_N || address + static_cast<unsigned int>(memAccess) > MEM_BYTE_N){
-        //範囲外
-        launchError(OUT_OF_RANGE_MEMORY);
+    uint32_t mainAddress = address / WORD_BYTE_N;
+    uint32_t subAddress = address % WORD_BYTE_N;
+    switch(memAccess){
+        case MemAccess::WORD:
+            if(subAddress != 0) launchError(ILEGAL_WORD_ACCESS);
+            dram[mainAddress].i = value;
+            break;
+        case MemAccess::BYTE:
+            dram[mainAddress].b[subAddress] = static_cast<uint8_t>(value);
+            break;
+        default:
+            launchError(IMPLEMENT_ERROR);
+            break;
     }
 }
  

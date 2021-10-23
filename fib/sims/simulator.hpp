@@ -27,6 +27,8 @@ const std::string NOT_FOUND_LABEL = "ラベルが見つかりません";
 const std::string OUT_OF_RANGE_BREAKPOINT = "ファイルの行数の範囲外のためブレークポイントは設置できません";
 const std::string NO_HISTORY = "もう履歴はありません";
 const std::string OUT_OF_RANGE_MEMORY = "メモリの範囲外を参照しようとしています";
+const std::string ILEGAL_WORD_ACCESS = "メモリのワードアクセスは4バイトアラインされた位置のみにできます";
+const std::string IMPLEMENT_ERROR = "バグです。報告してください";
 
 const std::string GUI_NO_HISTORY = "NoHis";
 const std::string GUI_END = "End";
