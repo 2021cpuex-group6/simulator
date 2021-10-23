@@ -355,7 +355,7 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back)con
                     }else{
                         change = registers[before.regInd];
                     }
-                    std::cout <<"x"<< std::setw(2) << std::setfill('0') <<  std::internal << before.regInd 
+                    std::cout <<"x"<< std::setw(2) << std::setfill('0') <<   std::internal << before.regInd 
                         << " " << change <<  std::endl;
                 }
                 return;
@@ -384,20 +384,20 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back)con
              std::cout << GUI_NO_CHANGE << std::endl;
         }
     }else{
-        std::cout << "  ";
+        std::cout << "  " << std::setfill(' ') ;
         if(before.instruction != "nop"){
             if(before.pc != pc -4){
                 std::cout << "pc:" <<  std::setw(11) << std::internal <<before.pc << " -> " 
                     << std::setw(11) << std::internal << pc  << std::endl;
                 if(before.regInd >= 0){
                     std::string regInfo = getRegisterInfoUnit(before.regInd, NumberBase::DEC, true);
-                    std::cout << regInfo.substr(0, 3) << std::setw(11) << std::internal << 
+                    std::cout << regInfo.substr(0, 3) << " " << std::setw(11) << std::internal <<  std::dec<<
                     before.regValue << " -> " << regInfo.substr(3) << std::endl;
                 }
                 return;
             }else if(before.regInd >= 0){
                 std::string regInfo = getRegisterInfoUnit(before.regInd, NumberBase::DEC, true);
-                std::cout << regInfo.substr(0, 3) << std::setw(11) << std::internal << 
+                std::cout << regInfo.substr(0, 3) << " " << std::setw(11) <<   std::internal << std::dec<<
                 before.regValue << " -> " << regInfo.substr(3) << std::endl;
                 return;
             }else if(before.writeMem){

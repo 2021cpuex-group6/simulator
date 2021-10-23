@@ -43,12 +43,12 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     {"jal",      {2, -1, 1, -1, INST_CONTROL}}, 
     {"jr",       {1, 0, -1, 12, INST_CONTROL}}, 
     {"jalr",     {2, 1, -1, 12, INST_CONTROL}}, 
-    {"lw",       {2, -1, -1, 12, INST_LOAD}}, 
-    {"lbu",       {2, -1, -1, 12, INST_LOAD}},
-    {"flw",       {2, -1, -1, 12, INST_LOAD}},
-    {"sw",       {2, -1, -1, 12, INST_STORE}},
-    {"sb",       {2, -1, -1, 12, INST_STORE}},
-    {"fsw",       {2, -1, -1, 12, INST_STORE}}
+    {"lw",       {2, 1, -1, 12, INST_LOAD}}, 
+    {"lbu",       {2, 1, -1, 12, INST_LOAD}},
+    {"flw",       {2, 1, -1, 12, INST_LOAD}},
+    {"sw",       {2, 1, -1, 12, INST_STORE}},
+    {"sb",       {2, 1, -1, 12, INST_STORE}},
+    {"fsw",       {2, 1, -1, 12, INST_STORE}}
 };
 
 
@@ -190,7 +190,7 @@ void AssemblyParser::instParse(const int lineN, std::string instLine){
                     // レジスタ名の追加は以下でまとめて行われるので、即値のみここで追加する
                     auto address = parseOffsetAndRegister(res, lineN);
                     res = address.first;
-                    inst.operand[count+1] = address.second;
+                    inst.operand[count+1] = std::to_string(address.second);
                     inst.immediate = address.second;
                 }else{
                     inst.immediate = getImmediate(lineN, immediateBitN,  res);

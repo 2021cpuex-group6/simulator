@@ -16,7 +16,7 @@ const std::string FILE_NOTFOUND = "ファイルが見つかりませんでした
 const std::string DOUBLE_LABEL = "ラベルが重複しています";
 static const std::string  GUI_ERROR_TOP = "Error";
 
-static const std::regex offsetRe(R"(\s*([0-9]+)\(\s*([a-z0-9]+)\s*\)\s*)");
+static const std::regex offsetRe(R"(\s*([\-0-9]+)\(\s*([a-z0-9]+)\s*\)\s*)");
 
 
 const int MAX_OPERAND_N = 3;
