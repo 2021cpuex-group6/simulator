@@ -311,7 +311,11 @@ std::pair<Command, std::vector<int>> InteractiveShell::getMRInput(const std::str
     try{
         int inputN = 0;
         while(stream >> str){
-            ans.emplace_back(std::stoi(str));
+            int base = 10;
+            if(startsWith(str, "0x")) base = 16;
+            else if(startsWith(str, "0b")) base = 2;
+            else if(startsWith(str, "0o")) base = 8;
+            ans.emplace_back(std::stoi(str, nullptr, base));
             inputN++;
         }
         if(inputN == 1) ans.emplace_back(1);

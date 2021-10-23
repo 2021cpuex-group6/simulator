@@ -756,7 +756,7 @@ void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAc
         memory.i = readMem(address, MemAccess::WORD);
         for (size_t i = 0; i < WORD_BYTE_N; i++)
         {
-            ss << std::setw(2) << std::setfill('0') << std::hex << memory.b[i] << " ";
+            ss << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(memory.b[i]) << " ";
         }
         
     }else{
@@ -766,11 +766,11 @@ void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAc
         memory2.i = readMem(mainAddress + WORD_BYTE_N, MemAccess::WORD);
         for (size_t i = subAddress; i < WORD_BYTE_N; i++)
         {
-            ss << std::setw(2) << std::setfill('0') << std::hex << memory1.b[i] << " ";
+            ss << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(memory1.b[i]) << " ";
         }
         for (size_t i = 0; i < subAddress; i++)
         {
-            ss << std::setw(2) << std::setfill('0') << std::hex << memory2.b[i] << " ";
+            ss << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(memory2.b[i]) << " ";
         }
     }
     return ss.str();
@@ -779,16 +779,16 @@ void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAc
 
 void AssemblySimulator::printMem(const uint32_t &address, const uint32_t &wordN, const int &lineN)const{
     uint32_t nowAddress = address;
-    
-    for (size_t i = 0; i < wordN / lineN; i++)
+    int repeatN = (wordN % lineN == 0) ? wordN / lineN : wordN / lineN + 1;
+    for (size_t i = 0; i < repeatN; i++)
     {
         std::cout << "0x" <<std::setw(MEM_ADDRESS_HEX_LEN) << std::setfill('0') <<
-             std::hex << nowAddress << " ";
+             std::hex << nowAddress << ": ";
         for (size_t j= 0; j < lineN; j++)
         {
-            std::cout << getMemWordString(nowAddress);
+            std::cout << getMemWordString(nowAddress) << " ";
             nowAddress += WORD_BYTE_N;
-            if((i == wordN /lineN -1 )&& ((wordN % lineN) - 1 == j)) break;
+            if((i ==repeatN -1 )&& ((wordN % lineN) - 1 == j)) break;
         }
         std::cout  << std::endl;
     }
