@@ -747,4 +747,32 @@ void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAc
             break;
     }
 }
- 
+
+ std::string AssemblySimulator::getMemWordString(const uint32_t address)const{
+    std::stringstream ss;
+    int subAddress = address % WORD_BYTE_N;
+    if(subAddress == 0){
+        MemoryUnit memory;
+        memory.i = readMem(address, MemAccess::WORD);
+        for (size_t i = 0; i < WORD_BYTE_N; i++)
+        {
+            ss << std::setw(2) << std::setfill('0') << std::hex << memory.b[i] << " ";
+        }
+        
+    }else{
+        int mainAddress = address - subAddress;
+        MemoryUnit memory1, memory2;
+        memory1.i = readMem(mainAddress, MemAccess::WORD);
+        memory2.i = readMem(mainAddress + WORD_BYTE_N, MemAccess::WORD);
+        for (size_t i = subAddress; i < WORD_BYTE_N; i++)
+        {
+            ss << std::setw(2) << std::setfill('0') << std::hex << memory1.b[i] << " ";
+        }
+        for (size_t i = 0; i < subAddress; i++)
+        {
+            ss << std::setw(2) << std::setfill('0') << std::hex << memory2.b[i] << " ";
+        }
+    }
+    return ss.str();
+    
+ }
