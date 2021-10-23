@@ -8,11 +8,14 @@ constexpr int REGISTERS_N = 32;
 constexpr int PRINT_REGISTERS_COL = 4;
 constexpr size_t REGISTER_BIT_N = 32;
 constexpr int INST_BYTE_N = 4;
+constexpr int WORD_BYTE_N = 4;
 constexpr int PRINT_INST_COL = 2;
 constexpr int PRINT_INST_NUM_SIZE = 6;
 constexpr int HISTORY_RESERVE_N = 1024;
 constexpr int SHIFT_MASK5 = 0b11111;
 constexpr int SHIFT_MASK31 = 0x7fffffff; // C++で右シフトが実装依存()なので
+constexpr int MEM_BYTE_N = 0x1000000; //メモリのバイト数 2^24
+
 const std::string BREAKPOINT_NOT_FOUND = "ブレークポイントが見つかりませんでした";
 const std::string FILE_END = "終了しました";
 const std::string ALREADY_ENDED = "すでに終了しています";
@@ -23,6 +26,7 @@ const std::string PC_NOT_ALIGNED_WRITE = "Warning: アラインに合わないpc
 const std::string NOT_FOUND_LABEL = "ラベルが見つかりません";
 const std::string OUT_OF_RANGE_BREAKPOINT = "ファイルの行数の範囲外のためブレークポイントは設置できません";
 const std::string NO_HISTORY = "もう履歴はありません";
+const std::string OUT_OF_RANGE_MEMORY = "メモリの範囲外を参照しようとしています";
 
 const std::string GUI_NO_HISTORY = "NoHis";
 const std::string GUI_END = "End";
@@ -38,12 +42,26 @@ enum class NumberBase{
     HEX = 16
 };
 
+union MemoryUnit{ // メモリの1ワードに対応するユニット
+    float f;
+    uint32_t i;
+    uint8_t b[WORD_BYTE_N];
+
+};
+
+enum class MemAccess{
+    WORD = 4, 
+    BYTE = 1
+};
+
 // 前回の状態に戻すのに必要なデータ
 struct BeforeData{
     std::string instruction;
     int pc;
     int regInd;  //書き込んだレジスタ。書き込みナシなら-1
     int regValue;
+    uint32_t memAddress; // 書き込んだアドレス
+    uint32_t memValue;
 };
 
 
@@ -53,6 +71,7 @@ class AssemblySimulator{
         bool forGUI = false;
         bool onWarning = true;
         std::array<int, REGISTERS_N> registers;
+        std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N> dram;  
         int pc; //pcはメモリアドレスを表すので、アセンブリファイルの行数-1の4倍
         bool end; //終了フラグ
         int instCount; // 実行命令数
@@ -80,6 +99,8 @@ class AssemblySimulator{
         void reset();
         void addHistory(const BeforeData &);
         void back();
+        uint32_t readMem(const uint32_t& address, const MemAccess &memAccess)const;
+        void writeMem(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value);
         BeforeData popHistory();
 
     // private:

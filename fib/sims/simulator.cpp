@@ -8,7 +8,7 @@
 
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI): parser(parser), registers({0}), pc(0),
-         end(false), instCount(0), opCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}), forGUI(forGUI){
+        dram({0}), end(false), instCount(0), opCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}), forGUI(forGUI){
     // opcounterをすべて0に
     for(const auto & item : opcodeInfoMap){
         opCounter.insert({item.first, 0});
@@ -29,6 +29,7 @@ void AssemblySimulator::reset(){
     historyN = 0;
     historyPoint = 0;
     beforeHistory.fill({});
+    dram.fill({0});
 }
 
 
@@ -649,3 +650,18 @@ void AssemblySimulator::printOpCounter() const{
     }
     
 }
+
+uint32_t AssemblySimulator::readMem(const uint32_t& address, const MemAccess &memAccess)const{
+    if(address > MEM_BYTE_N || address + static_cast<unsigned int>(memAccess) > MEM_BYTE_N){
+        //範囲外
+        launchError(OUT_OF_RANGE_MEMORY);
+    }
+
+}
+void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAccess, const uint32_t value){
+    if(address > MEM_BYTE_N || address + static_cast<unsigned int>(memAccess) > MEM_BYTE_N){
+        //範囲外
+        launchError(OUT_OF_RANGE_MEMORY);
+    }
+}
+ 
