@@ -118,7 +118,7 @@ class AssemblySimulator{
         void incrementPC();
         std::string getRegisterInfoUnit(const int&, const NumberBase&, const bool &sign) const ;
         std::string getMemWordString(const uint32_t &address)const;
-        void printMem(const uint32_t &address, const uint32_t &wordN)const;
+        void printMem(const uint32_t &address, const uint32_t &wordN, const int &lineN)const;
 };
 
 #endif
