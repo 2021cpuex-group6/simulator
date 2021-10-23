@@ -209,6 +209,7 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
             line ++;;
             beforeData.instruction = "";
             beforeData.pc = pc;
+            beforeData.writeMem = false;
             if(!jumpComment && printInst){
                 if(forGUI){
                     std::cout << GUI_NO_CHANGE << std::endl;
@@ -368,6 +369,13 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back)con
                 std::cout <<"x"<< std::setw(2) << std::setfill('0') <<  std::internal << before.regInd 
                     << " " << change <<  std::endl;
                 return;
+            }else if(before.writeMem){
+                uint32_t nowValue = readMem(before.memAddress, MemAccess::WORD);
+                //アドレス
+                std::cout  << before.memAddress << " ";
+                // 旧値
+                std::cout <<  before.memValue << " ";
+                std::cout << nowValue << std::endl;
             }else{
                 std::cout << GUI_NO_CHANGE << std::endl;
                 
@@ -392,6 +400,14 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back)con
                 std::cout << regInfo.substr(0, 3) << std::setw(11) << std::internal << 
                 before.regValue << " -> " << regInfo.substr(3) << std::endl;
                 return;
+            }else if(before.writeMem){
+                uint32_t nowValue = readMem(before.memAddress, MemAccess::WORD);
+                //アドレス
+                std::cout <<  "0x" << std::setw(MEM_ADDRESS_HEX_LEN) << std::setfill('0') << std::hex << before.memAddress;
+                // 旧値
+                std::cout <<  ": 0x" << std::setw(WORD_BYTE_N) << std::setfill('0') << std::hex << before.memValue;
+                std::cout << " -> ";
+                std::cout <<  "0x" << std::setw(WORD_BYTE_N) << std::setfill('0') << std::hex << nowValue << std::endl;
             }
         }
         std::cout << "--- No Change ---" << std::endl;
@@ -409,7 +425,7 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
     opCounter[opcode] = opCounter[opcode] + 1;
 
     if(opcode == "nop"){
-        BeforeData ans = {"nop", pc, -1};
+        BeforeData ans = {"nop", pc, -1, -1, false};
         pc += INST_BYTE_N;
         return ans;
     }
@@ -434,6 +450,7 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
             ans.pc = pc;
             ans.regInd = targetR;
             ans.regValue = registers[targetR];
+            ans.writeMem = false;
             if(targetR == 0){
                 // x0レジスタへの書き込み
                 launchWarning(ZERO_REG_WRITE_ERROR);
@@ -460,7 +477,7 @@ BeforeData AssemblySimulator::doStore(const std::string &opcode, const Instructi
 
     int regInd = getRegIndWithError(instruction.operand[0]);
     uint32_t beforeAddress = (address/4)*4;
-    BeforeData before = {opcode, pc, -1, -1, beforeAddress, readMem(beforeAddress, MemAccess::WORD)};
+    BeforeData before = {opcode, pc, -1, -1, true, beforeAddress, readMem(beforeAddress, MemAccess::WORD)};
 
     uint32_t value = registers[regInd];
     if(opcode == "sw"){
@@ -477,7 +494,7 @@ BeforeData AssemblySimulator::doLoad(const std::string &opcode, const Instructio
     address += registers[getRegIndWithError(instruction.operand[1])];
 
     int regInd = getRegIndWithError(instruction.operand[0]);
-    BeforeData before = {opcode, pc, regInd, registers[regInd]};
+    BeforeData before = {opcode, pc, regInd, registers[regInd], false};
     
     if(opcode == "lw"){
         uint32_t value = readMem(address, MemAccess::WORD);
@@ -599,7 +616,7 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
 
     if(jumpFlag){
         try{
-            BeforeData ans = {opcode, pc, -1};
+            BeforeData ans = {opcode, pc, -1, -1, false};
             if(opcode == "jal" || opcode == "jalr"){
                 // レジスタへの書き込み
                 int regd = getRegIndWithError(instruction.operand[0]);
@@ -633,7 +650,7 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
         }
 
     }else{
-        BeforeData ans = {opcode, pc, -1};
+        BeforeData ans = {opcode, pc, -1, -1, false};
         incrementPC();
         return ans;
     }

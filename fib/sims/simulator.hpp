@@ -15,6 +15,7 @@ constexpr int HISTORY_RESERVE_N = 1024;
 constexpr int SHIFT_MASK5 = 0b11111;
 constexpr int SHIFT_MASK31 = 0x7fffffff; // C++で右シフトが実装依存()なので
 constexpr int MEM_BYTE_N = 0x1000000; //メモリのバイト数 2^24
+constexpr int MEM_ADDRESS_HEX_LEN = 8;
 
 const std::string BREAKPOINT_NOT_FOUND = "ブレークポイントが見つかりませんでした";
 const std::string FILE_END = "終了しました";
@@ -62,6 +63,7 @@ struct BeforeData{
     int pc;
     int regInd;  //書き込んだレジスタ。書き込みナシなら-1
     int regValue;
+    bool writeMem; //メモリに書き込んだか
     uint32_t memAddress; // 書き込んだアドレス
     uint32_t memValue;
 };
