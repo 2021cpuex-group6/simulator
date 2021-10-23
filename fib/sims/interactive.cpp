@@ -4,7 +4,7 @@
 #include <vector>
 #include <regex>
 
-InteractiveShell::InteractiveShell(const AssemblySimulator & sim, const AssemblyParser& parse, const bool &  forGUI): simulator(sim), parser(parse), forGUI(forGUI){}
+InteractiveShell::InteractiveShell(AssemblySimulator & sim, AssemblyParser& parse, const bool &  forGUI): simulator(sim), parser(parse), forGUI(forGUI){}
 
 void InteractiveShell::start(){
     std::pair<Command, std::vector<int>> input;

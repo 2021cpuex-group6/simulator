@@ -58,10 +58,10 @@ private:
     std::pair<Command, std::vector<int>> getBDInput(const std::string &) const;
     void printGUIError(const std::string &message)const;
 public:
-    AssemblySimulator simulator;
-    AssemblyParser parser;
+    AssemblySimulator &simulator;
+    AssemblyParser &parser;
 
-    InteractiveShell(const AssemblySimulator& sim, const AssemblyParser& pars, const bool &forGUI);
+    InteractiveShell(AssemblySimulator& sim, AssemblyParser& pars, const bool &forGUI);
     void start();
     std::pair<Command, std::vector<int>> getInput()const;
 
