@@ -8,7 +8,7 @@
 
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI): parser(parser), registers({0}), pc(0),
-        dram({0}), end(false), instCount(0), opCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}), forGUI(forGUI){
+        dram({}), end(false), instCount(0), opCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}), forGUI(forGUI){
     // opcounterをすべて0に
     for(const auto & item : opcodeInfoMap){
         opCounter.insert({item.first, 0});
@@ -582,7 +582,7 @@ void AssemblySimulator::doALU(const std::string &opcode, const int &targetR, con
     // RISC-Vではsource1の下位5ビットを（符号なし整数ととらえて？）シフトする 
     // C, C++では負数の右シフトが算術シフトか論理シフトかは実装依存()なので、無理やり合わせる
     }else{
-        unsigned int shiftN = source1 & SHIFT_MASK5;
+        unsigned int shiftN = source1 & 0b11111;
         if(opcode == "sll"){
             ans = source0 << shiftN;
         }else if(opcode == "srl"){

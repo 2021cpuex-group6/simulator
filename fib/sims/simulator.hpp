@@ -12,8 +12,7 @@ constexpr int WORD_BYTE_N = 4;
 constexpr int PRINT_INST_COL = 2;
 constexpr int PRINT_INST_NUM_SIZE = 6;
 constexpr int HISTORY_RESERVE_N = 1024;
-constexpr int SHIFT_MASK5 = 0b11111;
-constexpr int SHIFT_MASK31 = 0x7fffffff; // C++で右シフトが実装依存()なので
+
 constexpr int MEM_BYTE_N = 0x1000000; //メモリのバイト数 2^24
 constexpr int MEM_ADDRESS_HEX_LEN = 8;
 
@@ -85,7 +84,7 @@ class AssemblySimulator{
         int historyN;   // 現在保持している履歴の数
         int historyPoint; // 次に履歴を保存するインデックス
         std::array<BeforeData, HISTORY_RESERVE_N> beforeHistory; // もとに戻れるようにデータをとる
-        const AssemblyParser parser;
+        const AssemblyParser &parser;
 
         AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI);
         void printRegisters(const NumberBase&, const bool &sign) const;
