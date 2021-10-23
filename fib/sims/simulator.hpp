@@ -117,7 +117,8 @@ class AssemblySimulator{
         BeforeData doControl(const std::string &opcode, const Instruction &instruction);
         void incrementPC();
         std::string getRegisterInfoUnit(const int&, const NumberBase&, const bool &sign) const ;
-        std::string getMemWordString(const uint32_t address)const;
+        std::string getMemWordString(const uint32_t &address)const;
+        void printMem(const uint32_t &address, const uint32_t &wordN)const;
 };
 
 #endif

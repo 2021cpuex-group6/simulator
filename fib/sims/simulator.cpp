@@ -748,7 +748,7 @@ void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAc
     }
 }
 
- std::string AssemblySimulator::getMemWordString(const uint32_t address)const{
+ std::string AssemblySimulator::getMemWordString(const uint32_t & address)const{
     std::stringstream ss;
     int subAddress = address % WORD_BYTE_N;
     if(subAddress == 0){
@@ -776,3 +776,21 @@ void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAc
     return ss.str();
     
  }
+
+void AssemblySimulator::printMem(const uint32_t &address, const uint32_t &wordN)const{
+    uint32_t nowAddress = address;
+    
+    for (size_t i = 0; i < wordN / 2; i++)
+    {
+        std::cout << "0x" <<std::setw(MEM_ADDRESS_HEX_LEN) << std::setfill('0') <<
+             std::hex << nowAddress << " ";
+        for (size_t j= 0; j < 2; j++)
+        {
+            std::cout << getMemWordString(nowAddress);
+            nowAddress += WORD_BYTE_N;
+            if((i == wordN /2 -1 )&& (wordN % 2 != 0)) break;
+        }
+        std::cout  << std::endl;
+    }
+    
+}
