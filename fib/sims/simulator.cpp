@@ -421,8 +421,9 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
     }else{
         BeforeData ans = {};
         if(opKind == INST_LOAD){
-            
-
+            ans = doLoad(opcode, instruction);
+        }else if(opKind == INST_STORE){
+            ans = doStore(opcode, instruction);
         }else if(opKind == INST_OTHERS){
 
         }else{
@@ -450,10 +451,44 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
         incrementPC();
         return ans;
     }
-
-
-
 }
+
+BeforeData AssemblySimulator::doStore(const std::string &opcode, const Instruction &instruction){
+    // ストア命令を実行
+    uint32_t address = instruction.immediate;
+    address += registers[getRegIndWithError(instruction.operand[1])];
+
+    int regInd = getRegIndWithError(instruction.operand[0]);
+    uint32_t beforeAddress = (address/4)*4;
+    BeforeData before = {opcode, pc, -1, -1, beforeAddress, readMem(beforeAddress, MemAccess::WORD)};
+
+    uint32_t value = registers[regInd];
+    if(opcode == "sw"){
+        writeMem(address, MemAccess::WORD, value);
+    }else if(opcode == "sb"){
+        writeMem(address, MemAccess::BYTE, (~0xff) & value);
+    }
+    return before;
+}
+
+BeforeData AssemblySimulator::doLoad(const std::string &opcode, const Instruction &instruction){
+    // ロード命令を実行
+    uint32_t address = instruction.immediate;
+    address += registers[getRegIndWithError(instruction.operand[1])];
+
+    int regInd = getRegIndWithError(instruction.operand[0]);
+    BeforeData before = {opcode, pc, regInd, registers[regInd]};
+    
+    if(opcode == "lw"){
+        uint32_t value = readMem(address, MemAccess::WORD);
+        registers[regInd] = value;
+    }else if(opcode == "lbu"){
+        uint32_t value = readMem(address, MemAccess::BYTE);
+        registers[regInd] = ((~0xff) &registers[regInd]) | value;
+    }
+    return before;
+}
+
 int AssemblySimulator::getRegInd(const std::string &regName){
     if(regName == "pc"){
         return REGISTERS_N;
