@@ -1,4 +1,4 @@
-CFLAGS := -g -Wall -O0
+CFLAGS := -g -Wall -O0 -std=c++17
 SIMSRCS := $(wildcard sims/*.cpp) $(wildcard utils/*.cpp) main.cpp
 ASSEMSRCS := $(wildcard assemble/*.cpp) $(wildcard utils/*.cpp) assembler.cpp
 FPUSRCS := utils/utils.cpp sims/fpu.cpp fpuChecker.cpp
