@@ -121,20 +121,13 @@ bool addSubCheck(const uint32_t& input1, const uint32_t& input2,
     return dif < standard;
 }
 
-
-void addSubRandomCheck(const int iterN, const bool &isSub){
-    // ランダムでadd, subの実装とc++の結果を比べる
-    std::random_device rnd;
-    int checkedN = 0;
-    int wrongN = 0;
-    for(int i=0; i < iterN; i++){
-        Float32 f1, f2;
-        f1.u32 = rnd();
-        f2.u32 = rnd();
-        if(isNormalized(f1.f32) && isNormalized(f2.f32)){
-            checkedN ++;
+int printAddSubCheck(const Float32 &f1, const Float32 &f2, const bool &isSub){
+    // add, subの結果が正しいか調べ、print
+    // -1 ... 誤差大
+    // 1  ... 基準を満たす
+    // 0  ... 対象外
+    if(isNormalized(f1.f32) && isNormalized(f2.f32)){
             if(!addSubCheck(f1.u32, f2.u32, isSub)){
-                wrongN ++;
                 Float32 myAns, trueAns;
                 myAns.u32 = faddsub(f1.u32, f2.u32, isSub);
                 trueAns.f32 = f1.f32 + f2.f32;
@@ -144,9 +137,49 @@ void addSubRandomCheck(const int iterN, const bool &isSub){
                     << std::bitset<32>(f2.u32) << std::endl;
                 std::cout << std::bitset<32>(trueAns.u32) << std::endl;
                 std::cout << std::bitset<32>(myAns.u32) <<  std::endl;
-                
+                return -1;
             }
+            return 1;
+    }
+    return 0;
+
+}
+
+void addSubRandomCheck(const int iterN, const bool &isSub){
+    // ランダムでadd, subの実装とc++の結果を比べる
+    std::random_device rnd;
+    int checkedN = 0;
+    int wrongN = 0;
+    
+    for(int i=0; i < iterN; i++){
+        Float32 f1, f2;
+        if(i < 20){
+            f1.u32 = 0;
+        }else if(i < 150){
+            f1.u32 = rnd();
+            f1.u32 |= 0x7c000000;
+        }else if(i < 250){
+            f1.u32 = rnd();
+            f1.u32 &= 0x02ffffff;
+        }else if(i < 350){
+            f1.u32 = rnd();
+            f1.u32 &= 0x01ffffff;
+        }else{
+            f1.u32 = rnd();
         }
+        if(i % 10 == 0){
+            f2.u32 = f1.u32;
+        }else if (i % 15 == 0){
+            f2.f32 = f1.f32 * -1;
+        }else{
+            f2.u32 = rnd();
+        }
+        int res = printAddSubCheck(f1, f2, isSub);
+        if(res != 0){
+            checkedN++;
+            wrongN += res < 0 ? 1 : 0;
+        }
+        
     }
     std::cout << "checkedN: " << checkedN << std::endl;
     std::cout << "wrongN: " << wrongN << std::endl;
