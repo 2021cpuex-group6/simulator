@@ -110,7 +110,7 @@ void AssemblyParser::parseFile(const std::string& filePath){
     std::string line;
 
     const std::regex instRe(R"(^\s+([a-zA-Z0-9\-].*))");
-    const std::regex labelRe(R"(^([0-9a-zA-Z_]+)\s*:\s*)");
+    const std::regex labelRe(R"(^([0-9a-zA-Z_\.]+)\s*:\s*)");
     const std::regex commentRe(R"((.*)\s*#.*)");
     const std::regex spaceRe(R"(\s*)");
 
@@ -154,7 +154,7 @@ void AssemblyParser::parseFile(const std::string& filePath){
 void AssemblyParser::instParse(const int lineN, std::string instLine){
     // 命令部分をパース
     std::vector<std::string> instVec;
-    std::regex instUnit(R"([a-z0-9\-\(\)]+)");
+    std::regex instUnit(R"([a-z0-9\-\(\)\.]+)");
     std::smatch m;
     int count = -1;
     int labelInd = -1;
