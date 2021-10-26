@@ -25,6 +25,7 @@ uint32_t faddsub(const uint32_t & x1, const uint32_t& x2, const bool &isSub){
     uint32_t e1 = x1_[1] >> (INT_BIT_N - 9u);
     uint32_t m1 = x1_[2];
     uint32_t s2 = shiftRightLogical(x2_[0], INT_BIT_N-1);
+    s2 = (s2 == 1u) ^ isSub ? 1u: 0;
     uint32_t e2 = x2_[1] >> (INT_BIT_N - 9u);
     uint32_t m2 = x2_[2];
 
@@ -48,7 +49,7 @@ uint32_t faddsub(const uint32_t & x1, const uint32_t& x2, const bool &isSub){
     uint32_t be = f1 ? e1 : e2;
     uint32_t bs = f1 ? s1 : s2;
     
-    bool f2 = (s1 != s2) != isSub;
+    bool f2 = (s1 != s2);
     uint32_t add = shiftRightLogical(~0u, 7) & (bm + sm);
     uint32_t sub = shiftRightLogical(~0u, 7) & (bm - sm);
     uint32_t res = f2 ? sub : add;
@@ -64,7 +65,8 @@ uint32_t faddsub(const uint32_t & x1, const uint32_t& x2, const bool &isSub){
     }
 
     uint32_t ie = 0b111111111 & (be + 1);
-    uint32_t my = shiftRightLogical(~0u, 8) & (res << nz);
+    uint32_t smy = shiftRightLogical(~0u, 7) & (res << nz);
+    uint32_t my = (shiftRightLogical(~0u, 8) & smy) >> 1;
     uint32_t se = ie - nz;
     uint32_t sy = ((se & (0b1 << 9)) !=0 || nz == 25u) ? 0 : (se & 0b11111111);
 
