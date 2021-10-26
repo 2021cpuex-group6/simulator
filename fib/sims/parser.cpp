@@ -154,7 +154,7 @@ void AssemblyParser::parseFile(const std::string& filePath){
 void AssemblyParser::instParse(const int lineN, std::string instLine){
     // 命令部分をパース
     std::vector<std::string> instVec;
-    std::regex instUnit(R"([a-z0-9\-\(\)\.]+)");
+    std::regex instUnit(R"([a-z0-9\-\(\)\.%]+)");
     std::smatch m;
     int count = -1;
     int labelInd = -1;
