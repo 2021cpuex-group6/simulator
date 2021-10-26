@@ -116,7 +116,7 @@ uint32_t fmul(const uint32_t & x1, const uint32_t& x2){
 
     // 1-3
     // yの符号
-    uint32_t sy = s1 != s2 ? 1 : 0;
+    uint32_t sy = s1 != s2 ? 1u : 0;
 
     // 1-a
     // 両方の指数部が0でないかどうか
@@ -195,7 +195,7 @@ bool mulCheck(const uint32_t& input1, const uint32_t& input2){
     in1.u32 = input1;
     in2.u32 = input2;
 
-    float ans = in1.f32 + in2.f32;
+    float ans = in1.f32 * in2.f32;
     if(!isNormalized(ans)){
         return true;
     }
@@ -209,32 +209,47 @@ bool mulCheck(const uint32_t& input1, const uint32_t& input2){
     return dif < standard;
 }
 
-CheckResult printAddSubCheck(const Float32 &f1, const Float32 &f2, const bool &isSub){
+CheckResult printOperationCheck(const Float32 &f1, const Float32 &f2, const CheckedOperation & op){
     // add, subの結果が正しいか調べ、print
-    // -1 ... 誤差大
-    // 1  ... 基準を満たす
-    // 0  ... 対象外
     if(isNormalized(f1.f32) && isNormalized(f2.f32)){
-            if(!addSubCheck(f1.u32, f2.u32, isSub)){
-                Float32 myAns, trueAns;
-                myAns.u32 = faddsub(f1.u32, f2.u32, isSub);
+        bool res = false;
+        Float32 myAns, trueAns;
+        switch(op){
+            case CheckedOperation::ADD:
+                res = addSubCheck(f1.u32, f2.u32, false);
+                myAns.u32 = faddsub(f1.u32, f2.u32, false);
                 trueAns.f32 = f1.f32 + f2.f32;
-                std::cout << f1.f32 << " " << f2.f32 << " " << trueAns.f32
-                    << " " << myAns.f32  << std::endl;
-                std::cout << std::bitset<32>(f1.u32) << " " 
-                    << std::bitset<32>(f2.u32) << std::endl;
-                std::cout << std::bitset<32>(trueAns.u32) << std::endl;
-                std::cout << std::bitset<32>(myAns.u32) <<  std::endl;
-                return CheckResult::INVALID;
-            }
-            return CheckResult::CLEAR;
+                break;
+            case CheckedOperation::SUB:
+                res = addSubCheck(f1.u32, f2.u32, true);
+                myAns.u32 = faddsub(f1.u32, f2.u32, true);
+                trueAns.f32 = f1.f32 - f2.f32;
+                break;
+            case CheckedOperation::MUL:
+                res = mulCheck(f1.u32, f2.u32);
+                myAns.u32 = fmul(f1.u32, f2.u32);
+                trueAns.f32 = f1.f32 * f2.f32;
+                break;
+            default:
+                break;
+        }
+        if(!res){
+            std::cout << f1.f32 << " " << f2.f32 << " " << trueAns.f32
+                << " " << myAns.f32  << std::endl;
+            std::cout << std::bitset<32>(f1.u32) << " " 
+                << std::bitset<32>(f2.u32) << std::endl;
+            std::cout << std::bitset<32>(trueAns.u32) << std::endl;
+            std::cout << std::bitset<32>(myAns.u32) <<  std::endl;
+            return CheckResult::INVALID;
+        }
+        return CheckResult::CLEAR;
     }
     return CheckResult::OUT_OF_RANGE;
 
 }
 
 
-void addSubRandomCheck(const int iterN, const bool &isSub){
+void randomOperationCheck(const int iterN, const CheckedOperation &op){
     // ランダムでadd, subの実装とc++の結果を比べる
     std::random_device rnd;
     int checkedN = 0;
@@ -263,9 +278,9 @@ void addSubRandomCheck(const int iterN, const bool &isSub){
         }else{
             f2.u32 = rnd();
         }
-        CheckResult res = printAddSubCheck(f1, f2, isSub);
+        CheckResult res = printOperationCheck(f1, f2, op);
         switch (res){
-            case CheckResult::OUT_OF_RANGE:
+            case CheckResult::INVALID:
                 wrongN++;
             case CheckResult::CLEAR:
                 checkedN++;
