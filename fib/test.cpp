@@ -49,6 +49,12 @@ typedef union Test{
     uint8_t testu[4];
 };
 int main(int c){
+    int32_t a =  0b1100011010001111111 >> 46;
+    uint32_t b = 0b101101;
+    uint32_t d = a-b;
+    uint32_t e = d+b;
+    std::cout << a-b << std::endl;
+    
     std::vector<float> tests = {5};
     tests.emplace_back(std::numeric_limits<float>::infinity());
     tests.emplace_back(std::numeric_limits<float>::denorm_min());
@@ -65,9 +71,9 @@ int main(int c){
         std::cout << isNormalized(e) << std::endl;
         
     }
-    Test a;
-    a.testf = std::numeric_limits<float>::infinity();
-    std::cout << a.testf << std::endl;
+    // Test a;
+    // a.testf = std::numeric_limits<float>::infinity();
+    // std::cout << std::stoi("0xff", nullptr, 16) << std::endl;
     
 
 }

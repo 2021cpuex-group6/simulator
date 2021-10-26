@@ -10,16 +10,21 @@ bool startsWith(const std::string &strA, const std::string &strB){
 }
 
 int32_t shiftRightLogical(const int32_t &input, const unsigned int & shiftN){
-    // input をshiftNの下位5bitを符号なし整数とみて右論理シフト
     if(shiftN != 0){
+        if(shiftN >= INT_BIT_N){
+            return 0;
+        }
         int32_t ans = input >> shiftN;
         // SHIFT_MASK31はMSBが0
         ans &= SHIFT_MASK31 >> (shiftN-1);
         return ans;
     }
+    return input;
 }
 int32_t shiftRightArithmatic(const int32_t &input, const unsigned int & shiftN){
-    // input をshiftNの下位5bitを符号なし整数とみて右算術シフト
+    if(shiftN >= INT_BIT_N){
+        return input < 0 ? ~0 : 0;
+    }
     int32_t ans = input >> shiftN;
     // SHIFT_MASK31はMSBが0
     if(input < 0){
