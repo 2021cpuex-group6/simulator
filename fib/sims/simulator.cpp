@@ -17,7 +17,13 @@ AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &u
     for(const auto & item : opcodeInfoMap){
         opCounter.insert({item.first, 0});
     }
+}
+
         
+AssemblySimulator::~AssemblySimulator(){
+    printf("test\n");
+    delete dram;
+    
 }
 
 void AssemblySimulator::reset(){
@@ -517,7 +523,7 @@ int AssemblySimulator::getRegInd(const std::string &regName){
         return 0;
     }else{
         try{
-            if(startsWith(regName, "%x")){
+            if(startsWith(regName, REG_PREFIX)){
                 return std::stoi(regName.substr(2));
             }else{
                 return std::stoi(regName.substr(1));

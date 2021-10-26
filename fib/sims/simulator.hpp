@@ -30,6 +30,7 @@ const std::string OUT_OF_RANGE_MEMORY = "メモリの範囲外を参照しよう
 const std::string ILEGAL_WORD_ACCESS = "メモリのワードアクセスは4バイトアラインされた位置のみにできます";
 const std::string IMPLEMENT_ERROR = "バグです。報告してください";
 
+const std::string REG_PREFIX = "%x";
 const std::string GUI_NO_HISTORY = "NoHis";
 const std::string GUI_END = "End";
 const std::string GUI_ALREADY_END = "AEnd";
@@ -87,6 +88,7 @@ class AssemblySimulator{
         const AssemblyParser &parser;
 
         AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI);
+        ~AssemblySimulator();
         void printRegisters(const NumberBase&, const bool &sign) const;
         void printOpCounter()const;
         void next(bool, const bool&);
