@@ -12,6 +12,7 @@ bool startsWith(const std::string &strA, const std::string &strB){
 int32_t shiftRightLogical(const int32_t &input, const unsigned int & shiftN){
     if(shiftN != 0){
         if(shiftN >= INT_BIT_N){
+            //32ビット以上のシフトは0にならないので自分で実装しないといけない()
             return 0;
         }
         int32_t ans = input >> shiftN;
