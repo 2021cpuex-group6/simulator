@@ -80,6 +80,73 @@ uint32_t fadd(const uint32_t & x1, const uint32_t& x2){
 uint32_t fsub(const uint32_t & x1, const uint32_t& x2){
     return faddsub(x1, x2, true);
 }
+
+uint32_t fmul(const uint32_t & x1, const uint32_t& x2){
+    // 浮動小数点の積
+
+    // 0
+    // 分解
+    // 暗黙の1を追加
+    auto x1_ =  separateFloat(x1);
+    auto x2_ =  separateFloat(x2);
+
+    uint32_t s1 = shiftRightLogical(x1_[0], INT_BIT_N-1);
+    uint32_t e1 = x1_[1] >> (INT_BIT_N - 9u);
+    uint32_t m1 = x1_[2];
+    uint32_t s2 = shiftRightLogical(x2_[0], INT_BIT_N-1);
+    uint32_t e2 = x2_[1] >> (INT_BIT_N - 9u);
+    uint32_t m2 = x2_[2];
+
+    uint32_t hx1 = shiftRightLogical(m1, 11) | 1u << 12;
+    uint32_t lx1 = m1 & 0x7ff; 
+    uint32_t hx2 = shiftRightLogical(m2, 11) | 1u << 12;
+    uint32_t lx2 = m2 & 0x7ff; 
+
+    // 1-1
+    // 積を部分ごとに計算
+    // lx1*lx2は切り捨て
+    uint32_t hh = (hx1 * hx2) & 0x3ffffff;
+    uint32_t hl = (hx1 * lx2) & 0xffffff;
+    uint32_t lh = (lx1 * hx2) & 0xffffff;
+
+    // 1-2
+    // 指数部を加算
+    // 129を足すと最上位ビットがない=アンダーフローとなる
+    uint32_t ae = (e1 + e2 + 129) & 0x1ff;
+
+    // 1-3
+    // yの符号
+    uint32_t sy = s1 != s2 ? 1 : 0;
+
+    // 1-a
+    // 両方の指数部が0でないかどうか
+    bool f1 = (e1 != 0) && (e2 != 0);
+
+    // 2-1
+    // 部分積を加算
+    uint32_t shl = shiftRightLogical(hl, 11) & 0x3ffffff;
+    uint32_t slh = shiftRightLogical(lh, 11) & 0x3ffffff;
+    uint32_t am = (hh + shl + slh + 2) & 0x3ffffff;
+
+    // 2-2
+    // 指数部+1を計算
+    uint32_t be = (ae + 1) & 0x1ff;
+
+    // 3-1
+    // 指数部選択
+    uint32_t ey = ((ae & (1u << 8)) != 0) && f1 ? 
+                        ((am & (1u << 25)) != 0 ? (be & 0xff) : (ae & 0xff))
+                       :0;
+    // 3-2
+    // 仮数部を正規化
+    uint32_t my = (am & (1u << 25)) != 0 ? (shiftRightLogical(am, 2)) : (shiftRightLogical(am, 1));
+    my &= 0x7fffff;
+
+    // 3-3
+    // 返す
+    return (sy << (INT_BIT_N-1)) | (ey << (INT_BIT_N-9)) | my;
+}
+
 bool isNormalized(const float & input){
     // 入力された値が正規化数か調べる
     Float32 float32;
@@ -121,7 +188,28 @@ bool addSubCheck(const uint32_t& input1, const uint32_t& input2,
     return dif < standard;
 }
 
-int printAddSubCheck(const Float32 &f1, const Float32 &f2, const bool &isSub){
+bool mulCheck(const uint32_t& input1, const uint32_t& input2){
+    // 積の結果が合うかを調べる
+    // c++の実装の結果で答えが非正規化数になるものは結果によらずtrue
+    Float32 in1, in2;
+    in1.u32 = input1;
+    in2.u32 = input2;
+
+    float ans = in1.f32 + in2.f32;
+    if(!isNormalized(ans)){
+        return true;
+    }
+    uint32_t myAns = fmul(in1.u32, in2.u32);
+    Float32 myAns_;
+    myAns_.u32 = myAns;
+    float dif = fabs(myAns_.f32 - ans);
+    float factor = pow(2, -22);
+    float standard = fmax(fabs(ans) * factor, pow(2, -126));
+
+    return dif < standard;
+}
+
+CheckResult printAddSubCheck(const Float32 &f1, const Float32 &f2, const bool &isSub){
     // add, subの結果が正しいか調べ、print
     // -1 ... 誤差大
     // 1  ... 基準を満たす
@@ -137,13 +225,14 @@ int printAddSubCheck(const Float32 &f1, const Float32 &f2, const bool &isSub){
                     << std::bitset<32>(f2.u32) << std::endl;
                 std::cout << std::bitset<32>(trueAns.u32) << std::endl;
                 std::cout << std::bitset<32>(myAns.u32) <<  std::endl;
-                return -1;
+                return CheckResult::INVALID;
             }
-            return 1;
+            return CheckResult::CLEAR;
     }
-    return 0;
+    return CheckResult::OUT_OF_RANGE;
 
 }
+
 
 void addSubRandomCheck(const int iterN, const bool &isSub){
     // ランダムでadd, subの実装とc++の結果を比べる
@@ -174,12 +263,15 @@ void addSubRandomCheck(const int iterN, const bool &isSub){
         }else{
             f2.u32 = rnd();
         }
-        int res = printAddSubCheck(f1, f2, isSub);
-        if(res != 0){
-            checkedN++;
-            wrongN += res < 0 ? 1 : 0;
+        CheckResult res = printAddSubCheck(f1, f2, isSub);
+        switch (res){
+            case CheckResult::OUT_OF_RANGE:
+                wrongN++;
+            case CheckResult::CLEAR:
+                checkedN++;
+            default:
+                break;
         }
-        
     }
     std::cout << "checkedN: " << checkedN << std::endl;
     std::cout << "wrongN: " << wrongN << std::endl;
