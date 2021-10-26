@@ -112,7 +112,7 @@ uint32_t fmul(const uint32_t & x1, const uint32_t& x2){
     // 1-2
     // 指数部を加算
     // 129を足すと最上位ビットがない=アンダーフローとなる
-    uint32_t ae = (e1 + e2 + 129) & 0x1ff;
+    uint32_t ae = (e1 + e2 + 129u) & 0x1ff;
 
     // 1-3
     // yの符号
@@ -154,7 +154,7 @@ bool isNormalized(const float & input){
     uint32_t exp = (float32.u32 >> 23u) & 0xff;
     if(exp == 0u){
         // 仮数が全部0なら正規化数
-        return (float32.u32 & 0x7ffu) == 0;
+        return (float32.u32 & 0x7fffffu) == 0;
     }else if(exp == 0xffu){
         return false;
     }
