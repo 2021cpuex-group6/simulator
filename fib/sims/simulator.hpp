@@ -13,7 +13,7 @@ constexpr int PRINT_INST_COL = 2;
 constexpr int PRINT_INST_NUM_SIZE = 6;
 constexpr int HISTORY_RESERVE_N = 1024;
 constexpr int SHIFT_MASK5 = 0b11111;
-constexpr int MEM_BYTE_N = 0x1000; //メモリのバイト数 2^12
+constexpr int MEM_BYTE_N = 0x1000000; //メモリのバイト数 2^12
 constexpr int MEM_ADDRESS_HEX_LEN = 8;
 
 const std::string BREAKPOINT_NOT_FOUND = "ブレークポイントが見つかりませんでした";
@@ -74,7 +74,7 @@ class AssemblySimulator{
         bool forGUI = false;
         bool onWarning = true;
         std::array<int, REGISTERS_N> registers;
-        std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N> dram;  
+        std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N> *dram;  
         int pc; //pcはメモリアドレスを表すので、アセンブリファイルの行数-1の4倍
         bool end; //終了フラグ
         int instCount; // 実行命令数

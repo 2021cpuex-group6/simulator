@@ -8,7 +8,11 @@
 
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI): parser(parser), registers({0}), pc(0),
-        dram({}), end(false), instCount(0), opCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}), forGUI(forGUI){
+         end(false), instCount(0), opCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}), forGUI(forGUI){
+    dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
+    MemoryUnit mu;
+    mu.i = 0;
+    (*dram).fill(mu);
     // opcounterをすべて0に
     for(const auto & item : opcodeInfoMap){
         opCounter.insert({item.first, 0});
@@ -29,7 +33,7 @@ void AssemblySimulator::reset(){
     historyN = 0;
     historyPoint = 0;
     beforeHistory.fill({});
-    dram.fill({0});
+    (*dram).fill({0});
 }
 
 
@@ -513,7 +517,11 @@ int AssemblySimulator::getRegInd(const std::string &regName){
         return 0;
     }else{
         try{
-            return std::stoi(regName.substr(1));
+            if(startsWith(regName, "%x")){
+                return std::stoi(regName.substr(2));
+            }else{
+                return std::stoi(regName.substr(1));
+            }
         }catch(const std::invalid_argument & e){
             // レジスタ名が不正
             return -1;
@@ -714,10 +722,10 @@ uint32_t AssemblySimulator::readMem(const uint32_t& address, const MemAccess &me
     switch(memAccess){
         case MemAccess::WORD:
             if(subAddress != 0) launchError(ILEGAL_WORD_ACCESS);
-            return dram[mainAddress].i;
+            return (*dram)[mainAddress].i;
             break;
         case MemAccess::BYTE:
-            return static_cast<uint32_t>(dram[mainAddress].b[subAddress]);
+            return static_cast<uint32_t>((*dram)[mainAddress].b[subAddress]);
             break;
         default:
             launchError(IMPLEMENT_ERROR);
@@ -737,10 +745,10 @@ void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAc
     switch(memAccess){
         case MemAccess::WORD:
             if(subAddress != 0) launchError(ILEGAL_WORD_ACCESS);
-            dram[mainAddress].i = value;
+            (*dram)[mainAddress].i = value;
             break;
         case MemAccess::BYTE:
-            dram[mainAddress].b[subAddress] = static_cast<uint8_t>(value);
+            (*dram)[mainAddress].b[subAddress] = static_cast<uint8_t>(value);
             break;
         default:
             launchError(IMPLEMENT_ERROR);

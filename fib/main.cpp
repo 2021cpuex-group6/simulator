@@ -37,6 +37,7 @@ int main(int argc, char* argv[]){
 
     InteractiveShell shell(simulator, parser, forGUI);
     shell.start();
+    delete simulator.dram;
     // simulator.launch();
     // simulator.printRegisters(NumberBase::DEC, true);
     // simulator.printOpCounter();
