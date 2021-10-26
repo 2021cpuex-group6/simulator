@@ -68,31 +68,33 @@ std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const Number
 
     }
 
+    int value = regN < REGISTERS_N ? registers[regN] : pc;
+
 
     unsigned int  numSize = 0;
     switch (base){
         case NumberBase::BIN :
             prefix = "0b";
             numSize = 32;
-            sin << std::bitset<REGISTER_BIT_N>(registers[regN]);
+            sin << std::bitset<REGISTER_BIT_N>(value);
             break;
         case NumberBase::OCT :
             prefix = "0o";
             numSize = 11;
-            sin << std::oct << registers[regN];
+            sin << std::oct << value;
             break;
         case NumberBase::HEX :
             prefix = "0x";
             numSize = 8;
-            sin << std::hex << registers[regN];
+            sin << std::hex << value;
             break;
         default :
             prefix = "";
             numSize = 10;
             if (sign){
-                ss << regName  << std::setw(numSize) << std::internal << registers[regN];
+                ss << regName  << std::setw(numSize) << std::internal << value;
             }else{
-                ss << regName  << std::setw(numSize) << std::internal << (unsigned int) registers[regN];
+                ss << regName  << std::setw(numSize) << std::internal << value;
             }
             return ss.str();
             break;
