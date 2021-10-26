@@ -154,7 +154,7 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
     
 }
 
-static int8_t register_to_binary(std::string reg_name, const int &line) {
+static int8_t fregister_to_binary(std::string reg_name, const int &line) {
     //　浮動小数点レジスタ名をデコード
     //  とりあえずf0~f31の名前にする
     int8_t output = 0;
