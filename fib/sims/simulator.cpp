@@ -170,7 +170,7 @@ void AssemblySimulator::launch(){
 void AssemblySimulator::doNextBreak(){
     // 次のブレークポイントまで実行
     int line;
-    next(false, false); // 最初の一回は実行可能
+    next(false, false); //最初は実行できる
     while(!end){
         line = pc / INST_BYTE_N + 1;
         if(breakPoints.find(line) != breakPoints.end()){
