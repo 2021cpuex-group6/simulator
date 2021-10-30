@@ -14,7 +14,10 @@ const std::string INVALID_OPERAND_N = "オペランドの数が合いません";
 const std::string INVALID_OPERAND_FORMAT = "オペランドの形式が不正です";
 const std::string FILE_NOTFOUND = "ファイルが見つかりませんでした";
 const std::string DOUBLE_LABEL = "ラベルが重複しています";
-static const std::string  GUI_ERROR_TOP = "Error";
+const std::string TOP_NOT_COMMENT = "エントリポイントを用いる際，ファイルのはじめはコメントにしてください．";
+const std::string ENTRY_POINT = "min_caml_start";
+const std::string GUI_ERROR_TOP = "Error";
+const std::string ENTRY_POINT_LABEL = "+ENTRY";
 
 static const std::regex offsetRe(R"(\s*([\-0-9]+)\(\s*([a-z0-9%]+)\s*\)\s*)");
 
@@ -24,7 +27,8 @@ const int MAX_OPERAND_N = 3;
 enum class InstType{
     Inst, 
     Label, 
-    Comment
+    Comment, 
+    // MetaCommand // .global で始まるコメント
 };
 
 struct Instruction{
@@ -54,7 +58,8 @@ class AssemblyParser{
         bool useBin;
         void parseFile(const std::string &filePath);
         void parseBinFile(const std::string &filePath);
-        void instParse(const int lineN, std::string instLine);
+        void instParse(const int &lineN, std::string instLine);
+        void metaCommandParse(const int &lineN, const std::string &instLine);
         std::pair<std::string , int> parseOffsetAndRegister(const std::string & input, const int &lineN)const;
         void parseError(const int &, const std::string&)const;
         int getImmediate(const int& lineN, const int& immediateBitN, const std::string& intStr)const;

@@ -7,6 +7,8 @@ start:
     jalr x2 -16(%x3) # 一つ上に飛ぶ x2は8行目
 test:
     jalr x3 12(%x4) # 7行目に飛ぶ x3は10行目
+.global	min_caml_start
+test2:
     addi x1 x0 0 # x1 = 0
     addi x4 x0 4 # x4 = 4
     addi x2 x0 520  # x2 = 512 + 8 10 00001000
