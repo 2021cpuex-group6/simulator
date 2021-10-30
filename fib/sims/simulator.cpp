@@ -385,8 +385,13 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back)con
                 std::cout << GUI_MEM_CHANGE << std::endl;
                 //アドレス
                 std::cout  << before.memAddress << " ";
-
-                std::cout << getSeparatedWordString(before.memAddress) << std::endl;
+                uint32_t value;
+                if(back){
+                     value = before.memValue;
+                }else{
+                     value = readMem(before.memAddress, MemAccess::WORD);
+                }
+                std::cout << getSeparatedWordString(value) << std::endl;
             }else{
                 std::cout << GUI_NO_CHANGE << std::endl;
                 
@@ -431,11 +436,13 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back)con
 
 // GUI用表記で1ワードのメモリをLSB側から1バイトずつint8_tで表示する
 // ※JavaのByteは符号付きのため
-std::string AssemblySimulator::getSeparatedWordString(const uint32_t &address)const{
+std::string AssemblySimulator::getSeparatedWordString(const uint32_t &value)const{
+    MemoryUnit mu;
+    mu.i = value;
     std::stringstream ss;
     for (size_t i = 0; i < WORD_BYTE_N; i++)
     {
-        ss << static_cast<int>((*dram)[address/ WORD_BYTE_N].sb[i]) << " ";
+        ss << static_cast<int>(mu.sb[i]) << " ";
     }
     return ss.str();
     

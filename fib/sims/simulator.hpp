@@ -37,7 +37,7 @@ const std::string GUI_ALREADY_END = "AEnd";
 const std::string GUI_STOP = "Stop";
 const std::string GUI_WARNING = "Warning";
 const std::string GUI_NO_CHANGE = "No";
-const std::string GUI_MEM_CHANGE = "m";
+const std::string GUI_MEM_CHANGE = "mem";
 const std::string GUI_ERROR = "Error";
 enum class NumberBase{
     BIN = 2, 
@@ -123,7 +123,7 @@ class AssemblySimulator{
         std::string getRegisterInfoUnit(const int&, const NumberBase&, const bool &sign) const ;
         std::string getMemWordString(const uint32_t &address)const;
         void printMem(const uint32_t &address, const uint32_t &wordN, const int &lineN)const;
-        std::string getSeparatedWordString(const uint32_t &address)const;
+        std::string getSeparatedWordString(const uint32_t &value)const;
 };
 
 #endif
