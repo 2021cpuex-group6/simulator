@@ -49,6 +49,7 @@ union MemoryUnit{ // メモリの1ワードに対応するユニット
     float f;
     uint32_t i;
     uint8_t b[WORD_BYTE_N];
+    int8_t sb[WORD_BYTE_N];
 
 };
 
@@ -121,6 +122,7 @@ class AssemblySimulator{
         std::string getRegisterInfoUnit(const int&, const NumberBase&, const bool &sign) const ;
         std::string getMemWordString(const uint32_t &address)const;
         void printMem(const uint32_t &address, const uint32_t &wordN, const int &lineN)const;
+        std::string getSeparatedWordString(const uint32_t &address)const;
 };
 
 #endif

@@ -382,12 +382,10 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back)con
                     << " " << change <<  std::endl;
                 return;
             }else if(before.writeMem){
-                uint32_t nowValue = readMem(before.memAddress, MemAccess::WORD);
                 //アドレス
                 std::cout  << before.memAddress << " ";
-                // 旧値
-                std::cout <<  before.memValue << " ";
-                std::cout << nowValue << std::endl;
+
+                std::cout << getSeparatedWordString(before.memAddress) << std::endl;
             }else{
                 std::cout << GUI_NO_CHANGE << std::endl;
                 
@@ -430,8 +428,21 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back)con
 
 }
 
+// GUI用表記で1ワードのメモリをLSB側から1バイトずつint8_tで表示する
+// ※JavaのByteは符号付きのため
+std::string AssemblySimulator::getSeparatedWordString(const uint32_t &address)const{
+    std::stringstream ss;
+    for (size_t i = 0; i < WORD_BYTE_N; i++)
+    {
+        ss << static_cast<int>((*dram)[address/ WORD_BYTE_N].sb[i]) << " ";
+    }
+    return ss.str();
+    
+}
+
+
+// 命令を処理
 BeforeData AssemblySimulator::doInst(const Instruction &instruction){
-    // 命令を処理
     std::string opcode = instruction.opcode;
     instCount++;
     opCounter[opcode] = opCounter[opcode] + 1;
@@ -482,8 +493,8 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
     }
 }
 
+// ストア命令を実行
 BeforeData AssemblySimulator::doStore(const std::string &opcode, const Instruction &instruction){
-    // ストア命令を実行
     uint32_t address = instruction.immediate;
     address += registers[getRegIndWithError(instruction.operand[1])];
 
@@ -798,11 +809,18 @@ void AssemblySimulator::printMem(const uint32_t &address, const uint32_t &wordN,
     int repeatN = (wordN % lineN == 0) ? wordN / lineN : wordN / lineN + 1;
     for (size_t i = 0; i < repeatN; i++)
     {
-        std::cout << "0x" <<std::setw(MEM_ADDRESS_HEX_LEN) << std::setfill('0') <<
-             std::hex << nowAddress << ": ";
+        if(!forGUI){
+            std::cout << "0x" <<std::setw(MEM_ADDRESS_HEX_LEN) << std::setfill('0') <<
+                std::hex << nowAddress << ": ";
+        }
         for (size_t j= 0; j < lineN; j++)
         {
-            std::cout << getMemWordString(nowAddress) << " ";
+            if(forGUI){
+                std::cout << getSeparatedWordString(nowAddress) << " ";
+                
+            }else{
+                std::cout << getMemWordString(nowAddress) << " ";
+            }
             nowAddress += WORD_BYTE_N;
             if((i ==repeatN -1 )&& ((wordN % lineN) - 1 == j)) break;
         }
