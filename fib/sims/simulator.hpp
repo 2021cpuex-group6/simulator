@@ -37,7 +37,8 @@ const std::string GUI_ALREADY_END = "AEnd";
 const std::string GUI_STOP = "Stop";
 const std::string GUI_WARNING = "Warning";
 const std::string GUI_NO_CHANGE = "No";
-static const std::string GUI_ERROR = "Error";
+const std::string GUI_MEM_CHANGE = "m";
+const std::string GUI_ERROR = "Error";
 enum class NumberBase{
     BIN = 2, 
     OCT = 8, 

@@ -21,7 +21,6 @@ AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &u
 
         
 AssemblySimulator::~AssemblySimulator(){
-    printf("test\n");
     delete dram;
     
 }
@@ -382,6 +381,8 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back)con
                     << " " << change <<  std::endl;
                 return;
             }else if(before.writeMem){
+                // メモリの変更があったことを示すため，GUI_MEM_CHANGEをまず表示
+                std::cout << GUI_MEM_CHANGE << std::endl;
                 //アドレス
                 std::cout  << before.memAddress << " ";
 
