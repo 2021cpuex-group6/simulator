@@ -830,7 +830,7 @@ void AssemblySimulator::printMem(const uint32_t &address, const uint32_t &wordN,
         {
             if(forGUI){
                 uint32_t value = readMem(nowAddress, MemAccess::WORD);
-                std::cout << getSeparatedWordString(value) << " ";
+                std::cout << getSeparatedWordString(value);
                 
             }else{
                 std::cout << getMemWordString(nowAddress) << " ";
