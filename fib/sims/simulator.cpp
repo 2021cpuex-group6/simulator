@@ -253,8 +253,9 @@ BeforeData AssemblySimulator::popHistory(){
     return beforeHistory[historyPoint];
 }
 
+// ひとつ前に戻る
+// pcとそのほかのレジスタは別々に戻しているのでjalrなどにも対応
 void AssemblySimulator::back(){
-    // ひとつ前に戻る
     BeforeData before;
     try{
         before = popHistory();
@@ -276,6 +277,10 @@ void AssemblySimulator::back(){
         opCounter[before.instruction] = opCounter[before.instruction] -1;
         if(before.regInd >= 0){
             registers[before.regInd] = before.regValue;
+        }
+        if(before.writeMem){
+            // メモリをもとに戻す
+            writeMem(before.memAddress, MemAccess::WORD, before.memValue);
         }
 
     }else{
