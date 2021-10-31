@@ -736,9 +736,9 @@ BeforeData AssemblySimulator::doLoad(const std::string &opcode, const Instructio
 // レジスタのインデックスとそれが整数レジスタに属するかを返す
 std::pair<int, bool> AssemblySimulator::getRegInd(const std::string &regName){
 
-    if(regName == "pc"){
+    if(regName == "pc" || regName == "%pc"){
         return {REGISTERS_N, true};
-    }else if(regName == "zero"){
+    }else if(regName == "zero" || regName == "%zero"){
         return {0, true};
     }else if(regName == "fcsr"){
         return {0, true};
@@ -843,8 +843,13 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
     std::vector<int> opInfo = opcodeInfoMap[opcode];
     bool jumpFlag = false;
     if(opInfo[0] == 3){
-        int reg0 = iRegisters[getRegIndWithError(instruction.operand[0])];
-        int reg1 = iRegisters[getRegIndWithError(instruction.operand[1])];
+        auto ind0Pair = getRegIndWithError(instruction.operand[0]);
+        auto ind1Pair = getRegIndWithError(instruction.operand[1]);
+        if(!(ind0Pair.second && ind1Pair.second)){
+            launchError(ILEGAL_CONTROL_REGISTER);
+        }
+        int reg0 = iRegisters[ind0Pair.first];
+        int reg1 = iRegisters[ind1Pair.first];
         if(opcode == "blt"){
             jumpFlag = reg0 < reg1;
         }else if(opcode == "beq"){
@@ -861,7 +866,11 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
             BeforeData ans = {opcode, pc,false, -1, -1, false};
             if(opcode == "jal" || opcode == "jalr"){
                 // レジスタへの書き込み
-                int regd = getRegIndWithError(instruction.operand[0]);
+                auto dPair = getRegIndWithError(instruction.operand[0]);
+                if(!dPair.second){
+                    launchError(ILEGAL_CONTROL_REGISTER);
+                }
+                int regd = dPair.first;
                 if(regd != 0){
                     writeReg(regd, pc+INST_BYTE_N, true);
                     ans.regInd = regd;
@@ -874,9 +883,17 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
                 // しかしこのシミュレータは4バイトの固定長命令を使うことを暗に仮定しているので、もう1ビットも0にする
                 int nextPC = instruction.immediate;
                 if(opcode == "jr"){
-                    nextPC += iRegisters[getRegIndWithError(instruction.operand[0])];
+                    auto indPair = getRegIndWithError(instruction.operand[0]);
+                    if(!indPair.second){
+                        launchError(ILEGAL_CONTROL_REGISTER);
+                    }
+                    nextPC += iRegisters[indPair.first];
                 }else{
-                    nextPC += iRegisters[getRegIndWithError(instruction.operand[1])];
+                    auto indPair = getRegIndWithError(instruction.operand[1]);
+                    if(!indPair.second){
+                        launchError(ILEGAL_CONTROL_REGISTER);
+                    }
+                    nextPC += iRegisters[indPair.first];
                 }
                 nextPC &= (~0) << 2;
                 pc = nextPC;
