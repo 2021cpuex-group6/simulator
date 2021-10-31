@@ -1,5 +1,6 @@
 #include "simulator.hpp"
 #include "../utils/utils.hpp"
+#include "fpu.hpp"
 #include <iostream>
 #include <sstream>
 #include <bitset>
@@ -797,9 +798,23 @@ void AssemblySimulator::launchWarning(const std::string &message)const{
     }
 }
 
+// ターゲットレジスタのインデックス、入力２つを受け取り、演算、レジスタへの書き込みを行う(浮動小数点版)
+// PCの更新はここでは行わない
+void AssemblySimulator::doFALU(const std::string &opcode, const int &targetR, const uint32_t &source0, const uint32_t &source1){
+    uint32_t ans = 0;
+    if(opcode == "fadd"){
+        ans = fadd(source0, source1);
+    }else if(opcode == "fsub"){
+        ans = fsub(source0, source1);
+    }else if(opcode == "fmul"){
+        ans = fmul(source0, source1);
+    }
+    fRegisters[targetR] = MemoryUnit(ans);
+}
+
+// ターゲットレジスタのインデックス、入力２つを受け取り、演算、レジスタへの書き込みを行う
+// PCの更新はここでは行わない
 void AssemblySimulator::doALU(const std::string &opcode, const int &targetR, const int &source0, const int &source1){
-    // ターゲットレジスタのインデックス、入力２つを受け取り、演算、レジスタへの書き込みを行う
-    // PCの更新はここでは行わない
     int ans = 0;
     if(opcode == "add" || opcode == "addi"){
         // オーバーフローは考慮しない（仕様通り？）
