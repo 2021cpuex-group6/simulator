@@ -60,12 +60,12 @@ void InteractiveShell::start(){
                 break;
             case Command::RegRead:
                 if(input.second[0] == -1){
-                    simulator.printRegisters(static_cast<NumberBase>(input.second[1]), 
-                                                                            input.second[2] == 1, true);
+                    simulator.printRegisters(static_cast<NumberBase>(input.second[2]), 
+                                                                            input.second[3] == 1, true);
                 }else{
                     std::cout << simulator.getRegisterInfoUnit(input.second[0],
-                                                                 static_cast<NumberBase>(input.second[1]), 
-                                                                            input.second[2] == 1, true) << std::endl;
+                                                                 static_cast<NumberBase>(input.second[2]), 
+                                                                            input.second[3] == 1, input.second[1] == 1) << std::endl;
                 }
                 break;
             case Command::MemRead:
@@ -81,7 +81,7 @@ void InteractiveShell::start(){
                 }
                 break;
             case Command::RegWrite:
-                simulator.writeReg(input.second[0], input.second[1]);
+                simulator.writeReg(input.second[0], input.second[2], input.second[1] == 1);
                 break;
             case Command::BreakDelete:
                 simulator.deleteBreakPoint(input.second[0]);
@@ -202,28 +202,30 @@ std::pair<int, int> InteractiveShell::getRROptionInput(std::string input)const{
     return {optionB, optionS};
 }
 
-int InteractiveShell::getRRRegisterInput(std::string input)const{
+std::pair<int, bool> InteractiveShell::getRRRegisterInput(std::string input)const{
     // レジスタ系のコマンドのレジスタ部分を読み取る
     // 指定がない場合は-1を返す
     const std::regex regRe(R"(\s+([a-z0-9]+))");
     std::smatch m;
     input = input.substr(2);
-    int regInd = -1;
     if(std::regex_search(input, m, regRe)){
         std::string res = m[1].str();
-        regInd = AssemblySimulator::getRegInd(res);
-        if(regInd < 0){
+        auto indPair = AssemblySimulator::getRegInd(res);
+
+        if(indPair.first < 0){
             interactiveErrorWithGUI(INVALID_REG_NAME);
         }
+        return indPair;
     }
-    return regInd;
+    return {-1, false};
 }
 
 std::pair<Command, std::vector<int>> InteractiveShell::getRWInput(const std::string &inputString) const{
     // rr コマンドの引数などを処理する
     // 返り値のsecondは、
     //  0 ... 指定されたレジスタのインデックス（指定なしならエラー）
-    //  1 ... 書き込むint
+    //  1 ... 整数レジスタに書き込むなら1浮動小数点なら0
+    //  2 ... 書き込むint
     int writeValue = 0;
     int regInd = -1;
 
@@ -233,7 +235,8 @@ std::pair<Command, std::vector<int>> InteractiveShell::getRWInput(const std::str
         interactiveErrorWithGUI(NOT_IMPLEMENTED_UNSIGNED);
         return {Command::Invalid, {}};
     }
-    regInd = getRRRegisterInput(inputString);
+    auto indPair = getRRRegisterInput(inputString);
+    regInd = indPair.first;
     if(regInd < 0){
         // レジスタ指定なし
         interactiveErrorWithGUI(NOT_SELECTED_REGISTER);
@@ -251,7 +254,9 @@ std::pair<Command, std::vector<int>> InteractiveShell::getRWInput(const std::str
         return {Command::Invalid, {}};
     }
 
-    return {Command::RegWrite, {regInd, writeValue}};
+    int whichReg = indPair.second ? 1 : 0;
+
+    return {Command::RegWrite, {regInd, whichReg, writeValue}};
 
 
 }
@@ -260,14 +265,16 @@ std::pair<Command, std::vector<int>> InteractiveShell::getRRInput(const std::str
     // rr コマンドの引数などを処理する
     // 返り値のsecondは、
     //  0 ... 指定されたレジスタのインデックス（指定なしなら全レジスタを示す-1）
-    //  1 ... x進数表記の指定　（指定なしなら10進数）
-    //  2 ... 符号付か符号なしか (指定なしなら符号付)
+    //  1 ... 整数レジスタなら1, 浮動小数点レジスタは0
+    //  2 ... x進数表記の指定　（指定なしなら10進数）
+    //  3 ... 符号付か符号なしか (指定なしなら符号付)
 
 
-    int regInd = getRRRegisterInput(inputString);
+    auto indPair = getRRRegisterInput(inputString);
     auto optionPair = getRROptionInput(inputString);
     
-    return{Command::RegRead, {regInd, optionPair.first, optionPair.second}};
+    int whichReg = indPair.second ? 1 : 0;
+    return{Command::RegRead, {indPair.first, whichReg, optionPair.first, optionPair.second}};
 
 }
 

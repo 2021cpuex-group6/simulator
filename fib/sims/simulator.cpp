@@ -648,7 +648,7 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
                 ans.regValue = fRegisters[targetR].si;
                 auto ind0Pair = getRegIndWithError(instruction.operand[1]);
                 auto ind1Pair = getRegIndWithError(instruction.operand[2]);
-                if(ind0Pair.first | ind1Pair.first){
+                if(ind0Pair.second || ind1Pair.second){
                     // 整数レジスタが混じってる
                     launchError(MIXED_REGISTER_ERROR);
                 }
@@ -751,8 +751,11 @@ std::pair<int, bool> AssemblySimulator::getRegInd(const std::string &regName){
                 return {std::stoi(regName.substr(1)), true};
             }else if(startsWith(regName, FREG_PREFIX)){
                 return {std::stoi(regName.substr(2)), false};
-            }else{
+            }else if(startsWith(regName, FREG_PREFIX.substr(1))){
                 return {std::stoi(regName.substr(1)), false};
+            }else{
+                // レジスタ名が不正
+                return {-1, true};
             }
 
         }catch(const std::invalid_argument & e){
