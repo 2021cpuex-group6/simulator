@@ -49,6 +49,7 @@ enum class NumberBase{
 union MemoryUnit{ // メモリの1ワードに対応するユニット
     float f;
     uint32_t i;
+    int32_t si;
     uint8_t b[WORD_BYTE_N];
     int8_t sb[WORD_BYTE_N];
 
@@ -65,7 +66,7 @@ struct BeforeData{
     int pc;
     bool isInteger; // 書き込んだレジスタが整数用レジスタか
     int regInd;  //書き込んだレジスタ。書き込みナシなら-1
-    int regValue;
+    int32_t regValue;
     bool writeMem; //メモリに書き込んだか
     uint32_t memAddress; // 書き込んだアドレス
     uint32_t memValue;
@@ -95,7 +96,7 @@ class AssemblySimulator{
         
         AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI);
         ~AssemblySimulator();
-        void printRegisters(const NumberBase&, const bool &sign) const;
+        void printRegisters(const NumberBase&, const bool &sign, const bool& useFnotation) const;
         void printOpCounter()const;
         void next(bool, const bool&);
         void doNextBreak();
@@ -126,7 +127,7 @@ class AssemblySimulator{
         void incrementPC();
         std::string getRegisterInfoUnit(const int&, const NumberBase&, const bool &sign, const bool &isInteger) const ;
         std::string getIRegisterInfoUnit(const int&, const NumberBase&, const bool &sign) const ;
-        std::string getFRegisterInfoUnit(const int&, const NumberBase&, const bool &sign) const ;
+        std::string getFRegisterInfoUnit(const int&, const NumberBase&, const bool &sign, const bool &useFNotaion) const ;
         std::string getMemWordString(const uint32_t &address)const;
         void printMem(const uint32_t &address, const uint32_t &wordN, const int &lineN)const;
         std::string getSeparatedWordString(const uint32_t &value)const;

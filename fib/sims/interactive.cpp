@@ -25,25 +25,26 @@ void InteractiveShell::start(){
             case Command::DoAll:
                 simulator.launch();
                 if(!forGUI){
-                    simulator.printRegisters(NumberBase::DEC, true);
+                    simulator.printRegisters(NumberBase::DEC, true, true);
                     simulator.printOpCounter();
                 }
                 break;
             case Command::DoNext:
                 simulator.next(false, true);
                 if(input.second[0] == 1){
+                    bool useFNotation = true;
                     switch(input.second[1]){
                         case static_cast<int>(NumberBase::HEX):
-                            simulator.printRegisters(NumberBase::HEX, input.second[2] == 1);
+                            simulator.printRegisters(NumberBase::HEX, input.second[2] == 1, useFNotation);
                             break;
                         case static_cast<int>(NumberBase::DEC):
-                            simulator.printRegisters(NumberBase::DEC, input.second[2] == 1);
+                            simulator.printRegisters(NumberBase::DEC, input.second[2] == 1, useFNotation);
                             break;
                         case static_cast<int>(NumberBase::BIN):
-                            simulator.printRegisters(NumberBase::BIN, input.second[2] == 1);
+                            simulator.printRegisters(NumberBase::BIN, input.second[2] == 1, useFNotation);
                             break;
                         case static_cast<int>(NumberBase::OCT):
-                            simulator.printRegisters(NumberBase::OCT, input.second[2] == 1);
+                            simulator.printRegisters(NumberBase::OCT, input.second[2] == 1, useFNotation);
                             break;
                     }
                 }
@@ -60,11 +61,11 @@ void InteractiveShell::start(){
             case Command::RegRead:
                 if(input.second[0] == -1){
                     simulator.printRegisters(static_cast<NumberBase>(input.second[1]), 
-                                                                            input.second[2] == 1);
+                                                                            input.second[2] == 1, true);
                 }else{
                     std::cout << simulator.getRegisterInfoUnit(input.second[0],
                                                                  static_cast<NumberBase>(input.second[1]), 
-                                                                            input.second[2] == 1) << std::endl;
+                                                                            input.second[2] == 1, true) << std::endl;
                 }
                 break;
             case Command::MemRead:
