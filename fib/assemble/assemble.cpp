@@ -140,6 +140,7 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
             rg1 = static_cast<int32_t>(fregister_to_binary(op1, line));
         }else{
             if(opecode == "jr"){
+                // jr のときは jr -1(x1)のように，オフセット表記がop1に来るので注意
                 rg1 = 0;
                 op2 = op1;
             }else{
@@ -147,7 +148,7 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
             }
         }
         auto address = get_address_reg_imm(op2, line, true);
-        output |= (rg1 << 7) | (address.second << 20) | (address.first);
+        output |= (rg1 << 7) | (address.second << 15 ) | (address.first);
 
     } else if(style == J){
         std::string op1, op2;
