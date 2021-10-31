@@ -63,6 +63,7 @@ enum class MemAccess{
 struct BeforeData{
     std::string instruction;
     int pc;
+    bool isInteger; // 書き込んだレジスタが整数用レジスタか
     int regInd;  //書き込んだレジスタ。書き込みナシなら-1
     int regValue;
     bool writeMem; //メモリに書き込んだか
@@ -77,9 +78,11 @@ class AssemblySimulator{
         bool onWarning = true;
         bool forGUI;
         int pc; //pcはメモリアドレスを表すので、アセンブリファイルの行数-1の4倍
+        uint32_t fcsr; //浮動小数点演算の状態管理　いらないかも
         bool end; //終了フラグ
         const AssemblyParser &parser;
         std::array<int, REGISTERS_N> iRegisters;
+        std::array<MemoryUnit, REGISTERS_N> fRegisters;
 
         int instCount; // 実行命令数
         std::map<std::string, int> opCounter; //実行命令の統計
@@ -121,7 +124,9 @@ class AssemblySimulator{
         BeforeData doStore(const std::string &opcode, const Instruction &instruction);
         BeforeData doControl(const std::string &opcode, const Instruction &instruction);
         void incrementPC();
-        std::string getRegisterInfoUnit(const int&, const NumberBase&, const bool &sign) const ;
+        std::string getRegisterInfoUnit(const int&, const NumberBase&, const bool &sign, const bool &isInteger) const ;
+        std::string getIRegisterInfoUnit(const int&, const NumberBase&, const bool &sign) const ;
+        std::string getFRegisterInfoUnit(const int&, const NumberBase&, const bool &sign) const ;
         std::string getMemWordString(const uint32_t &address)const;
         void printMem(const uint32_t &address, const uint32_t &wordN, const int &lineN)const;
         std::string getSeparatedWordString(const uint32_t &value)const;

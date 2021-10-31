@@ -7,8 +7,8 @@
 #include <set>
 
 
-AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI):forGUI(forGUI), pc(0), end(false),
-          parser(parser), iRegisters({0}),
+AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI):forGUI(forGUI), pc(0), fcsr(0), end(false),
+          parser(parser), iRegisters({0}), fRegisters({0}),
           instCount(0), opCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}){
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
     MemoryUnit mu;
@@ -35,6 +35,9 @@ void AssemblySimulator::reset(){
         opCounter[e.first] = 0;
     }
     iRegisters.fill(0);
+    MemoryUnit mu;
+    mu.i = 0;
+    fRegisters.fill(mu);
     breakPoints.clear();
     historyN = 0;
     historyPoint = 0;
@@ -42,9 +45,79 @@ void AssemblySimulator::reset(){
     (*dram).fill({0});
 }
 
+// レジスタ番号を受け取り，その情報を文字列で返す
+std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const NumberBase &base, const bool &sign, const bool&isInteger) const {
+    if(isInteger){
+        return getIRegisterInfoUnit(regN, base, sign);
+    }else{
+        return getFRegisterInfoUnit(regN, base, sign);
+    }
+}
 
-std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const NumberBase &base, const bool &sign) const {
-    // レジスタ番号を受け取り、その情報を文字列で返す
+// 浮動小数点レジスタの番号を受け取り，その情報を文字列で返す
+std::string AssemblySimulator::getFRegisterInfoUnit(const int &regN, const NumberBase &base, const bool &sign) const {
+    std::stringstream ss;
+    std::stringstream sin;
+    std::stringstream ssreg;
+    std::string regName;
+    std::string prefix;
+    if(!forGUI){
+        // GUI用でなければレジスタ名も表示
+        if(regN < REGISTERS_N){
+            ssreg << "f" << std::setw(2) << std::setfill('0') << std::dec << regN;
+            regName = ssreg.str();
+        }else{
+            regName = "fcsr ";
+        }
+        regName += " ";
+    }else{
+        if(regN < REGISTERS_N){
+            return std::to_string(fRegisters[regN].f);
+        }else{
+            return std::to_string(fcsr);
+        }
+
+    }
+
+    uint32_t value = regN < REGISTERS_N ? fRegisters[regN].i : fcsr;
+
+
+    unsigned int  numSize = 0;
+    switch (base){
+        case NumberBase::BIN :
+            prefix = "0b";
+            numSize = 32;
+            sin << std::bitset<REGISTER_BIT_N>(value);
+            break;
+        case NumberBase::OCT :
+            prefix = "0o";
+            numSize = 11;
+            sin << std::oct << value;
+            break;
+        case NumberBase::HEX :
+            prefix = "0x";
+            numSize = 8;
+            sin << std::hex << value;
+            break;
+        default :
+            prefix = "";
+            numSize = 10;
+            if (sign){
+                ss << regName  << std::setw(numSize) << std::internal << value;
+            }else{
+                ss << regName  << std::setw(numSize) << std::internal << value;
+            }
+            return ss.str();
+            break;
+    }
+
+    ss << regName <<  prefix << std::setw(numSize) << std::setfill('0') << sin.str();
+
+    return ss.str();
+}
+
+// 整数レジスタ番号を受け取り、その情報を文字列で返す
+std::string AssemblySimulator::getIRegisterInfoUnit(const int &regN, const NumberBase &base, const bool &sign) const {
     std::stringstream ss;
     std::stringstream sin;
     std::stringstream ssreg;
