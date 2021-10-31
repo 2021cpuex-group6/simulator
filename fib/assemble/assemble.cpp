@@ -330,7 +330,7 @@ static int32_t get_S_imm(int32_t input, const int &line){
         assemble_error(OUT_OF_RANGE_IMM, line);
     }
     int32_t ans = (input & 0xfe0) << 20;
-    ans |= input & 0x1f << 7;
+    ans |= (input & 0x1f) << 7;
     return ans;
 }
 
