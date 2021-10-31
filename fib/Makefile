@@ -14,7 +14,7 @@ fpuChecker: $(FPUOBJS)
 
 
 assembler: $(ASSEMOBJS)
-	g++ $(CFLAGS) -o $@ $^
+	g++ $(CFLAGS) -lstdc++fs -o $@ $^
 
 %.o: %.cpp
 	g++ $(CFLAGS) -o $@ -c $<
