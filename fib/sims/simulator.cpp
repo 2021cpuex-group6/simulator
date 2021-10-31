@@ -625,20 +625,34 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
                     // x0レジスタへの書き込み
                     launchWarning(ZERO_REG_WRITE_ERROR);
                 }else{
-                    int source0 = iRegisters[getRegIndWithError(instruction.operand[1]).first];
+                    auto ind0Pair = getRegIndWithError(instruction.operand[1]);
+                    bool ind1IsInt = false;
+                    int source0 = iRegisters[ind0Pair.first];
                     int source1 = 0;
                     if(opKind == INST_REGONLY){
-                        source1 = iRegisters[getRegIndWithError(instruction.operand[2]).first];
+                        auto ind1Pair = getRegIndWithError(instruction.operand[2]);
+                        source1 = iRegisters[ind1Pair.first];
+                        ind1IsInt = ind1Pair.second;
                     }else{
                         source1 = instruction.immediate;
+                        ind1IsInt = true;
+                    }
+                    if(!(ind0Pair.second && ind1IsInt)){
+                        launchError(MIXED_REGISTER_ERROR);
                     }
                     doALU(opcode, targetR, source0, source1);
                 }
             }else{
                 // 浮動小数点数
                 ans.regValue = fRegisters[targetR].si;
-                uint32_t source0 = fRegisters[getRegIndWithError(instruction.operand[1]).first].i;
-                uint32_t source1 = fRegisters[getRegIndWithError(instruction.operand[2]).first].i;
+                auto ind0Pair = getRegIndWithError(instruction.operand[1]);
+                auto ind1Pair = getRegIndWithError(instruction.operand[2]);
+                if(ind0Pair.first | ind1Pair.first){
+                    // 整数レジスタが混じってる
+                    launchError(MIXED_REGISTER_ERROR);
+                }
+                uint32_t source0 = fRegisters[ind0Pair.first].i;
+                uint32_t source1 = fRegisters[ind1Pair.first].i;
                 doFALU(opcode, targetR, source0, source1);
 
             }

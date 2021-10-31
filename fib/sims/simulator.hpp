@@ -27,9 +27,11 @@ const std::string NOT_FOUND_LABEL = "ラベルが見つかりません";
 const std::string OUT_OF_RANGE_BREAKPOINT = "ファイルの行数の範囲外のためブレークポイントは設置できません";
 const std::string NO_HISTORY = "もう履歴はありません";
 const std::string OUT_OF_RANGE_MEMORY = "メモリの範囲外を参照しようとしています";
+const std::string MIXED_REGISTER_ERROR = "この命令で浮動小数点レジスタと整数レジスタは同時に使えません";
 const std::string ILEGAL_WORD_ACCESS = "メモリのワードアクセスは4バイトアラインされた位置のみにできます";
 const std::string ILEGAL_BASE_REGISTER = "浮動小数点レジスタ，pcはベースレジスタにできません.";
-const std::string ILEGAL_STORE_INSTRUCTION = "適切なストア命令を使ってください.";
+const std::string ILEGAL_LOADSTORE_INSTRUCTION = "適切なロード・ストア命令を使ってください.";
+const std::string ILEGAL_CONTROL_REGISTER = "制御命令に浮動小数点レジスタはは使えません";
 const std::string IMPLEMENT_ERROR = "バグです。報告してください";
 
 const std::string IREG_PREFIX = "%x";
