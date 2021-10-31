@@ -7,8 +7,9 @@
 #include <set>
 
 
-AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI): parser(parser), registers({0}), pc(0),
-         end(false), instCount(0), opCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}), forGUI(forGUI){
+AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI):forGUI(forGUI), pc(0), end(false),
+          parser(parser), iRegisters({0}),
+          instCount(0), opCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}){
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
     MemoryUnit mu;
     mu.i = 0;
@@ -33,7 +34,7 @@ void AssemblySimulator::reset(){
     for(auto &e: opCounter){
         opCounter[e.first] = 0;
     }
-    registers.fill(0);
+    iRegisters.fill(0);
     breakPoints.clear();
     historyN = 0;
     historyPoint = 0;
@@ -60,14 +61,14 @@ std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const Number
         regName += " ";
     }else{
         if(regN < REGISTERS_N){
-            return std::to_string(registers[regN]);
+            return std::to_string(iRegisters[regN]);
         }else{
             return std::to_string(pc);
         }
 
     }
 
-    int value = regN < REGISTERS_N ? registers[regN] : pc;
+    int value = regN < REGISTERS_N ? iRegisters[regN] : pc;
 
 
     unsigned int  numSize = 0;
@@ -139,7 +140,7 @@ void AssemblySimulator::writeReg(const int &regInd, const int &value){
             std::cout << ZERO_REG_WRITE_ERROR << std::endl;
             return;
         }
-        registers[regInd] = value;
+        iRegisters[regInd] = value;
     }else{
         if(value % INST_BYTE_N != 0  && !forGUI){
             // アラインに合わない値が入力されているので注意
@@ -276,7 +277,7 @@ void AssemblySimulator::back(){
         instCount--;
         opCounter[before.instruction] = opCounter[before.instruction] -1;
         if(before.regInd >= 0){
-            registers[before.regInd] = before.regValue;
+            iRegisters[before.regInd] = before.regValue;
         }
         if(before.writeMem){
             // メモリをもとに戻す
@@ -332,7 +333,7 @@ void AssemblySimulator::deleteBreakPoint(const int &lineN){
 
 void AssemblySimulator::setBreakPoint(const int &lineN){
     // ブレークポイントを設置
-    if(lineN > 0 && lineN < parser.instructionVector.size()){
+    if(lineN > 0 && lineN < static_cast<int>(parser.instructionVector.size())){
         breakPoints.insert(lineN);
     }else{
         // 範囲外のため設置不可
@@ -369,7 +370,7 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back)con
                     if(back){
                         change = before.regValue;
                     }else{
-                        change = registers[before.regInd];
+                        change = iRegisters[before.regInd];
                     }
                     std::cout <<"x"<< std::setw(2) << std::setfill('0') <<   std::internal << before.regInd 
                         << " " << change <<  std::endl;
@@ -380,7 +381,7 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back)con
                 if(back){
                     change = before.regValue;
                 }else{
-                    change = registers[before.regInd];
+                    change = iRegisters[before.regInd];
                 }
                 std::cout <<"x"<< std::setw(2) << std::setfill('0') <<  std::internal << before.regInd 
                     << " " << change <<  std::endl;
@@ -485,16 +486,16 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
             ans.instruction = opcode;
             ans.pc = pc;
             ans.regInd = targetR;
-            ans.regValue = registers[targetR];
+            ans.regValue = iRegisters[targetR];
             ans.writeMem = false;
             if(targetR == 0){
                 // x0レジスタへの書き込み
                 launchWarning(ZERO_REG_WRITE_ERROR);
             }else{
-                int source0 = registers[getRegIndWithError(instruction.operand[1])];
+                int source0 = iRegisters[getRegIndWithError(instruction.operand[1])];
                 int source1 = 0;
                 if(opKind == INST_REGONLY){
-                    source1 = registers[getRegIndWithError(instruction.operand[2])];
+                    source1 = iRegisters[getRegIndWithError(instruction.operand[2])];
                 }else{
                     source1 = instruction.immediate;
                 }
@@ -509,13 +510,13 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
 // ストア命令を実行
 BeforeData AssemblySimulator::doStore(const std::string &opcode, const Instruction &instruction){
     uint32_t address = instruction.immediate;
-    address += registers[getRegIndWithError(instruction.operand[1])];
+    address += iRegisters[getRegIndWithError(instruction.operand[1])];
 
     int regInd = getRegIndWithError(instruction.operand[0]);
     uint32_t beforeAddress = (address/4)*4;
     BeforeData before = {opcode, pc, -1, -1, true, beforeAddress, readMem(beforeAddress, MemAccess::WORD)};
 
-    uint32_t value = registers[regInd];
+    uint32_t value = iRegisters[regInd];
     if(opcode == "sw"){
         writeMem(address, MemAccess::WORD, value);
     }else if(opcode == "sb"){
@@ -527,17 +528,17 @@ BeforeData AssemblySimulator::doStore(const std::string &opcode, const Instructi
 BeforeData AssemblySimulator::doLoad(const std::string &opcode, const Instruction &instruction){
     // ロード命令を実行
     uint32_t address = instruction.immediate;
-    address += registers[getRegIndWithError(instruction.operand[1])];
+    address += iRegisters[getRegIndWithError(instruction.operand[1])];
 
     int regInd = getRegIndWithError(instruction.operand[0]);
-    BeforeData before = {opcode, pc, regInd, registers[regInd], false};
+    BeforeData before = {opcode, pc, regInd, iRegisters[regInd], false};
     
     if(opcode == "lw"){
         uint32_t value = readMem(address, MemAccess::WORD);
-        registers[regInd] = value;
+        iRegisters[regInd] = value;
     }else if(opcode == "lbu"){
         uint32_t value = readMem(address, MemAccess::BYTE);
-        registers[regInd] = ((~0xff) &registers[regInd]) | value;
+        iRegisters[regInd] = ((~0xff) &iRegisters[regInd]) | value;
     }
     return before;
 }
@@ -631,7 +632,7 @@ void AssemblySimulator::doALU(const std::string &opcode, const int &targetR, con
             ans = shiftRightArithmatic(source0, shiftN);
         }
     }
-    registers[targetR] = ans;
+    iRegisters[targetR] = ans;
 
 }
 
@@ -641,8 +642,8 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
     std::vector<int> opInfo = opcodeInfoMap[opcode];
     bool jumpFlag = false;
     if(opInfo[0] == 3){
-        int reg0 = registers[getRegIndWithError(instruction.operand[0])];
-        int reg1 = registers[getRegIndWithError(instruction.operand[1])];
+        int reg0 = iRegisters[getRegIndWithError(instruction.operand[0])];
+        int reg1 = iRegisters[getRegIndWithError(instruction.operand[1])];
         if(opcode == "blt"){
             jumpFlag = reg0 < reg1;
         }else if(opcode == "beq"){
@@ -672,9 +673,9 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
                 // しかしこのシミュレータは4バイトの固定長命令を使うことを暗に仮定しているので、もう1ビットも0にする
                 int nextPC = instruction.immediate;
                 if(opcode == "jr"){
-                    nextPC += registers[getRegIndWithError(instruction.operand[0])];
+                    nextPC += iRegisters[getRegIndWithError(instruction.operand[0])];
                 }else{
-                    nextPC += registers[getRegIndWithError(instruction.operand[1])];
+                    nextPC += iRegisters[getRegIndWithError(instruction.operand[1])];
                 }
                 nextPC &= (~0) << 2;
                 pc = nextPC;
@@ -701,7 +702,7 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
 void AssemblySimulator::incrementPC(){
     // pcのインクリメントと、ファイル末端に到達したかのチェックを行う
     pc += 4;
-    if(pc == parser.instructionVector.size() * 4){
+    if(pc == static_cast<long>(parser.instructionVector.size()) * 4){
         // 末端に到着
         end = true;
         if(forGUI){
@@ -761,6 +762,7 @@ uint32_t AssemblySimulator::readMem(const uint32_t& address, const MemAccess &me
             break;
         default:
             launchError(IMPLEMENT_ERROR);
+            return -1;
             break;
     }
 
@@ -808,7 +810,7 @@ void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAc
         {
             ss << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(memory1.b[i]) << " ";
         }
-        for (size_t i = 0; i < subAddress; i++)
+        for (size_t i = 0; static_cast<int>(i) < subAddress; i++)
         {
             ss << std::setw(2) << std::setfill('0') << std::hex << static_cast<int>(memory2.b[i]) << " ";
         }
@@ -820,13 +822,13 @@ void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAc
 void AssemblySimulator::printMem(const uint32_t &address, const uint32_t &wordN, const int &lineN)const{
     uint32_t nowAddress = address;
     int repeatN = (wordN % lineN == 0) ? wordN / lineN : wordN / lineN + 1;
-    for (size_t i = 0; i < repeatN; i++)
+    for (size_t i = 0; static_cast<int>(i) < repeatN; i++)
     {
         if(!forGUI){
             std::cout << "0x" <<std::setw(MEM_ADDRESS_HEX_LEN) << std::setfill('0') <<
                 std::hex << nowAddress << ": ";
         }
-        for (size_t j= 0; j < lineN; j++)
+        for (size_t j= 0; static_cast<int>(j) < lineN; j++)
         {
             if(forGUI){
                 uint32_t value = readMem(nowAddress, MemAccess::WORD);
@@ -836,7 +838,7 @@ void AssemblySimulator::printMem(const uint32_t &address, const uint32_t &wordN,
                 std::cout << getMemWordString(nowAddress) << " ";
             }
             nowAddress += WORD_BYTE_N;
-            if((i ==repeatN -1 )&& ((wordN % lineN) - 1 == j)) break;
+            if((static_cast<int>(i) ==repeatN -1 )&& ((wordN % lineN) - 1 == j)) break;
         }
         std::cout  << std::endl;
     }

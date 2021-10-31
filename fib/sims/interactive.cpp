@@ -5,7 +5,7 @@
 #include <vector>
 #include <regex>
 
-InteractiveShell::InteractiveShell(AssemblySimulator & sim, AssemblyParser& parse, const bool &  forGUI): simulator(sim), parser(parse), forGUI(forGUI){}
+InteractiveShell::InteractiveShell(AssemblySimulator & sim, AssemblyParser& parse, const bool &  forGUI):  forGUI(forGUI), simulator(sim), parser(parse){}
 
 void InteractiveShell::start(){
     std::pair<Command, std::vector<int>> input;
@@ -96,7 +96,8 @@ void InteractiveShell::start(){
                 break;
             case Command::Quit:
                 continueFlag = false;
-
+                break;
+            default:
                 break;
 
 

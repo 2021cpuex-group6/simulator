@@ -255,5 +255,6 @@ std::pair<std::string , int> AssemblyParser::parseOffsetAndRegister(const std::s
         return {reg, imm};
     }else{
         parseError(lineN, INVALID_OPERAND_FORMAT);
+        return{"", -1};
     }
 }

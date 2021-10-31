@@ -11,7 +11,7 @@ const std::string OPTION_BIN = "-b";
 const std::string OPTION_GUI = "-g";
 
 int main(int argc, char* argv[]){
-    bool doAll = false; //対話型にせず全実行するか
+    // bool doAll = false; //対話型にせず全実行するか
     bool useBin = false; //バイナリを使うかアセンブリか
     bool forGUI = false; // GUI用の出力か
 
@@ -22,7 +22,7 @@ int main(int argc, char* argv[]){
         while(optionN>0){
             std::string option = argv[2+(--optionN)];
             if(option == OPTION_ALL){
-                doAll = true;
+                // doAll = true;
             }else if(option == OPTION_BIN){
                 useBin = true;
             }else if(option == OPTION_GUI){

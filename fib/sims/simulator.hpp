@@ -74,21 +74,22 @@ struct BeforeData{
 class AssemblySimulator{
     public:
         bool useBinary = false;
-        bool forGUI = false;
         bool onWarning = true;
-        std::array<int, REGISTERS_N> registers;
-        std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N> *dram;  
+        bool forGUI;
         int pc; //pcはメモリアドレスを表すので、アセンブリファイルの行数-1の4倍
         bool end; //終了フラグ
+        const AssemblyParser &parser;
+        std::array<int, REGISTERS_N> iRegisters;
+
         int instCount; // 実行命令数
         std::map<std::string, int> opCounter; //実行命令の統計
-
         std::set<int> breakPoints; // ブレークポイントの集合　行数で管理（1始まり）
+
         int historyN;   // 現在保持している履歴の数
         int historyPoint; // 次に履歴を保存するインデックス
         std::array<BeforeData, HISTORY_RESERVE_N> beforeHistory; // もとに戻れるようにデータをとる
-        const AssemblyParser &parser;
-
+        std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N> *dram;  
+        
         AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI);
         ~AssemblySimulator();
         void printRegisters(const NumberBase&, const bool &sign) const;
