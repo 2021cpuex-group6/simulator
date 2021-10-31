@@ -40,16 +40,29 @@ static void assemble_error(const std::string &message, const int & line);
 static int32_t get_relative_address_with_check(const std::string &label,
                                 const int & now_addr, const int & max_bit, const int &line);
 static void check_labels(std::istream& ifs);
-
+static std::string delete_comment(std::string line);
 
 void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log) {
     // 一行ずつアセンブル
-    check_labels(ifs);
+    check_labels(ifs); // labelをmapに格納
     int line_count = 1;             // 読み込んだファイルの行数
     int addr_count = START_ADDRESS; // 出力する命令のアドレス
     while(!ifs.eof()) {
-        std::string op;
-        std::getline(ifs,op);
+        std::string line, op;
+        std::getline(ifs,line);
+
+        op = delete_comment(line);
+        std::regex space_like(R"([\t\s\n\r]+)");
+        std::regex label(R"(^.+:[\t\s\n\r]*$)");
+        if (op.size() == 0 || std::regex_match(op, space_like) || std::regex_match(op, label)) {
+            // 出力しない場合、行数だけインクリメントし、命令アドレスは動かさない
+            // TODO: これあっている？
+            line_count ++;
+            if (output_log)
+                std::cout << line << "label or comment line" << std::endl;
+            continue;
+        }
+
         const int32_t & binary_op  = assemble_op(op, line_count, addr_count);
 
         int32_t byte;
@@ -66,14 +79,13 @@ void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log) {
             // 出力しない場合、行数だけインクリメントし、命令アドレスは動かさない
             line_count ++;
             if (output_log)
-                std::cout << op << " " << std::hex << binary_op << std::endl;
+                std::cout << line << " " << std::hex << binary_op << std::endl;
             continue;
-            
         }
         line_count ++;
         addr_count += INSTRUCTION_BYTE_N;
         if (output_log)
-            std::cout << op << " " << std::hex << binary_op << std::endl;
+            std::cout << line << " " << std::hex << binary_op << std::endl;
 
     }
     return;
@@ -339,6 +351,11 @@ static std::pair<int32_t, int32_t> get_address_reg_imm(const std::string &input,
         return {imm, rg};
     }
     assemble_error(INVALID_ADDRESSING, line);
+}
+
+std::string delete_comment(std::string line) {
+    if (line.find("#") == std::string::npos) return line;
+    return line.substr(0, line.find("#"));
 }
 
 void init_label_map() {
