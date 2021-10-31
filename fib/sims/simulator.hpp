@@ -28,9 +28,12 @@ const std::string OUT_OF_RANGE_BREAKPOINT = "ファイルの行数の範囲外�
 const std::string NO_HISTORY = "もう履歴はありません";
 const std::string OUT_OF_RANGE_MEMORY = "メモリの範囲外を参照しようとしています";
 const std::string ILEGAL_WORD_ACCESS = "メモリのワードアクセスは4バイトアラインされた位置のみにできます";
+const std::string ILEGAL_BASE_REGISTER = "浮動小数点レジスタ，pcはベースレジスタにできません.";
+const std::string ILEGAL_STORE_INSTRUCTION = "適切なストア命令を使ってください.";
 const std::string IMPLEMENT_ERROR = "バグです。報告してください";
 
-const std::string REG_PREFIX = "%x";
+const std::string IREG_PREFIX = "%x";
+const std::string FREG_PREFIX = "%f";
 const std::string GUI_NO_HISTORY = "NoHis";
 const std::string GUI_END = "End";
 const std::string GUI_ALREADY_END = "AEnd";
@@ -52,7 +55,17 @@ union MemoryUnit{ // メモリの1ワードに対応するユニット
     int32_t si;
     uint8_t b[WORD_BYTE_N];
     int8_t sb[WORD_BYTE_N];
+    MemoryUnit(){}
 
+    MemoryUnit(const float & value){
+        f = value;
+    }
+    MemoryUnit(const uint32_t & value){
+        i = value;
+    }
+    MemoryUnit(const int32_t & value){
+        si = value;
+    }
 };
 
 enum class MemAccess{
@@ -106,8 +119,8 @@ class AssemblySimulator{
         void printDif(const BeforeData &before, const bool &back)const;
         void setBreakPoint(const int &);
         void deleteBreakPoint(const int &);
-        static int getRegInd(const std::string &regName);
-        void writeReg(const int &, const int &);
+        static std::pair<int, bool> getRegInd(const std::string &regName);
+        void writeReg(const int &, const int32_t &, const bool &);
         void reset();
         void addHistory(const BeforeData &);
         void back();
@@ -116,7 +129,9 @@ class AssemblySimulator{
         BeforeData popHistory();
 
     // private:
-        int getRegIndWithError(const std::string &regName)const;
+        int getIRegIndWithError(const std::string &regName)const;
+        int getFRegIndWithError(const std::string &regName)const;
+        std::pair<int, bool> getRegIndWithError(const std::string &regName)const;
         BeforeData doInst(const Instruction &);
         void launchError(const std::string &message)const;
         void launchWarning(const std::string &message)const;

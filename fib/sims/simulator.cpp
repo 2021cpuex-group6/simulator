@@ -8,7 +8,7 @@
 
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI):forGUI(forGUI), pc(0), fcsr(0), end(false),
-          parser(parser), iRegisters({0}), fRegisters({0}),
+          parser(parser), iRegisters({0}), fRegisters({MemoryUnit(0)}),
           instCount(0), opCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}){
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
     MemoryUnit mu;
@@ -224,20 +224,29 @@ void AssemblySimulator::printRegisters(const NumberBase &base, const bool &sign,
 
 }
 
-void AssemblySimulator::writeReg(const int &regInd, const int &value){
+void AssemblySimulator::writeReg(const int &regInd, const int32_t &value, const bool& isInteger){
     if(regInd < REGISTERS_N){
-        if(regInd == 0 && !forGUI){
-            // 0レジスタへの書き込み
-            std::cout << ZERO_REG_WRITE_ERROR << std::endl;
-            return;
+        if(isInteger){
+            fRegisters[regInd] = MemoryUnit(value);
+
+        }else{
+            if(regInd == 0 && !forGUI){
+                // 0レジスタへの書き込み
+                std::cout << ZERO_REG_WRITE_ERROR << std::endl;
+                return;
+            }
+            iRegisters[regInd] = value;
         }
-        iRegisters[regInd] = value;
     }else{
-        if(value % INST_BYTE_N != 0  && !forGUI){
-            // アラインに合わない値が入力されているので注意
-            std::cout << PC_NOT_ALIGNED_WRITE << std::endl;
+        if(isInteger){
+            if(value % INST_BYTE_N != 0  && !forGUI){
+                // アラインに合わない値が入力されているので注意
+                std::cout << PC_NOT_ALIGNED_WRITE << std::endl;
+            }
+            pc = value;
+        }else{
+            fcsr = static_cast<uint32_t>(value);
         }
-        pc = value;
     }
 }
 
@@ -600,25 +609,38 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
 
         }else{
             // 演算命令
-            int targetR = getRegIndWithError(instruction.operand[0]);
+            auto indPair =getRegIndWithError(instruction.operand[0]); 
+            int targetR = indPair.first;
             // ここで前のデータを保存
             ans.instruction = opcode;
             ans.pc = pc;
-            ans.regInd = targetR;
-            ans.regValue = iRegisters[targetR];
+            ans.isInteger = indPair.second;
             ans.writeMem = false;
-            if(targetR == 0){
-                // x0レジスタへの書き込み
-                launchWarning(ZERO_REG_WRITE_ERROR);
-            }else{
-                int source0 = iRegisters[getRegIndWithError(instruction.operand[1])];
-                int source1 = 0;
-                if(opKind == INST_REGONLY){
-                    source1 = iRegisters[getRegIndWithError(instruction.operand[2])];
+            ans.regInd = targetR;
+
+            if(ans.isInteger){
+                // 整数演算のとき
+                ans.regValue = iRegisters[targetR];
+                if(targetR == 0){
+                    // x0レジスタへの書き込み
+                    launchWarning(ZERO_REG_WRITE_ERROR);
                 }else{
-                    source1 = instruction.immediate;
+                    int source0 = iRegisters[getRegIndWithError(instruction.operand[1]).first];
+                    int source1 = 0;
+                    if(opKind == INST_REGONLY){
+                        source1 = iRegisters[getRegIndWithError(instruction.operand[2]).first];
+                    }else{
+                        source1 = instruction.immediate;
+                    }
+                    doALU(opcode, targetR, source0, source1);
                 }
-                doALU(opcode, targetR, source0, source1);
+            }else{
+                // 浮動小数点数
+                ans.regValue = fRegisters[targetR].si;
+                uint32_t source0 = fRegisters[getRegIndWithError(instruction.operand[1]).first].i;
+                uint32_t source1 = fRegisters[getRegIndWithError(instruction.operand[2]).first].i;
+                doFALU(opcode, targetR, source0, source1);
+
             }
         }
         incrementPC();
@@ -629,18 +651,31 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
 // ストア命令を実行
 BeforeData AssemblySimulator::doStore(const std::string &opcode, const Instruction &instruction){
     uint32_t address = instruction.immediate;
-    address += iRegisters[getRegIndWithError(instruction.operand[1])];
+    auto indPair = getRegIndWithError(instruction.operand[1]);
+    if(indPair.first == REGISTERS_N || !indPair.second ){
+        launchError(ILEGAL_BASE_REGISTER);
+    }
+    address += iRegisters[indPair.first];
 
-    int regInd = getRegIndWithError(instruction.operand[0]);
+    indPair = getRegIndWithError(instruction.operand[0]);
     uint32_t beforeAddress = (address/4)*4;
     BeforeData before = {opcode, pc, false, -1, -1, true, beforeAddress, readMem(beforeAddress, MemAccess::WORD)};
 
-    uint32_t value = iRegisters[regInd];
-    if(opcode == "sw"){
+    uint32_t value = indPair.second ? iRegisters[indPair.first] : fRegisters[indPair.first].i;
+    if(opcode == "fsw"){
+        if(indPair.second){
+            launchError(ILEGAL_STORE_INSTRUCTION);
+        }
         writeMem(address, MemAccess::WORD, value);
-    }else if(opcode == "sb"){
-        writeMem(address, MemAccess::BYTE, (~0xff) & value);
-    }else if(opcode == "fsw"){
+    }else{
+        if(!indPair.second){
+            launchError(ILEGAL_STORE_INSTRUCTION);
+        }
+        if(opcode == "sw"){
+            writeMem(address, MemAccess::WORD, value);
+        }else if(opcode == "sb"){
+            writeMem(address, MemAccess::BYTE, (~0xff) & value);
+        }
 
     }
     return before;
@@ -666,37 +701,48 @@ BeforeData AssemblySimulator::doLoad(const std::string &opcode, const Instructio
     return before;
 }
 
-int AssemblySimulator::getRegInd(const std::string &regName){
+// レジスタのインデックスとそれが整数レジスタに属するかを返す
+std::pair<int, bool> AssemblySimulator::getRegInd(const std::string &regName){
+
     if(regName == "pc"){
-        return REGISTERS_N;
+        return {REGISTERS_N, true};
     }else if(regName == "zero"){
-        return 0;
+        return {0, true};
+    }else if(regName == "fcsr"){
+        return {0, true};
     }else{
         try{
-            if(startsWith(regName, REG_PREFIX)){
-                return std::stoi(regName.substr(2));
+            if(startsWith(regName, IREG_PREFIX)){
+                return {std::stoi(regName.substr(2)), true};
+            }else if(startsWith(regName, IREG_PREFIX.substr(1))){
+                return {std::stoi(regName.substr(1)), true};
+            }else if(startsWith(regName, FREG_PREFIX)){
+                return {std::stoi(regName.substr(2)), false};
             }else{
-                return std::stoi(regName.substr(1));
+                return {std::stoi(regName.substr(1)), false};
             }
+
         }catch(const std::invalid_argument & e){
             // レジスタ名が不正
-            return -1;
+            return {-1, true};
         }catch(const std::out_of_range & e){
             // レジスタ名が不正
-            return -1;
+            return {-1, true};
         }
     }
 }
 
 
-int AssemblySimulator::getRegIndWithError(const std::string &regName)const{
-    int ind = getRegInd(regName);
+
+std::pair<int, bool> AssemblySimulator::getRegIndWithError(const std::string &regName)const{
+    auto pair = getRegInd(regName);
+    int ind = pair.first;
     if(ind < 0){
         launchError(INVALID_REGISTER);
-        return -1;
+        return {-1, true};
 
     }
-    return ind;
+    return pair;
 }
 
 
@@ -785,7 +831,7 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
                 // レジスタへの書き込み
                 int regd = getRegIndWithError(instruction.operand[0]);
                 if(regd != 0){
-                    writeReg(regd, pc+INST_BYTE_N);
+                    writeReg(regd, pc+INST_BYTE_N, true);
                     ans.regInd = regd;
                     ans.regValue = pc+INST_BYTE_N;
                 }
