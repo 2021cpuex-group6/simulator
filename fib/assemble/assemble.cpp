@@ -20,8 +20,8 @@ static const std::string DOUBLE_LABEL = "ラベルが重複しています";
 static const std::string LABEL_NOT_FOUND = "ラベルが見つかりませんでした";
 static const std::string LABEL_TOO_FAR = "遷移先のラベルが遠すぎます。実装を見直してください。";
 static const std::string OUT_OF_RANGE_IMM = "範囲外の即値です";
-static const std::regex label_re(R"(^([0-9a-zA-Z_]+)\s*:\s*(#.*)*)");
-static const std::regex address_re(R"(\s([0-9]+)\(([a-z]+[0-9]*)\))");
+static const std::regex label_re(R"(^([0-9a-zA-Z_.]+)\s*:\s*(#.*)*)");
+static const std::regex address_re(R"(\s*([\-0-9]+)\(\s*([a-z0-9%]+)\s*\))");
 static int8_t rounding_mode = 0x000; // 浮動小数点演算の丸め方
 static std::map<std::string, int> label_map; // ラベル情報を保持
 static std::map<std::string, std::tuple<op_style, int32_t>> opecode_map; //各命令の情報を保持
@@ -139,10 +139,16 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
         if(opecode == "flw"){
             rg1 = static_cast<int32_t>(fregister_to_binary(op1, line));
         }else{
-            rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+            if(opecode == "jr"){
+                // jr のときは jr -1(x1)のように，オフセット表記がop1に来るので注意
+                rg1 = 0;
+                op2 = op1;
+            }else{
+                rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+            }
         }
         auto address = get_address_reg_imm(op2, line, true);
-        output |= (rg1 << 7) | (address.second << 20) | (address.first);
+        output |= (rg1 << 7) | (address.second << 15 ) | (address.first);
 
     } else if(style == J){
         std::string op1, op2;
@@ -195,6 +201,8 @@ static int8_t fregister_to_binary(std::string reg_name, const int &line) {
     int8_t output = 0;
     if(startsWith(reg_name, "f")){
         output = std::stoi(reg_name.substr(1));
+    }else if(startsWith(reg_name, "%f")){
+        output = std::stoi(reg_name.substr(2));
     }else{
         // レジスタ名が不正
         assemble_error(INVALID_REGISTER, line);
@@ -209,6 +217,8 @@ static int8_t register_to_binary(std::string reg_name, const int &line) {
     int8_t output = 0;
     if(startsWith(reg_name, "x")){
         output = std::stoi(reg_name.substr(1));
+    }else if(startsWith(reg_name, "%x")){
+        output = std::stoi(reg_name.substr(2));
     }else if(reg_name == "zero"){
         output = 0;
     }else{
@@ -320,7 +330,7 @@ static int32_t get_S_imm(int32_t input, const int &line){
         assemble_error(OUT_OF_RANGE_IMM, line);
     }
     int32_t ans = (input & 0xfe0) << 20;
-    ans |= input & 0x1f << 7;
+    ans |= (input & 0x1f) << 7;
     return ans;
 }
 
@@ -426,8 +436,8 @@ void init_opcode_map(){
     opecode_map.insert({"jal", {J, output}});
     // jrもjalrの書き込みレジスタx0版
     output = 0b1100111;
-    opecode_map.insert({"jalr", {I, output}});
-    opecode_map.insert({"jr", {I, output}});
+    opecode_map.insert({"jalr", {IL, output}});
+    opecode_map.insert({"jr", {IL, output}});
     output = 0b1100011;
     opecode_map.insert({"beq", {B, output}});
     output |= (0b001 << 12);
