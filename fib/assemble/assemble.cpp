@@ -9,8 +9,40 @@
 #include "../utils/utils.hpp"
 #include "assemble.hpp"
 
+static constexpr bool ELIMINATE_NOP = false; // NOP命令を飛ばすか
+static constexpr int START_ADDRESS = 0; //ファイルのはじめの命令が配置されるアドレス
+static constexpr int INSTRUCTION_BYTE_N = 4;
+static constexpr int32_t NOP = 0x13;
+static constexpr int32_t MASK_BITS = ~(1 << 31); // 右シフトが不定にならないように最上位以外1
+static const std::string INVALID_REGISTER = "不正なレジスタ名です";
+static const std::string INVALID_ADDRESSING = "不正なアドレッシングです";
+static const std::string DOUBLE_LABEL = "ラベルが重複しています";
+static const std::string LABEL_NOT_FOUND = "ラベルが見つかりませんでした";
+static const std::string LABEL_TOO_FAR = "遷移先のラベルが遠すぎます。実装を見直してください。";
+static const std::string OUT_OF_RANGE_IMM = "範囲外の即値です";
+static const std::regex label_re(R"(^([0-9a-zA-Z_]+)\s*:\s*(#.*)*)");
+static const std::regex address_re(R"(\s([0-9]+)\(([a-z]+[0-9]*)\))");
+static int8_t rounding_mode = 0x000; // 浮動小数点演算の丸め方
+static std::map<std::string, int> label_map; // ラベル情報を保持
+static std::map<std::string, std::tuple<op_style, int32_t>> opecode_map; //各命令の情報を保持
+static int32_t get_J_imm(int32_t);
+static int32_t get_B_imm(int32_t);
+static int32_t get_I_imm(int32_t, const int &);
+static int32_t get_S_imm(int32_t, const int &);
+static std::pair<int32_t, int32_t> get_address_reg_imm(const std::string &input, 
+                            const int & line, const bool &forI);
 
-bool assembler_main(std::ofstream& ofs, std::istream& ifs) {
+
+static int8_t register_to_binary(std::string reg_name, const int &line);
+static int8_t fregister_to_binary(std::string reg_name, const int &line);
+static std::int32_t assemble_op(const std::string &op, const int &line, const int addr);
+static void assemble_error(const std::string &message, const int & line);
+static int32_t get_relative_address_with_check(const std::string &label,
+                                const int & now_addr, const int & max_bit, const int &line);
+static void check_labels(std::istream& ifs);
+
+
+void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log) {
     // 一行ずつアセンブル
     check_labels(ifs);
     int line_count = 1;             // 読み込んだファイルの行数
@@ -27,21 +59,24 @@ bool assembler_main(std::ofstream& ofs, std::istream& ifs) {
                 // 1バイトずつ出力
                 byte = (binary_op >> (8*(3-i))) & 0xff;
                 ofs << std::hex << byte << std::endl;
-                std::cout << std::hex << (unsigned int)byte << std::endl;
+                if (output_log)
+                    std::cout << std::hex << (unsigned int)byte << std::endl;
             }
         }else{
             // 出力しない場合、行数だけインクリメントし、命令アドレスは動かさない
             line_count ++;
-            std::cout << op << " " << std::hex << binary_op << std::endl;
+            if (output_log)
+                std::cout << op << " " << std::hex << binary_op << std::endl;
             continue;
             
         }
         line_count ++;
         addr_count += INSTRUCTION_BYTE_N;
-        std::cout << op << " " << std::hex << binary_op << std::endl;
+        if (output_log)
+            std::cout << op << " " << std::hex << binary_op << std::endl;
 
     }
-    return true;
+    return;
 }
 
 
@@ -60,7 +95,7 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
     }catch (const std::out_of_range & e){
         // 登録外
         output = 0x00000013;
-        std::cout << "nop" << std::endl;
+        std::cout << "no match opecode : \""+opecode+"\"" << std::endl;
         return output;
     }
 
@@ -302,10 +337,12 @@ static std::pair<int32_t, int32_t> get_address_reg_imm(const std::string &input,
         }
         int32_t rg = static_cast<int32_t>(register_to_binary(m[2].str(), line));
         return {imm, rg};
-        
-    }else{
-        assemble_error(INVALID_ADDRESSING, line);
     }
+    assemble_error(INVALID_ADDRESSING, line);
+}
+
+void init_label_map() {
+    label_map.clear();
 }
 
 void init_opcode_map(){
