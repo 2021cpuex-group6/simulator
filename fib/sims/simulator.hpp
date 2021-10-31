@@ -138,6 +138,7 @@ class AssemblySimulator{
         void launchError(const std::string &message)const;
         void launchWarning(const std::string &message)const;
         void doALU(const std::string &opcode, const int &targetR, const int &source0, const int &source1);
+        void doFALU(const std::string &opcode, const int &targetR, const uint32_t &source0, const uint32_t &source1);
         BeforeData doLoad(const std::string &opcode, const Instruction &instruction);
         BeforeData doStore(const std::string &opcode, const Instruction &instruction);
         BeforeData doControl(const std::string &opcode, const Instruction &instruction);
