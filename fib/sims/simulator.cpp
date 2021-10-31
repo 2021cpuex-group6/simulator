@@ -664,12 +664,12 @@ BeforeData AssemblySimulator::doStore(const std::string &opcode, const Instructi
     uint32_t value = indPair.second ? iRegisters[indPair.first] : fRegisters[indPair.first].i;
     if(opcode == "fsw"){
         if(indPair.second){
-            launchError(ILEGAL_STORE_INSTRUCTION);
+            launchError(ILEGAL_LOADSTORE_INSTRUCTION);
         }
         writeMem(address, MemAccess::WORD, value);
     }else{
         if(!indPair.second){
-            launchError(ILEGAL_STORE_INSTRUCTION);
+            launchError(ILEGAL_LOADSTORE_INSTRUCTION);
         }
         if(opcode == "sw"){
             writeMem(address, MemAccess::WORD, value);
@@ -684,20 +684,38 @@ BeforeData AssemblySimulator::doStore(const std::string &opcode, const Instructi
 BeforeData AssemblySimulator::doLoad(const std::string &opcode, const Instruction &instruction){
     // ロード命令を実行
     uint32_t address = instruction.immediate;
-    address += iRegisters[getRegIndWithError(instruction.operand[1])];
-
-    int regInd = getRegIndWithError(instruction.operand[0]);
-    BeforeData before = {opcode, pc, true, regInd, iRegisters[regInd], false};
-    
-    if(opcode == "lw"){
-        uint32_t value = readMem(address, MemAccess::WORD);
-        iRegisters[regInd] = value;
-    }else if(opcode == "lbu"){
-        uint32_t value = readMem(address, MemAccess::BYTE);
-        iRegisters[regInd] = ((~0xff) &iRegisters[regInd]) | value;
-    }else if(opcode == "flw"){
-        before.isInteger = false;
+    auto indPair = getRegIndWithError(instruction.operand[1]);
+    if(indPair.first == REGISTERS_N || !indPair.second ){
+        launchError(ILEGAL_BASE_REGISTER);
     }
+    address += iRegisters[indPair.first];
+
+    indPair = getRegIndWithError(instruction.operand[0]);
+    int32_t beforeValue = indPair.second ? iRegisters[indPair.first] : fRegisters[indPair.first].si;
+    BeforeData before = {opcode, pc, indPair.second, indPair.first, beforeValue, false};
+    
+    if(opcode == "flw"){
+        if(indPair.second){
+            // 浮動小数点のレジスタにlw, lbuなどを使っている
+            launchError(ILEGAL_LOADSTORE_INSTRUCTION);
+        }
+        uint32_t value = readMem(address, MemAccess::WORD);
+        fRegisters[indPair.first] = MemoryUnit(value);
+    }else{
+        if(!indPair.second){
+            launchError(ILEGAL_LOADSTORE_INSTRUCTION);
+        }
+
+        if(opcode == "lw"){
+            uint32_t value = readMem(address, MemAccess::WORD);
+            iRegisters[indPair.first] = value;
+        }else if(opcode == "lbu"){
+            uint32_t value = readMem(address, MemAccess::BYTE);
+            iRegisters[indPair.first] = ((~0xff) &iRegisters[indPair.first]) | value;
+        }
+
+    }
+
     return before;
 }
 
