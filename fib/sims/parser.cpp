@@ -9,6 +9,7 @@
 
 
 static const std::string IMPLEMENT_ERROR = "実装エラー：バグ報告してください．";
+static constexpr int START_LINE = 1;// すでに1行追加された状態で命令を追加していく
 
 std::map<std::string, std::vector<int>>opcodeInfoMap = {
     // 命令の情報を持つ
@@ -91,7 +92,9 @@ std::pair<std::string, int> AssemblyParser::getFileNameAndLine(const int &lineN)
     for(int i = 0; i < static_cast<int>(filePaths.size()); i++){
         int next = nowLine + startLines[i];
         if(next >= lineN){
-            return {filePaths[i], lineN - nowLine};
+            int ansLine = lineN - nowLine;
+            if(i == 0) ansLine --;
+            return {filePaths[i], ansLine};
         }
         nowLine = next;
     }
@@ -114,6 +117,7 @@ AssemblyParser::AssemblyParser(const std::vector<std::string> &filePaths, const 
     int allLen = 0;
     for(const std::string path: filePaths){
         int fileLen = getFileLen(path);
+        if(allLen == 0) fileLen += START_LINE; // 最初のファイル（に対応する行）にはnop文(or j文)が追加で入っている
         allLen += fileLen;
         startLines.emplace_back(fileLen);
     }
@@ -127,7 +131,14 @@ AssemblyParser::AssemblyParser(const std::vector<std::string> &filePaths, const 
 }
 
 void AssemblyParser::parseFiles(const std::vector<std::string> &filePaths){
-    int startLine = 0;
+    int startLine = START_LINE;
+    // エントリポイント用にnop命令を先頭に入れる
+    Instruction topInst;
+    topInst.type = InstType::Inst;
+    topInst.opcode = "nop";
+    topInst.operandN = 0;
+    instructionVector[0] = topInst;
+
     for(const std::string path: filePaths){
         startLine = parseFile(path, startLine);
     }
@@ -258,10 +269,6 @@ void AssemblyParser::metaCommandParse(const int &lineN, const std::string &instL
         topInst.operandN = info[0];
         topInst.operand[0] = ENTRY_POINT_LABEL;
         topInst.label = ENTRY_POINT_LABEL;
-        if(instructionVector[0].type != InstType::Comment){
-            // 先頭がコメントでない
-            parseError(lineN, TOP_NOT_COMMENT);
-        }
         instructionVector[0] = topInst;
 
         inst.type = InstType::Label;
