@@ -94,8 +94,9 @@ void AssemblyParser::parseError(const int& lineN, const std::string& error)const
 }
 
 
-AssemblyParser::AssemblyParser(const std::string &filePath, const bool &useBinary,
-         const bool& forGUI): forGUI(forGUI), useBin(useBinary){
+AssemblyParser::AssemblyParser(const std::string &filePaths, const bool &useBinary,
+         const bool& forGUI): filePaths(filePaths), forGUI(forGUI), useBin(useBinary){
+    for(const std::string path: filePaths)
     int len = getFileLen(filePath);
     instructionVector.resize(len);
     if(useBin){

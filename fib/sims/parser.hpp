@@ -50,9 +50,10 @@ extern std::map<std::string, std::vector<int>> opcodeInfoMap;
 
 class AssemblyParser{
     public:
+        std::vector<std::string> filePaths;
         std::vector<Instruction> instructionVector;
         std::map<std::string, int> labelMap;
-        AssemblyParser(const std::string &filePath, const bool &useBin, const bool &forGUI);
+        AssemblyParser(const std::vector<std::string> &filePaths, const bool &useBin, const bool &forGUI);
     private:
         bool forGUI;
         bool useBin;

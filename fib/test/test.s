@@ -28,6 +28,7 @@ test2:
     addi x4 x0 17
     div x3 x4 x2 # x3 = -1
 .global	min_caml_start
+    jal x1 additional  # これで別ファイルに飛んで戻ってくる
     addi x1 x0 21 # シフト数
     addi %x2 x0 1532 # x2 1 0111 1111 00
     addi x3 %x0 516 # x3 0 1000 0001 00
