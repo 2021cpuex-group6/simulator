@@ -13,13 +13,14 @@ int main() {
     std::string output_log_yn;
     bool output_log;
     std::cout << "Output log [Y/n] : ";
-    std::cin >> output_log_yn;
+    std::getline(std::cin, output_log_yn);
     output_log = output_log_yn == "Y" || output_log_yn == "y";
 
     
     std::string directory_path;
     std::cout << "Please enter input directory path (default: ./test/) : ";
     std::getline(std::cin, directory_path);
+    std::cout << std::endl;
     if (directory_path == "") {
         directory_path = "./test/";
     }
