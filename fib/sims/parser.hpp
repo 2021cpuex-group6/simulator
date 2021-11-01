@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include <regex>
+#include <array>
 
 const std::string INVALID_LINE_MESSAGE = "不正な行です";
 const std::string INVALID_OPCODE_MESSAGE = "不正な命令です";
@@ -54,10 +55,13 @@ class AssemblyParser{
         std::vector<Instruction> instructionVector;
         std::map<std::string, int> labelMap;
         AssemblyParser(const std::vector<std::string> &filePaths, const bool &useBin, const bool &forGUI);
+        std::pair<std::string, int> getFileNameAndLine(const int &lineN)const;
     private:
+        std::vector<int> startLines; // 各ファイルが何行目から始まるのかを記す
         bool forGUI;
         bool useBin;
-        void parseFile(const std::string &filePath);
+        void parseFiles(const std::vector<std::string> &filePaths);
+        int parseFile(const std::string &filePath, const int &startLine);
         void parseBinFile(const std::string &filePath);
         void instParse(const int &lineN, std::string instLine);
         void metaCommandParse(const int &lineN, const std::string &instLine);

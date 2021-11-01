@@ -8,7 +8,7 @@
 
 
 
-
+static const std::string IMPLEMENT_ERROR = "実装エラー：バグ報告してください．";
 
 std::map<std::string, std::vector<int>>opcodeInfoMap = {
     // 命令の情報を持つ
@@ -85,29 +85,58 @@ int AssemblyParser::getImmediate(const int& lineN, const int& immediateBitN, con
     return res;
 }
 
+// 総行数を入力して，その行があるファイル名とそのファイル内での行数を返す
+std::pair<std::string, int> AssemblyParser::getFileNameAndLine(const int &lineN)const{
+    int nowLine = 0;
+    for(int i = 0; i < static_cast<int>(filePaths.size()); i++){
+        int next = nowLine + startLines[i];
+        if(next >= lineN){
+            return {filePaths[i], lineN - nowLine};
+        }
+        nowLine = next;
+    }
+    // parseErrorから呼ばれる関数なので，parseErrorは使えない
+    throw std::invalid_argument(IMPLEMENT_ERROR);
+}
+
 void AssemblyParser::parseError(const int& lineN, const std::string& error)const{
     // エラーが起きた行数とともに知らせる
+    auto pair = getFileNameAndLine(lineN);
     if(forGUI){
         std::cout << GUI_ERROR_TOP << std::endl;
     }
-    throw std::invalid_argument(std::to_string(lineN) + "行目:" + error);
+    throw std::invalid_argument(pair.first + " " + std::to_string(pair.second) + "行目:" + error);
 }
 
 
-AssemblyParser::AssemblyParser(const std::string &filePaths, const bool &useBinary,
+AssemblyParser::AssemblyParser(const std::vector<std::string> &filePaths, const bool &useBinary,
          const bool& forGUI): filePaths(filePaths), forGUI(forGUI), useBin(useBinary){
-    for(const std::string path: filePaths)
-    int len = getFileLen(filePath);
-    instructionVector.resize(len);
+    int allLen = 0;
+    for(const std::string path: filePaths){
+        int fileLen = getFileLen(path);
+        allLen += fileLen;
+        startLines.emplace_back(fileLen);
+    }
+    instructionVector.resize(allLen);
     if(useBin){
 
     }else{
-        parseFile(filePath);
+        parseFiles(filePaths);
     }
 
 }
 
-void AssemblyParser::parseFile(const std::string& filePath){
+void AssemblyParser::parseFiles(const std::vector<std::string> &filePaths){
+    int startLine = 0;
+    for(const std::string path: filePaths){
+        startLine = parseFile(path, startLine);
+    }
+
+}
+
+// 各ファイルをパースする段階
+// 今までの総ライン数を入力として受け取り，パース後，現在の総ライン数を返す
+int AssemblyParser::parseFile(const std::string& filePath, const int &startLine){
     std::ifstream file(filePath);
     if(! file.is_open()){
         throw std::invalid_argument(FILE_NOTFOUND);
@@ -121,7 +150,7 @@ void AssemblyParser::parseFile(const std::string& filePath){
     const std::regex metaCommandRe(R"(\.global\s*([a-zA-Z0-9_\-]*)\s*)");
     
     std::smatch m;
-    int lineN = 0;
+    int lineN = startLine;
 
 
     while(std::getline(file, line)){
@@ -156,6 +185,7 @@ void AssemblyParser::parseFile(const std::string& filePath){
         }
 
     }
+    return lineN;
 }
 
 void AssemblyParser::instParse(const int &lineN, std::string instLine){

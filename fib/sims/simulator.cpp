@@ -228,15 +228,15 @@ void AssemblySimulator::printRegisters(const NumberBase &base, const bool &sign,
 void AssemblySimulator::writeReg(const int &regInd, const int32_t &value, const bool& isInteger){
     if(regInd < REGISTERS_N){
         if(isInteger){
-            fRegisters[regInd] = MemoryUnit(value);
-
-        }else{
             if(regInd == 0 && !forGUI){
                 // 0レジスタへの書き込み
                 std::cout << ZERO_REG_WRITE_ERROR << std::endl;
                 return;
             }
             iRegisters[regInd] = value;
+
+        }else{
+            fRegisters[regInd] = MemoryUnit(value);
         }
     }else{
         if(isInteger){
@@ -881,7 +881,7 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
 
     if(jumpFlag){
         try{
-            BeforeData ans = {opcode, pc,false, -1, -1, false};
+            BeforeData ans = {opcode, pc,true, -1, -1, false};
             if(opcode == "jal" || opcode == "jalr"){
                 // レジスタへの書き込み
                 auto dPair = getRegIndWithError(instruction.operand[0]);
