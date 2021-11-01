@@ -410,7 +410,7 @@ void AssemblySimulator::printInstruction(const int & lineN, const Instruction &i
         case InstType::Inst:
             ss <<  std::setw(PRINT_INST_NUM_SIZE) << instruction.opcode;
             for(int i = 0; i < instruction.operandN; i++){
-                ss << std::setw(PRINT_INST_NUM_SIZE) << instruction.operand[i];
+                ss << std::setw(PRINT_INST_NUM_SIZE) << " " +  instruction.operand[i];
             }
             std::cout << ss.str() << std::endl;
             break;
@@ -546,7 +546,7 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back)con
             if(before.regInd >= 0){
                 if(before.isInteger){
                     std::string regInfo = getIRegisterInfoUnit(before.regInd, NumberBase::DEC, true);
-                    std::cout << regInfo.substr(0, 3) << " " << std::setw(11) <<   std::internal << std::dec<<
+                    std::cout << " " <<  regInfo.substr(0, 3) << " " << std::setw(11) <<   std::internal << std::dec<<
                     before.regValue << " -> " << regInfo.substr(3) << std::endl;
                     return;
                 }else{
