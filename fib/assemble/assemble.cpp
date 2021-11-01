@@ -271,6 +271,8 @@ static void check_labels(std::istream& ifs){
                     // ラベルの重複
                     assemble_error(DOUBLE_LABEL, line_count);
                 }
+            line_count ++;
+                continue;
             }
             if( ELIMINATE_NOP){
                 // 出力しない場合、行数だけインクリメントし、命令アドレスは動かさない
