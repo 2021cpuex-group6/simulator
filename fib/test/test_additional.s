@@ -2,4 +2,4 @@
 additional:
     addi x2 x0 32
     addi x2 x0 0
-    jr x1
+    jr 0(x1)
