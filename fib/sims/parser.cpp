@@ -132,22 +132,27 @@ AssemblyParser::AssemblyParser(const std::vector<std::string> &filePaths, const 
 
 void AssemblyParser::parseFiles(const std::vector<std::string> &filePaths){
     int startLine = START_LINE;
+    int nowInstN = 1;
     // エントリポイント用にnop命令を先頭に入れる
     Instruction topInst;
-    topInst.type = InstType::Inst;
+    topInst.lineN = 1;
     topInst.opcode = "nop";
     topInst.operandN = 0;
+
     instructionVector[0] = topInst;
 
     for(const std::string path: filePaths){
-        startLine = parseFile(path, startLine);
+        auto parseRes = parseFile(path, startLine, nowInstN);
+        startLine = parseRes.first;
+        nowInstN = parseRes.second;
+
     }
 
 }
 
 // 各ファイルをパースする段階
-// 今までの総ライン数を入力として受け取り，パース後，現在の総ライン数を返す
-int AssemblyParser::parseFile(const std::string& filePath, const int &startLine){
+// 今までの総ライン数，総命令数を入力として受け取り，パース後，現在の総ライン数，総命令数を返す
+std::pair<int, int> AssemblyParser::parseFile(const std::string& filePath, const int &startLine, const int &instN){
     std::ifstream file(filePath);
     if(! file.is_open()){
         throw std::invalid_argument(FILE_NOTFOUND);
@@ -162,7 +167,7 @@ int AssemblyParser::parseFile(const std::string& filePath, const int &startLine)
     
     std::smatch m;
     int lineN = startLine;
-
+    int nowInstN = instN;
 
     while(std::getline(file, line)){
         lineN++;
@@ -173,22 +178,17 @@ int AssemblyParser::parseFile(const std::string& filePath, const int &startLine)
 
         if(std::regex_match(line, m, instRe)){
             // 命令
-            instParse(lineN, m[1].str());
+            instParse(lineN, nowInstN++,  m[1].str());
         }else if(std::regex_match(line, m, labelRe)){
             // ラベル
-            auto pib =  labelMap.insert({m[1].str(), lineN});
+            auto pib =  labelMap.insert({m[1].str(), instN});
             if(! pib.second){
                 // ラベルの重複
                 parseError(lineN, DOUBLE_LABEL);
             }
-
-            Instruction inst = {InstType::Label};
-            instructionVector[lineN-1] = inst;
         }else if(std::regex_match(line, m, spaceRe)){
-            Instruction inst = {InstType::Comment};
-            instructionVector[lineN-1] = inst;
         }else if(std::regex_match(line, m, metaCommandRe)){
-            metaCommandParse(lineN, m[1].str());
+            metaCommandParse(lineN, nowInstN, m[1].str());
             
         }else{
             // 不正な行
@@ -196,10 +196,10 @@ int AssemblyParser::parseFile(const std::string& filePath, const int &startLine)
         }
 
     }
-    return lineN;
+    return {lineN, nowInstN};
 }
 
-void AssemblyParser::instParse(const int &lineN, std::string instLine){
+void AssemblyParser::instParse(const int &lineN, const int &instN, std::string instLine){
     // 命令部分をパース
     std::vector<std::string> instVec;
     std::regex instUnit(R"([a-z0-9\-\(\)\.%]+)");
@@ -210,7 +210,7 @@ void AssemblyParser::instParse(const int &lineN, std::string instLine){
     int immediateBitN = -1;
     int instKind = -1;
     Instruction inst;
-    inst.type = InstType::Inst;
+    inst.lineN = lineN;
 
     while (std::regex_search(instLine, m, instUnit)) {
         std::string res = m[0].str();
@@ -257,13 +257,13 @@ void AssemblyParser::instParse(const int &lineN, std::string instLine){
 
 }
 
-void AssemblyParser::metaCommandParse(const int &lineN, const std::string &instLine){
+void AssemblyParser::metaCommandParse(const int &lineN, const int &instN, const std::string &instLine){
     // .globalから始まるコメント，コマンドをパース
     Instruction inst;
     if(instLine == ENTRY_POINT){
         // この次から始まるようにジャンプ命令を先頭に入れる
         Instruction topInst;
-        topInst.type = InstType::Inst;
+        topInst.lineN = 1;
         topInst.opcode = "j";
         std::vector<int> info = opcodeInfoMap.at(topInst.opcode);
         topInst.operandN = info[0];
@@ -271,19 +271,14 @@ void AssemblyParser::metaCommandParse(const int &lineN, const std::string &instL
         topInst.label = ENTRY_POINT_LABEL;
         instructionVector[0] = topInst;
 
-        inst.type = InstType::Label;
-        auto pib =  labelMap.insert({ENTRY_POINT_LABEL, lineN});
+        auto pib =  labelMap.insert({ENTRY_POINT_LABEL, instN});
         if(! pib.second){
             // ラベルの重複
             parseError(lineN, DOUBLE_LABEL);
         }
 
 
-    }else {
-        // そのほかはコメントとほぼ同様に処理
-        inst.type = InstType::Comment;
     }
-    instructionVector[lineN-1] = inst;
 }
 
 

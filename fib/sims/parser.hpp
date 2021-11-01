@@ -33,7 +33,7 @@ enum class InstType{
 };
 
 struct Instruction{
-    InstType type; // 0 instruction, 1 label, 2 comment
+    int lineN; // pc/4でインデックス付けするため，元のファイルでの行数情報を確保
     int operandN;
     std::string opcode;
     std::string operand[MAX_OPERAND_N];
@@ -53,7 +53,7 @@ class AssemblyParser{
     public:
         std::vector<std::string> filePaths;
         std::vector<Instruction> instructionVector;
-        std::map<std::string, int> labelMap;
+        std::map<std::string, int> labelMap; //値は次の命令のinstructionVectorでのインデックス
         AssemblyParser(const std::vector<std::string> &filePaths, const bool &useBin, const bool &forGUI);
         std::pair<std::string, int> getFileNameAndLine(const int &lineN)const;
     private:
@@ -61,10 +61,11 @@ class AssemblyParser{
         bool forGUI;
         bool useBin;
         void parseFiles(const std::vector<std::string> &filePaths);
-        int parseFile(const std::string &filePath, const int &startLine);
+        std::pair<int, int> parseFile(const std::string &filePath,
+             const int &startLine, const int &instN);
         void parseBinFile(const std::string &filePath);
-        void instParse(const int &lineN, std::string instLine);
-        void metaCommandParse(const int &lineN, const std::string &instLine);
+        void instParse(const int &lineN, const int &instN, std::string instLine);
+        void metaCommandParse(const int &lineN, const int &instN, const std::string &instLine);
         std::pair<std::string , int> parseOffsetAndRegister(const std::string & input, const int &lineN)const;
         void parseError(const int &, const std::string&)const;
         int getImmediate(const int& lineN, const int& immediateBitN, const std::string& intStr)const;
