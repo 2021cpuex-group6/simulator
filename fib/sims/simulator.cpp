@@ -270,16 +270,16 @@ void AssemblySimulator::launch(){
 
 void AssemblySimulator::doNextBreak(){
     // 次のブレークポイントまで実行
-    int line;
     next(false, false); //最初は実行できる
     while(!end){
-        line = pc / INST_BYTE_N + 1;
-        if(breakPoints.find(line) != breakPoints.end()){
+        int instInd = pc / INST_BYTE_N;
+        if(breakPoints.find(instInd) != breakPoints.end()){
             if(forGUI){
                 std::cout << GUI_STOP << std::endl;
             }else{
                 std::cout << "Stopped: " << std::endl;
-                printInstruction(line, parser.instructionVector[line-1]);
+                Instruction inst = parser.instructionVector[instInd];
+                printInstruction(inst.lineN, inst);
             }
             break;
         }
@@ -307,31 +307,16 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
 
         BeforeData beforeData = {};
 
-        int line = pc/INST_BYTE_N;
-        Instruction inst = parser.instructionVector[line];
-        if(inst.type == InstType::Inst){
-            jumpComment = false;
-            beforeData = doInst(inst);
-            if(printInst && !forGUI){
-                printInstruction(line+1, inst);
-                printDif(beforeData, false);
-            }else if(printInst){
-                printDif(beforeData, false);
-            }
-        }else{
-            line ++;;
-            beforeData.instruction = "";
-            beforeData.pc = pc;
-            beforeData.writeMem = false;
-            if(!jumpComment && printInst){
-                if(forGUI){
-                    std::cout << GUI_NO_CHANGE << std::endl;
-                }else{
-                    std::cout << "--- No Change ---" << std::endl;
-                }
-            }
-
-            incrementPC();
+        int instInd = pc/INST_BYTE_N;
+        Instruction inst = parser.instructionVector[instInd];
+        nowLine = inst.lineN;
+        jumpComment = false;
+        beforeData = doInst(inst);
+        if(printInst && !forGUI){
+            printInstruction(inst.lineN, inst);
+            printDif(beforeData, false);
+        }else if(printInst){
+            printDif(beforeData, false);
         }
         addHistory(beforeData);
     }while(jumpComment);
@@ -405,30 +390,18 @@ void AssemblySimulator::back(){
 void AssemblySimulator::printInstruction(const int & lineN, const Instruction &instruction)const{
     // 受け取った命令を画面表示
     std::stringstream ss;
-    ss << std::setw(PRINT_INST_NUM_SIZE) << std::to_string(lineN) << ":";
-    switch (instruction.type){
-        case InstType::Inst:
-            ss <<  std::setw(PRINT_INST_NUM_SIZE) << instruction.opcode;
-            for(int i = 0; i < instruction.operandN; i++){
-                ss << std::setw(PRINT_INST_NUM_SIZE) << " " +  instruction.operand[i];
-            }
-            std::cout << ss.str() << std::endl;
-            break;
-        case InstType::Label:
-            ss << " " + instruction.label + ": ";
-            std::cout << ss.str() << std::endl;
-            break;
-        case InstType::Comment:
-            ss << " ** Comment **";
-            std::cout << ss.str() << std::endl;
-            break;
-            
+    auto indPair = parser.getFileNameAndLine(lineN);
+    ss << std::setw(PRINT_INST_NUM_SIZE) << std::to_string(indPair.second) << ":";
+    ss <<  std::setw(PRINT_INST_NUM_SIZE) << instruction.opcode;
+    for(int i = 0; i < instruction.operandN; i++){
+        ss << std::setw(PRINT_INST_NUM_SIZE) << " " +  instruction.operand[i];
     }
+    std::cout << ss.str() << std::endl;
     
 }
 
-void AssemblySimulator::deleteBreakPoint(const int &lineN){
-    int i = breakPoints.erase(lineN);
+void AssemblySimulator::deleteBreakPoint(const int &instInd){
+    int i = breakPoints.erase(instInd);
     if(i == 0){
         if(forGUI){
             std::cout << GUI_WARNING << std::endl;
@@ -438,10 +411,10 @@ void AssemblySimulator::deleteBreakPoint(const int &lineN){
     }
 }
 
-void AssemblySimulator::setBreakPoint(const int &lineN){
-    // ブレークポイントを設置
-    if(lineN > 0 && lineN < static_cast<int>(parser.instructionVector.size())){
-        breakPoints.insert(lineN);
+// ブレークポイントを設置 instructionVectorのインデックス
+void AssemblySimulator::setBreakPoint(const int &instInd){
+    if(instInd >= 0 && instInd < static_cast<int>(parser.instructionVector.size())){
+        breakPoints.insert(instInd);
     }else{
         // 範囲外のため設置不可
         if(forGUI){
@@ -456,7 +429,7 @@ void AssemblySimulator::setBreakPoint(const int &lineN){
 void AssemblySimulator::printBreakList()const{
     // ブレークポイントの命令を表示
     for(auto &e: breakPoints){
-        printInstruction(e, parser.instructionVector[e-1]);
+        printInstruction(e, parser.instructionVector[e]);
     }
 
 }
@@ -785,18 +758,21 @@ std::pair<int, bool> AssemblySimulator::getRegIndWithError(const std::string &re
 
 
 void AssemblySimulator::launchError(const std::string &message)const{
+    auto linePair = parser.getFileNameAndLine(nowLine);
     if(forGUI){
         // GUI用にエラー通知
         std::cout << GUI_ERROR << std::endl;
-        std::cout << pc/4 + 1 << std::endl;
+        std::cout << linePair.first << ": " << linePair.second << std::endl;
         std::cout << message << std::endl;
         
     }
-    throw std::invalid_argument(std::to_string(pc/4 + 1) + "行目:" + message);
+    throw std::invalid_argument(linePair.first + ": " + std::to_string(linePair.second) + "行目:" + message);
 }
 void AssemblySimulator::launchWarning(const std::string &message)const{
-    if(onWarning && forGUI){
-        std::cout << "Warning: " +  std::to_string(pc/4 + 1) + "行目:" + message << std::endl;
+    if(onWarning && (!forGUI)){
+        auto linePair = parser.getFileNameAndLine(nowLine);
+
+        std::cout << "Warning: " + linePair.first + ": " + std::to_string(linePair.second) + "行目:" + message << std::endl;
 
     }
 }
@@ -890,9 +866,9 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
                 }
                 int regd = dPair.first;
                 if(regd != 0){
-                    writeReg(regd, pc+INST_BYTE_N, true);
                     ans.regInd = regd;
-                    ans.regValue = pc+INST_BYTE_N;
+                    ans.regValue = iRegisters[regd];
+                    writeReg(regd, pc+INST_BYTE_N, true);
                 }
 
             }
@@ -917,8 +893,8 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
                 pc = nextPC;
 
             }else{
-                int nextLine = parser.labelMap.at(instruction.label);
-                pc = nextLine * INST_BYTE_N;
+                int nextPC = parser.labelMap.at(instruction.label) * INST_BYTE_N;
+                pc = nextPC;
             }
             return ans;
         }catch(const std::out_of_range &e){
@@ -937,8 +913,8 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
 
 void AssemblySimulator::incrementPC(){
     // pcのインクリメントと、ファイル末端に到達したかのチェックを行う
-    pc += 4;
-    if(pc == static_cast<long>(parser.instructionVector.size()) * 4){
+    pc += INST_BYTE_N;
+    if(pc == static_cast<long>(parser.instructionVector.size()) * INST_BYTE_N){
         // 末端に到着
         end = true;
         if(forGUI){

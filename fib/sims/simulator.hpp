@@ -93,6 +93,7 @@ class AssemblySimulator{
         bool useBinary = false;
         bool onWarning = true;
         bool forGUI;
+        int nowLine = 0;
         int pc; //pcはメモリアドレスを表すので、アセンブリファイルの行数-1の4倍
         uint32_t fcsr; //浮動小数点演算の状態管理　いらないかも
         bool end; //終了フラグ
