@@ -270,16 +270,16 @@ void AssemblySimulator::launch(){
 
 void AssemblySimulator::doNextBreak(){
     // 次のブレークポイントまで実行
-    int line;
     next(false, false); //最初は実行できる
     while(!end){
-        line = pc / INST_BYTE_N + 1;
-        if(breakPoints.find(line) != breakPoints.end()){
+        int instInd = pc / INST_BYTE_N;
+        if(breakPoints.find(instInd) != breakPoints.end()){
             if(forGUI){
                 std::cout << GUI_STOP << std::endl;
             }else{
                 std::cout << "Stopped: " << std::endl;
-                printInstruction(line, parser.instructionVector[line-1]);
+                Instruction inst = parser.instructionVector[instInd];
+                printInstruction(inst.lineN, inst);
             }
             break;
         }
@@ -307,31 +307,15 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
 
         BeforeData beforeData = {};
 
-        int line = pc/INST_BYTE_N;
-        Instruction inst = parser.instructionVector[line];
-        if(inst.type == InstType::Inst){
-            jumpComment = false;
-            beforeData = doInst(inst);
-            if(printInst && !forGUI){
-                printInstruction(line+1, inst);
-                printDif(beforeData, false);
-            }else if(printInst){
-                printDif(beforeData, false);
-            }
-        }else{
-            line ++;;
-            beforeData.instruction = "";
-            beforeData.pc = pc;
-            beforeData.writeMem = false;
-            if(!jumpComment && printInst){
-                if(forGUI){
-                    std::cout << GUI_NO_CHANGE << std::endl;
-                }else{
-                    std::cout << "--- No Change ---" << std::endl;
-                }
-            }
-
-            incrementPC();
+        int instInd = pc/INST_BYTE_N;
+        Instruction inst = parser.instructionVector[instInd];
+        jumpComment = false;
+        beforeData = doInst(inst);
+        if(printInst && !forGUI){
+            printInstruction(inst.lineN, inst);
+            printDif(beforeData, false);
+        }else if(printInst){
+            printDif(beforeData, false);
         }
         addHistory(beforeData);
     }while(jumpComment);
@@ -406,29 +390,16 @@ void AssemblySimulator::printInstruction(const int & lineN, const Instruction &i
     // 受け取った命令を画面表示
     std::stringstream ss;
     ss << std::setw(PRINT_INST_NUM_SIZE) << std::to_string(lineN) << ":";
-    switch (instruction.type){
-        case InstType::Inst:
-            ss <<  std::setw(PRINT_INST_NUM_SIZE) << instruction.opcode;
-            for(int i = 0; i < instruction.operandN; i++){
-                ss << std::setw(PRINT_INST_NUM_SIZE) << " " +  instruction.operand[i];
-            }
-            std::cout << ss.str() << std::endl;
-            break;
-        case InstType::Label:
-            ss << " " + instruction.label + ": ";
-            std::cout << ss.str() << std::endl;
-            break;
-        case InstType::Comment:
-            ss << " ** Comment **";
-            std::cout << ss.str() << std::endl;
-            break;
-            
+    ss <<  std::setw(PRINT_INST_NUM_SIZE) << instruction.opcode;
+    for(int i = 0; i < instruction.operandN; i++){
+        ss << std::setw(PRINT_INST_NUM_SIZE) << " " +  instruction.operand[i];
     }
+    std::cout << ss.str() << std::endl;
     
 }
 
-void AssemblySimulator::deleteBreakPoint(const int &lineN){
-    int i = breakPoints.erase(lineN);
+void AssemblySimulator::deleteBreakPoint(const int &instInd){
+    int i = breakPoints.erase(instInd);
     if(i == 0){
         if(forGUI){
             std::cout << GUI_WARNING << std::endl;
@@ -438,10 +409,10 @@ void AssemblySimulator::deleteBreakPoint(const int &lineN){
     }
 }
 
-void AssemblySimulator::setBreakPoint(const int &lineN){
-    // ブレークポイントを設置
-    if(lineN > 0 && lineN < static_cast<int>(parser.instructionVector.size())){
-        breakPoints.insert(lineN);
+// ブレークポイントを設置 instructionVectorのインデックス
+void AssemblySimulator::setBreakPoint(const int &instInd){
+    if(instInd >= 0 && instInd < static_cast<int>(parser.instructionVector.size())){
+        breakPoints.insert(instInd);
     }else{
         // 範囲外のため設置不可
         if(forGUI){
@@ -456,7 +427,7 @@ void AssemblySimulator::setBreakPoint(const int &lineN){
 void AssemblySimulator::printBreakList()const{
     // ブレークポイントの命令を表示
     for(auto &e: breakPoints){
-        printInstruction(e, parser.instructionVector[e-1]);
+        printInstruction(e, parser.instructionVector[e]);
     }
 
 }
