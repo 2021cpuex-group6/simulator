@@ -147,6 +147,51 @@ uint32_t fmul(const uint32_t & x1, const uint32_t& x2){
     return (sy << (INT_BIT_N-1)) | (ey << (INT_BIT_N-9)) | my;
 }
 
+uint32_t fdiv(const uint32_t & x1, const uint32_t& x2){
+    auto x1_ =  separateFloat(x1);
+    auto x2_ =  separateFloat(x2);
+
+    uint32_t s1 = shiftRightLogical(x1_[0], INT_BIT_N-1);
+    uint32_t e1 = x1_[1] >> (INT_BIT_N - 9u);
+    uint32_t m1 = x1_[2];
+    uint32_t s2 = shiftRightLogical(x2_[0], INT_BIT_N-1);
+    uint32_t e2 = x2_[1] >> (INT_BIT_N - 9u);
+    uint32_t m2 = x2_[2];
+
+    // 仮数部の大きさを比較
+    bool flg1 = (m1 < m2);
+
+    // 1を用いてx1の仮数のシフト量を決定
+    uint32_t sft = flg1 ? 24u : 23u;
+
+    // シフト
+
+    uint64_t sm = (0x800000 | static_cast<uint64_t>(m1)) << sft;
+
+    // 除算
+    // 遅そう
+    uint32_t mya = sm / (0x800000 | m2);
+
+    // 指数部を2パターン計算
+    // fmul同様のアンダーフロー検出
+    // x1が0かも判定
+    uint32_t ey1 = (e1 + 383u - e2) & 0x1ff;
+    uint32_t ey2 = (ey1 - 1u) & 0x1ff;
+    bool flg2 = e1 != 0;
+
+    // 指数部を選択
+    uint8_t ey = ((ey1 & 0x100) != 0) && flg2 ? ( flg1 ? ey2 & 0xff : ey1 & 0xff)
+                                                : 0;
+
+    // 符号はXOR
+    uint32_t sy = (s1 != s2) ? 1 : 0;
+
+    // 返す
+
+    return (sy << (INT_BIT_N-1)) | (ey << (INT_BIT_N - 9)) | (mya & 0x7fffff);
+
+}
+
 bool isNormalized(const float & input){
     // 入力された値が正規化数か調べる
     Float32 float32;
@@ -209,6 +254,27 @@ bool mulCheck(const uint32_t& input1, const uint32_t& input2){
     return dif < standard;
 }
 
+bool divCheck(const uint32_t& input1, const uint32_t& input2){
+    // 商の結果が合うかを調べる
+    // c++の実装の結果で答えが非正規化数になるものは結果によらずtrue
+    Float32 in1, in2;
+    in1.u32 = input1;
+    in2.u32 = input2;
+
+    float ans = in1.f32 / in2.f32;
+    if(!isNormalized(ans)){
+        return true;
+    }
+    uint32_t myAns = fdiv(in1.u32, in2.u32);
+    Float32 myAns_;
+    myAns_.u32 = myAns;
+    float dif = fabs(myAns_.f32 - ans);
+    float factor = pow(2, -20);
+    float standard = fmax(fabs(ans) * factor, pow(2, -126));
+
+    return dif < standard;
+}
+
 CheckResult printOperationCheck(const Float32 &f1, const Float32 &f2, const CheckedOperation & op){
     // add, subの結果が正しいか調べ、print
     if(isNormalized(f1.f32) && isNormalized(f2.f32)){
@@ -229,6 +295,11 @@ CheckResult printOperationCheck(const Float32 &f1, const Float32 &f2, const Chec
                 res = mulCheck(f1.u32, f2.u32);
                 myAns.u32 = fmul(f1.u32, f2.u32);
                 trueAns.f32 = f1.f32 * f2.f32;
+                break;
+            case CheckedOperation::DIV:
+                res = divCheck(f1.u32, f2.u32);
+                myAns.u32 = fdiv(f1.u32, f2.u32);
+                trueAns.f32 = f1.f32 / f2.f32;
                 break;
             default:
                 break;

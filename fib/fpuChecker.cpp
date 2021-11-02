@@ -5,6 +5,6 @@ int main(){
     // randomOperationCheck(1000000, CheckedOperation::ADD);
     // randomOperationCheck(1000000, CheckedOperation::SUB);
 
-    randomOperationCheck(10000000, CheckedOperation::MUL);
+    randomOperationCheck(10000000, CheckedOperation::DIV);
 
 }
