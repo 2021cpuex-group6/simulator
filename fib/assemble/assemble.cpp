@@ -196,7 +196,7 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
             rg1 = static_cast<int32_t>(register_to_binary(op1, line));
         }
         auto address = get_address_reg_imm(op2, line, false);
-        output |= (rg1 << 15) | (address.second << 20) | (address.first);
+        output |= (rg1 << 20) | (address.second << 15) | (address.first);
 
     }else {
         output = NOP;
