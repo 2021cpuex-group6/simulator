@@ -1,13 +1,13 @@
 .global	min_caml_start
 # テスト用
 start:
-    jal x4 test # x4は4行目
+    jal x4 test # x4は5行目
     addi x1 x1 1000
     nop
-    jr  4(%x2) # 10行目に飛ぶ
+    jr  4(%x2) # 12行目に飛ぶ
     jalr x2 -16(%x3) # 2つ上に飛ぶ x2は8行目
 test:
-    jalr x3 12(%x4) # 7行目に飛ぶ x3は10行目
+    jalr x3 12(%x4) # 8行目に飛ぶ x3は12行目
 test2:
     addi x1 x0 0 # x1 = 0
     addi x4 x0 4 # x4 = 4
