@@ -390,7 +390,8 @@ void AssemblySimulator::back(){
 void AssemblySimulator::printInstruction(const int & lineN, const Instruction &instruction)const{
     // 受け取った命令を画面表示
     std::stringstream ss;
-    ss << std::setw(PRINT_INST_NUM_SIZE) << std::to_string(lineN) << ":";
+    auto indPair = parser.getFileNameAndLine(lineN);
+    ss << std::setw(PRINT_INST_NUM_SIZE) << std::to_string(indPair.second) << ":";
     ss <<  std::setw(PRINT_INST_NUM_SIZE) << instruction.opcode;
     for(int i = 0; i < instruction.operandN; i++){
         ss << std::setw(PRINT_INST_NUM_SIZE) << " " +  instruction.operand[i];
@@ -892,7 +893,7 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
                 pc = nextPC;
 
             }else{
-                int nextPC = parser.labelMap.at(instruction.label);
+                int nextPC = parser.labelMap.at(instruction.label) * INST_BYTE_N;
                 pc = nextPC;
             }
             return ans;

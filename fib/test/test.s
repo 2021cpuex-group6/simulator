@@ -1,10 +1,11 @@
+.global	min_caml_start
 # テスト用
 start:
     jal x4 test # x4は4行目
     addi x1 x1 1000
     nop
-    jr  8(%x2) # 10行目に飛ぶ
-    jalr x2 -16(%x3) # 一つ上に飛ぶ x2は8行目
+    jr  4(%x2) # 10行目に飛ぶ
+    jalr x2 -16(%x3) # 2つ上に飛ぶ x2は8行目
 test:
     jalr x3 12(%x4) # 7行目に飛ぶ x3は10行目
 test2:
@@ -27,7 +28,6 @@ test2:
     div x3 x3 x2 # x3 = -1
     addi x4 x0 17
     div x3 x4 x2 # x3 = -1
-.global	min_caml_start
     jal x1 additional  # これで別ファイルに飛んで戻ってくる
     addi x1 x0 21 # シフト数
     addi %x2 x0 1532 # x2 1 0111 1111 00

@@ -182,7 +182,7 @@ std::pair<int, int> AssemblyParser::parseFile(const std::string& filePath, const
             instParse(lineN, nowInstN++,  m[1].str());
         }else if(std::regex_match(line, m, labelRe)){
             // ラベル
-            auto pib =  labelMap.insert({m[1].str(), instN});
+            auto pib =  labelMap.insert({m[1].str(), nowInstN});
             if(! pib.second){
                 // ラベルの重複
                 parseError(lineN, DOUBLE_LABEL);
@@ -254,7 +254,7 @@ void AssemblyParser::instParse(const int &lineN, const int &instN, std::string i
     }
     if(count != inst.operandN) parseError(lineN, INVALID_OPERAND_N);
 
-    instructionVector[lineN-1] = inst;
+    instructionVector[instN] = inst;
 
 }
 
