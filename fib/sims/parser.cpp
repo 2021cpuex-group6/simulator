@@ -147,6 +147,7 @@ void AssemblyParser::parseFiles(const std::vector<std::string> &filePaths){
         nowInstN = parseRes.second;
 
     }
+    instructionVector.resize(nowInstN); //命令の終わりで終了するようにする
 
 }
 

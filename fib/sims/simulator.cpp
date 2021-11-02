@@ -309,6 +309,7 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
 
         int instInd = pc/INST_BYTE_N;
         Instruction inst = parser.instructionVector[instInd];
+        nowLine = inst.lineN;
         jumpComment = false;
         beforeData = doInst(inst);
         if(printInst && !forGUI){
@@ -756,18 +757,21 @@ std::pair<int, bool> AssemblySimulator::getRegIndWithError(const std::string &re
 
 
 void AssemblySimulator::launchError(const std::string &message)const{
+    auto linePair = parser.getFileNameAndLine(nowLine);
     if(forGUI){
         // GUI用にエラー通知
         std::cout << GUI_ERROR << std::endl;
-        std::cout << pc/4 + 1 << std::endl;
+        std::cout << linePair.first << ": " << linePair.second << std::endl;
         std::cout << message << std::endl;
         
     }
-    throw std::invalid_argument(std::to_string(pc/4 + 1) + "行目:" + message);
+    throw std::invalid_argument(linePair.first + ": " + std::to_string(linePair.second) + "行目:" + message);
 }
 void AssemblySimulator::launchWarning(const std::string &message)const{
-    if(onWarning && forGUI){
-        std::cout << "Warning: " +  std::to_string(pc/4 + 1) + "行目:" + message << std::endl;
+    if(onWarning && (!forGUI)){
+        auto linePair = parser.getFileNameAndLine(nowLine);
+
+        std::cout << "Warning: " + linePair.first + ": " + std::to_string(linePair.second) + "行目:" + message << std::endl;
 
     }
 }
@@ -861,9 +865,9 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
                 }
                 int regd = dPair.first;
                 if(regd != 0){
-                    writeReg(regd, pc+INST_BYTE_N, true);
                     ans.regInd = regd;
-                    ans.regValue = pc+INST_BYTE_N;
+                    ans.regValue = iRegisters[regd];
+                    writeReg(regd, pc+INST_BYTE_N, true);
                 }
 
             }
@@ -888,8 +892,8 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
                 pc = nextPC;
 
             }else{
-                int nextLine = parser.labelMap.at(instruction.label);
-                pc = nextLine * INST_BYTE_N;
+                int nextPC = parser.labelMap.at(instruction.label);
+                pc = nextPC;
             }
             return ans;
         }catch(const std::out_of_range &e){
@@ -908,8 +912,8 @@ BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruc
 
 void AssemblySimulator::incrementPC(){
     // pcのインクリメントと、ファイル末端に到達したかのチェックを行う
-    pc += 4;
-    if(pc == static_cast<long>(parser.instructionVector.size()) * 4){
+    pc += INST_BYTE_N;
+    if(pc == static_cast<long>(parser.instructionVector.size()) * INST_BYTE_N){
         // 末端に到着
         end = true;
         if(forGUI){
