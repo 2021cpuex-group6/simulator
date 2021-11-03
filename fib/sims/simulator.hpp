@@ -32,6 +32,7 @@ const std::string ILEGAL_WORD_ACCESS = "メモリのワードアクセスは4バ
 const std::string ILEGAL_BASE_REGISTER = "浮動小数点レジスタ，pcはベースレジスタにできません.";
 const std::string ILEGAL_LOADSTORE_INSTRUCTION = "適切なロード・ストア命令を使ってください.";
 const std::string ILEGAL_CONTROL_REGISTER = "制御命令に浮動小数点レジスタはは使えません";
+const std::string ILEGAL_REGISTER_KIND = "適切なレジスタを使ってください";
 const std::string IMPLEMENT_ERROR = "バグです。報告してください";
 
 const std::string IREG_PREFIX = "%x";
@@ -141,6 +142,7 @@ class AssemblySimulator{
         void launchWarning(const std::string &message)const;
         void doALU(const std::string &opcode, const int &targetR, const int &source0, const int &source1);
         void doFALU(const std::string &opcode, const int &targetR, const uint32_t &source0, const uint32_t &source1);
+        BeforeData do2RegInst(const std::string &opcode, const Instruction &instruction);
         BeforeData doLoad(const std::string &opcode, const Instruction &instruction);
         BeforeData doStore(const std::string &opcode, const Instruction &instruction);
         BeforeData doControl(const std::string &opcode, const Instruction &instruction);

@@ -580,6 +580,8 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
             ans = doLoad(opcode, instruction);
         }else if(opKind == INST_STORE){
             ans = doStore(opcode, instruction);
+        }else if(opKind == INST_2REGF){
+            ans = do2RegInst(opcode, instruction);
         }else if(opKind == INST_OTHERS){
 
         }else{
@@ -635,6 +637,39 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
         incrementPC();
         return ans;
     }
+}
+
+// fmvなど，レジスタを2つしか受け取らない浮動小数点命令
+BeforeData AssemblySimulator::do2RegInst(const std::string &opcode, const Instruction &instruction){
+    auto ind1Pair = getRegIndWithError(instruction.operand[0]);
+    auto ind2Pair = getRegIndWithError(instruction.operand[1]);
+    BeforeData ans = {opcode, pc, false, ind1Pair.first, fRegisters[ind1Pair.first].si, false};
+
+    float ansF = 0;
+    if(opcode == "itof"){
+        if(!ind2Pair.second){
+            launchError(ILEGAL_REGISTER_KIND);
+        }
+
+    }else{
+        if(ind2Pair.second){
+            launchError(ILEGAL_REGISTER_KIND);
+        }
+        if(opcode == "fmv"){
+            ansF = fRegisters[ind2Pair.first].f;
+        }else if(opcode == "fsqrt"){
+
+        }else if(opcode == "floor"){
+
+        }
+    }
+
+    if(ind1Pair.second){
+        launchError(ILEGAL_REGISTER_KIND);
+    }
+    MemoryUnit ansMu(ansF);
+    writeReg(ind1Pair.first, ansMu.si, false);
+    return ans;
 }
 
 // ストア命令を実行

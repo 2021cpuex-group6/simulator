@@ -41,11 +41,12 @@ struct Instruction{
     std::string label;
 };
 constexpr int INST_REGONLY = 0;
-constexpr int INST_REGIMM = 1;
-constexpr int INST_LOAD = 2;
-constexpr int INST_STORE = 3;
-constexpr int INST_CONTROL = 4;
-constexpr int INST_OTHERS = 5;
+constexpr int INST_2REGF = 1;
+constexpr int INST_REGIMM = 2;
+constexpr int INST_LOAD = 3;
+constexpr int INST_STORE = 4;
+constexpr int INST_CONTROL = 5;
+constexpr int INST_OTHERS = 6;
 extern std::map<std::string, std::vector<int>> opcodeInfoMap;
 
 
