@@ -227,12 +227,12 @@ void AssemblySimulator::printRegisters(const NumberBase &base, const bool &sign,
 
 void AssemblySimulator::writeReg(const int &regInd, const int32_t &value, const bool& isInteger){
     if(regInd < REGISTERS_N){
-        if(isInteger){
-            if(regInd == 0 && !forGUI){
+        if(regInd == 0 && !forGUI){
                 // 0レジスタへの書き込み
                 std::cout << ZERO_REG_WRITE_ERROR << std::endl;
                 return;
-            }
+        }
+        if(isInteger){
             iRegisters[regInd] = value;
 
         }else{
@@ -696,10 +696,10 @@ BeforeData AssemblySimulator::doLoad(const std::string &opcode, const Instructio
 
         if(opcode == "lw"){
             uint32_t value = readMem(address, MemAccess::WORD);
-            iRegisters[indPair.first] = value;
+            writeReg(indPair.first, value, true);
         }else if(opcode == "lbu"){
             uint32_t value = readMem(address, MemAccess::BYTE);
-            iRegisters[indPair.first] = ((~0xff) &iRegisters[indPair.first]) | value;
+            writeReg(indPair.first, ((~0xff) &iRegisters[indPair.first]) | value, true);
         }
 
     }
@@ -827,8 +827,7 @@ void AssemblySimulator::doALU(const std::string &opcode, const int &targetR, con
             ans = shiftRightArithmatic(source0, shiftN);
         }
     }
-    iRegisters[targetR] = ans;
-
+    writeReg(targetR, ans, true);
 }
 
 BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruction &instruction){
