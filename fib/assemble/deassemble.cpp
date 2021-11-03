@@ -21,9 +21,22 @@ void printError(std::string  message){
 }
 
 // 即値をパース
-int32_t &immParse(const uint32_t &code ){
+int32_t &IImmParse(const uint32_t &code ){
     int32_t ans = static_cast<int32_t>(code);
     ans = shiftRightArithmatic(ans, IMM_SHIFT_N);
+    return ans;
+}
+
+int32_t &BImmParse(const uint32_t &code){
+    uint32_t part1 = code & 0x80000000;
+    uint32_t part2 = (code & 0x7e000000) >> 20;
+    uint32_t part3 = (code & 0xf00) >> 7;
+    uint32_t part4 = (code & 0x80) << 4;
+    uint32_t res = part2 | part3 | part4;
+    if(part1 != 0){
+        res |= 0xfffff000;
+    }
+    int32_t ans = static_cast<int32_t>(res);
     return ans;
 }
 
@@ -42,11 +55,20 @@ Instruction &IRegParse(const uint32_t &code ){
     inst.operandN = 2;
     inst.regInd[0] = (code >> RD_SHIFT_N) & REG_MASK;
     inst.regInd[1] = (code >> RS1_SHIFT_N) & REG_MASK;
-    inst.immediate = immParse(code);
+    inst.immediate = IImmParse(code);
 
     return inst;
 }
 
+Instruction &BRegParse(const uint32_t &code ){
+    Instruction inst = {};
+    inst.operandN = 2;
+    inst.regInd[0] = (code >> RS1_SHIFT_N) & REG_MASK;
+    inst.regInd[1] = (code >> RS2_SHIFT_N) & REG_MASK;
+    inst.immediate = BImmParse(code);
+
+    return inst;
+}
 
 
 // 整数レジスタを使うR形式命令をパース
@@ -124,6 +146,22 @@ Instruction &intIParse(const uint32_t & code){
             inst.opcode = "xori"; break;
         default:
             printError("intIParse: " + INVALID_CODE);
+    }
+    return inst;
+}
+
+Instruction &BParse(const uint32_t &code){
+    Instruction &inst = BRegParse(code);
+    uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
+    switch(funct3){
+        case 0b100:
+            inst.opcode = "blt"; break;
+        case 0b000:
+            inst.opcode = "beq"; break;
+        case 0b001:
+            inst.opcode = "bne"; break;
+        default:
+            printError("BParse: " + INVALID_CODE);
     }
     return inst;
 }
