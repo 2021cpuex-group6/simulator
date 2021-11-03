@@ -280,7 +280,7 @@ void AssemblySimulator::doNextBreak(){
             }else{
                 std::cout << "Stopped: " << std::endl;
                 Instruction inst = parser.instructionVector[instInd];
-                printInstruction(inst.lineN, inst);
+                printInstructionInSim(inst.lineN, inst);
             }
             break;
         }
@@ -314,7 +314,7 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
         jumpComment = false;
         beforeData = doInst(inst);
         if(printInst && !forGUI){
-            printInstruction(inst.lineN, inst);
+            printInstructionInSim(inst.lineN, inst);
             printDif(beforeData, false);
         }else if(printInst){
             printDif(beforeData, false);
@@ -387,18 +387,20 @@ void AssemblySimulator::back(){
 
 
 }
-
-void AssemblySimulator::printInstruction(const int & lineN, const Instruction &instruction)const{
-    // 受け取った命令を画面表示
+void AssemblySimulator::printInstruction(const int & lineN, const Instruction &instruction){
     std::stringstream ss;
-    auto indPair = parser.getFileNameAndLine(lineN);
-    ss << std::setw(PRINT_INST_NUM_SIZE) << std::to_string(indPair.second) << ":";
+    ss << std::setw(PRINT_INST_NUM_SIZE) << std::to_string(lineN) << ":";
     ss <<  std::setw(PRINT_INST_NUM_SIZE) << instruction.opcode;
     for(int i = 0; i < instruction.operandN; i++){
         ss << std::setw(PRINT_INST_NUM_SIZE) << " " +  instruction.operand[i];
     }
     std::cout << ss.str() << std::endl;
-    
+}
+
+void AssemblySimulator::printInstructionInSim(const int & lineN, const Instruction &instruction)const{
+    // 受け取った命令を画面表示
+    auto indPair = parser.getFileNameAndLine(lineN);
+    printInstruction(indPair.second, instruction);
 }
 
 void AssemblySimulator::deleteBreakPoint(const int &instInd){
@@ -430,7 +432,7 @@ void AssemblySimulator::setBreakPoint(const int &instInd){
 void AssemblySimulator::printBreakList()const{
     // ブレークポイントの命令を表示
     for(auto &e: breakPoints){
-        printInstruction(e, parser.instructionVector[e]);
+        printInstructionInSim(e, parser.instructionVector[e]);
     }
 
 }

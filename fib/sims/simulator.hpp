@@ -119,7 +119,8 @@ class AssemblySimulator{
         void next(bool, const bool&);
         void doNextBreak();
         void launch();
-        void printInstruction(const int &, const Instruction &)const;
+        static void printInstruction(const int &, const Instruction &);
+        void printInstructionInSim(const int &, const Instruction &)const;
         void printBreakList()const;
         void printDif(const BeforeData &before, const bool &back)const;
         void setBreakPoint(const int &);
