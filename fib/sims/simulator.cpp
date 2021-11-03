@@ -197,6 +197,7 @@ void AssemblySimulator::printRegisters(const NumberBase &base, const bool &sign,
             ss << getIRegisterInfoUnit(i, NumberBase::DEC, true) << " ";
         }
         std::cout << ss.str() << std::endl;
+        ss.str(" ");
         ss.clear(std::stringstream::goodbit);
         for(int i = 0; i < REGISTERS_N; i++){
             ss << getFRegisterInfoUnit(i, NumberBase::HEX, false, false) << " ";
