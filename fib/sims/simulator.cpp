@@ -387,6 +387,51 @@ void AssemblySimulator::back(){
 
 
 }
+
+void AssemblySimulator::printInstByRegInd(const int & lineN, const Instruction &instruction){
+    std::stringstream ss;
+    ss << std::setw(PRINT_INST_NUM_SIZE) << std::to_string(lineN) << ":";
+    ss <<  std::setw(PRINT_INST_NUM_SIZE) << instruction.opcode;
+    auto instInfo = opcodeInfoMap[instruction.opcode];
+    switch(instInfo[4]){
+        case INST_REGONLY:
+        case INST_2REGF:
+            for(int i = 0; i < instruction.operandN; i++){
+                ss << std::setw(PRINT_INST_NUM_SIZE) << " %" +  std::to_string(instruction.regInd[i]);
+            }
+            break;
+        case INST_REGIMM:
+        case INST_CONTROL:
+            if(instruction.opcode == "jr" | instruction.opcode == "jalr"){
+                for(int i = 0; i < instruction.operandN -1; i++){
+                    ss << std::setw(PRINT_INST_NUM_SIZE) << " %" +  std::to_string(instruction.regInd[i]);
+                }
+                ss <<  " " <<   std::to_string(instruction.immediate);
+                ss << "(" << " %" +  std::to_string(instruction.regInd[instruction.operandN-1]) << ")";
+            }else{
+                for(int i = 0; i < instruction.operandN; i++){
+                    ss << std::setw(PRINT_INST_NUM_SIZE) << " %" +  std::to_string(instruction.regInd[i]);
+                }
+                ss <<  " " <<   std::to_string(instruction.immediate);
+            }
+            break;
+        case INST_LOAD:
+        case INST_STORE:
+            for(int i = 0; i < instruction.operandN -1; i++){
+                ss << std::setw(PRINT_INST_NUM_SIZE) << " %" +  std::to_string(instruction.regInd[i]);
+            }
+            ss <<  " " <<   std::to_string(instruction.immediate);
+            ss << "(" << " %" +  std::to_string(instruction.regInd[instruction.operandN-1]) << ")";
+            break;
+        default:
+            std::cout << IMPLEMENT_ERROR << std::endl;
+            return;
+            
+
+    }
+    std::cout << ss.str() << std::endl;
+}
+
 void AssemblySimulator::printInstruction(const int & lineN, const Instruction &instruction){
     std::stringstream ss;
     ss << std::setw(PRINT_INST_NUM_SIZE) << std::to_string(lineN) << ":";

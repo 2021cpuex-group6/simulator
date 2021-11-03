@@ -34,7 +34,7 @@ enum class InstType{
 
 struct Instruction{
     int lineN; // pc/4でインデックス付けするため，元のファイルでの行数情報を確保
-    int operandN;
+    int operandN; // デアセンブラではregIndの数
     std::string opcode;
     std::string operand[MAX_OPERAND_N];
     int regInd[MAX_OPERAND_N];
