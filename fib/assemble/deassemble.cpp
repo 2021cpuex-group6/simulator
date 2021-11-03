@@ -40,6 +40,19 @@ int32_t &BImmParse(const uint32_t &code){
     return ans;
 }
 
+int32_t &JImmParse(const uint32_t &code){
+    uint32_t part1 = code & 0x80000000;
+    uint32_t part2 = (code & 0x7fe00000) >> 20;
+    uint32_t part3 = (code & 0x800000) >> 9;
+    uint32_t part4 = (code & 0xff000);
+    uint32_t res = part2 | part3 | part4;
+    if(part1 != 0){
+        res |= 0xfff00000;
+    }
+    int32_t ans = static_cast<int32_t>(res);
+    return ans;
+}
+
 Instruction &RRegParse(const uint32_t &code){
     Instruction inst = {};
     inst.operandN = 3;
@@ -150,6 +163,37 @@ Instruction &intIParse(const uint32_t & code){
     return inst;
 }
 
+// ジャンプ系I形式をパース
+Instruction &JIParse(const uint32_t & code){
+    Instruction &inst = IRegParse(code);
+    uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
+    if(funct3 != 0u){
+        printError("JIParse: " + INVALID_CODE);
+    }
+    if(inst.regInd[0] != 0u){
+        inst.opcode = "jr";
+    }else{
+        inst.opcode = "jalr";
+    }
+    return inst;
+}
+
+// ジャンプ系I形式をパース
+Instruction &LIParse(const uint32_t & code){
+    Instruction &inst = IRegParse(code);
+    uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
+    switch(funct3){
+        case 0b010:
+            inst.opcode = "lw"; break;
+        case 0b100:
+            inst.opcode = "lbu"; break;
+        default:
+            printError("LIParse: " + INVALID_CODE);
+    }
+    return inst;
+}
+
+
 Instruction &BParse(const uint32_t &code){
     Instruction &inst = BRegParse(code);
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
@@ -166,16 +210,37 @@ Instruction &BParse(const uint32_t &code){
     return inst;
 }
 
+Instruction &JParse(const uint32_t &code ){
+    Instruction inst = {};
+    inst.operandN = 2;
+    inst.regInd[0] = (code >> RD_SHIFT_N) & REG_MASK;
+    inst.immediate = JImmParse(code);
+    if(inst.regInd[0]== 0){
+        inst.opcode = "j";
+    }else{
+        inst.opcode = "jal";
+    }
+
+    return inst;
+}
+
 // 符号なしintをアセンブリに戻す
 // lineN, opcode, labelには入れない
 Instruction &deassemble(const uint32_t &code){
     uint8_t opcode = static_cast<uint8_t>(code & OPCODE_MASK);
     switch(opcode){
         case 0b0110011:
-            intRParse(code);
-            break;
+            return intRParse(code);
         case 0b0010011:
-
+            return intIParse(code);
+        case 0b1100011:
+            return BParse(code);
+        case 0b1101111:
+            return JParse(code);
+        case 0b1100111:
+            return JIParse(code);
+        case 0b0000011:
+            return LIParse(code);
         default:
             printError(NOT_IMPLEMENTED);
 
