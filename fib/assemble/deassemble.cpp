@@ -53,6 +53,17 @@ int32_t &JImmParse(const uint32_t &code){
     return ans;
 }
 
+int32_t &SImmParse(const uint32_t &code){
+    uint32_t part1 = (code & 0xfe000000) >> 20;
+    uint32_t part2 = (code & 0xf80) >> 7;
+    uint32_t res = part1 | part2;
+    if((code & 0x80000000) != 0u){
+        res |= 0xfffff000;
+    }
+    int32_t ans = static_cast<int32_t>(res);
+    return ans;
+}
+
 Instruction &RRegParse(const uint32_t &code){
     Instruction inst = {};
     inst.operandN = 3;
@@ -82,6 +93,19 @@ Instruction &BRegParse(const uint32_t &code ){
 
     return inst;
 }
+
+
+
+Instruction &SRegParse(const uint32_t &code ){
+    Instruction inst = {};
+    inst.operandN = 2;
+    inst.regInd[0] = (code >> RS1_SHIFT_N) & REG_MASK;
+    inst.regInd[1] = (code >> RS2_SHIFT_N) & REG_MASK;
+    inst.immediate = SImmParse(code);
+
+    return inst;
+}
+
 
 
 // 整数レジスタを使うR形式命令をパース
@@ -221,6 +245,20 @@ Instruction &JParse(const uint32_t &code ){
         inst.opcode = "jal";
     }
 
+    return inst;
+}
+
+Instruction &SParse(const uint32_t &code){
+    Instruction &inst = SRegParse(code);
+    uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
+    switch(funct3){
+        case 0b010:
+            inst.opcode = "sw"; break;
+        case 0b000:
+            inst.opcode = "sb"; break;
+        default:
+            printError("SParse: " + INVALID_CODE);
+    }
     return inst;
 }
 
