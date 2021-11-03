@@ -37,6 +37,7 @@ struct Instruction{
     int operandN;
     std::string opcode;
     std::string operand[MAX_OPERAND_N];
+    int regInd[MAX_OPERAND_N];
     int immediate;
     std::string label;
 };
