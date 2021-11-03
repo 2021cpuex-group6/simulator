@@ -363,6 +363,7 @@ static std::pair<int32_t, int32_t> get_address_reg_imm(const std::string &input,
         return {imm, rg};
     }
     assemble_error(INVALID_ADDRESSING, line);
+    return{-1, -1};
 }
 
 std::string delete_comment(std::string line) {

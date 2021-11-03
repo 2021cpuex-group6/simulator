@@ -21,13 +21,13 @@ void printError(std::string  message){
 }
 
 // 即値をパース
-int32_t &IImmParse(const uint32_t &code ){
+int32_t IImmParse(const uint32_t &code ){
     int32_t ans = static_cast<int32_t>(code);
     ans = shiftRightArithmatic(ans, IMM_SHIFT_N);
     return ans;
 }
 
-int32_t &BImmParse(const uint32_t &code){
+int32_t BImmParse(const uint32_t &code){
     uint32_t part1 = code & 0x80000000;
     uint32_t part2 = (code & 0x7e000000) >> 20;
     uint32_t part3 = (code & 0xf00) >> 7;
@@ -40,7 +40,7 @@ int32_t &BImmParse(const uint32_t &code){
     return ans;
 }
 
-int32_t &JImmParse(const uint32_t &code){
+int32_t JImmParse(const uint32_t &code){
     uint32_t part1 = code & 0x80000000;
     uint32_t part2 = (code & 0x7fe00000) >> 20;
     uint32_t part3 = (code & 0x800000) >> 9;
@@ -53,7 +53,7 @@ int32_t &JImmParse(const uint32_t &code){
     return ans;
 }
 
-int32_t &SImmParse(const uint32_t &code){
+int32_t SImmParse(const uint32_t &code){
     uint32_t part1 = (code & 0xfe000000) >> 20;
     uint32_t part2 = (code & 0xf80) >> 7;
     uint32_t res = part1 | part2;
@@ -64,7 +64,7 @@ int32_t &SImmParse(const uint32_t &code){
     return ans;
 }
 
-Instruction &RRegParse(const uint32_t &code){
+Instruction RRegParse(const uint32_t &code){
     Instruction inst = {};
     inst.operandN = 3;
     inst.regInd[0] = (code >> RD_SHIFT_N) & REG_MASK;
@@ -74,7 +74,7 @@ Instruction &RRegParse(const uint32_t &code){
     return inst;
 }
 
-Instruction &IRegParse(const uint32_t &code ){
+Instruction IRegParse(const uint32_t &code ){
     Instruction inst = {};
     inst.operandN = 2;
     inst.regInd[0] = (code >> RD_SHIFT_N) & REG_MASK;
@@ -84,7 +84,7 @@ Instruction &IRegParse(const uint32_t &code ){
     return inst;
 }
 
-Instruction &BRegParse(const uint32_t &code ){
+Instruction BRegParse(const uint32_t &code ){
     Instruction inst = {};
     inst.operandN = 2;
     inst.regInd[0] = (code >> RS1_SHIFT_N) & REG_MASK;
@@ -96,7 +96,7 @@ Instruction &BRegParse(const uint32_t &code ){
 
 
 
-Instruction &SRegParse(const uint32_t &code ){
+Instruction SRegParse(const uint32_t &code ){
     Instruction inst = {};
     inst.operandN = 2;
     inst.regInd[0] = (code >> RS1_SHIFT_N) & REG_MASK;
@@ -109,8 +109,8 @@ Instruction &SRegParse(const uint32_t &code ){
 
 
 // 整数レジスタを使うR形式命令をパース
-Instruction &intRParse(const uint32_t &code){
-    Instruction &inst = RRegParse(code);
+Instruction intRParse(const uint32_t &code){
+    Instruction inst = RRegParse(code);
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
     uint32_t funct7 = code & FUNCT_7_MASK;
     switch(funct7){
@@ -169,12 +169,17 @@ Instruction &intRParse(const uint32_t &code){
 }
 
 // 整数の即値演算系I形式をパース
-Instruction &intIParse(const uint32_t & code){
-    Instruction &inst = IRegParse(code);
+Instruction intIParse(const uint32_t & code){
+    Instruction inst = IRegParse(code);
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
     switch(funct3){
         case 0b0:
-            inst.opcode = "addi"; break;
+            if(inst.regInd[0] == 0){
+                inst.opcode = "nop";
+            }else{
+                inst.opcode = "addi";
+            }
+            break;
         case 0b111:
             inst.opcode = "andi"; break;
         case 0b110:
@@ -188,23 +193,24 @@ Instruction &intIParse(const uint32_t & code){
 }
 
 // ジャンプ系I形式をパース
-Instruction &JIParse(const uint32_t & code){
-    Instruction &inst = IRegParse(code);
+Instruction JIParse(const uint32_t & code){
+    Instruction inst = IRegParse(code);
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
     if(funct3 != 0u){
         printError("JIParse: " + INVALID_CODE);
     }
     if(inst.regInd[0] != 0u){
-        inst.opcode = "jr";
-    }else{
         inst.opcode = "jalr";
+    }else{
+        inst.operandN = 1;
+        inst.opcode = "jr";
     }
     return inst;
 }
 
-// ジャンプ系I形式をパース
-Instruction &LIParse(const uint32_t & code){
-    Instruction &inst = IRegParse(code);
+// ロード系I形式をパース
+Instruction LIParse(const uint32_t & code){
+    Instruction inst = IRegParse(code);
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
     switch(funct3){
         case 0b010:
@@ -218,8 +224,8 @@ Instruction &LIParse(const uint32_t & code){
 }
 
 
-Instruction &BParse(const uint32_t &code){
-    Instruction &inst = BRegParse(code);
+Instruction BParse(const uint32_t &code){
+    Instruction inst = BRegParse(code);
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
     switch(funct3){
         case 0b100:
@@ -234,7 +240,7 @@ Instruction &BParse(const uint32_t &code){
     return inst;
 }
 
-Instruction &JParse(const uint32_t &code ){
+Instruction JParse(const uint32_t &code ){
     Instruction inst = {};
     inst.operandN = 2;
     inst.regInd[0] = (code >> RD_SHIFT_N) & REG_MASK;
@@ -248,8 +254,8 @@ Instruction &JParse(const uint32_t &code ){
     return inst;
 }
 
-Instruction &SParse(const uint32_t &code){
-    Instruction &inst = SRegParse(code);
+Instruction SParse(const uint32_t &code){
+    Instruction inst = SRegParse(code);
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
     switch(funct3){
         case 0b010:
@@ -262,8 +268,8 @@ Instruction &SParse(const uint32_t &code){
     return inst;
 }
 
-Instruction &FRParse(const uint32_t &code){
-    Instruction &inst = RRegParse(code);
+Instruction FRParse(const uint32_t &code){
+    Instruction inst = RRegParse(code);
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
     if(funct3 != 0u){
         printError("FRParse: " + INVALID_CODE);
@@ -304,8 +310,10 @@ Instruction &FRParse(const uint32_t &code){
 
 // 符号なしintをアセンブリに戻す
 // lineN, opcode, labelには入れない
-Instruction &deassemble(const uint32_t &code){
-    uint8_t opcode = static_cast<uint8_t>(code & OPCODE_MASK);
+Instruction deassemble(uint32_t code){
+    uint32_t opcode = (code & OPCODE_MASK);
+    Instruction inst;
+    uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
     switch(opcode){
         case 0b0110011:
             return intRParse(code);
@@ -324,16 +332,14 @@ Instruction &deassemble(const uint32_t &code){
         case 0b1010011:
             return FRParse(code);
         case 0b0000111:
-            Instruction &inst = IRegParse(code);
-            uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
+            inst = IRegParse(code);
             if(funct3 != 0b010){
                 printError("FLIParse: " + INVALID_CODE);
             }
             inst.opcode = "flw";
             return inst;
         case 0b0100111:
-            Instruction &inst = SRegParse(code);
-            uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
+            inst = SRegParse(code);
             if(funct3 != 0b010){
                 printError("FLIParse: " + INVALID_CODE);
             }

@@ -10,7 +10,7 @@ static const std::string FIRST_EXPLAINT = "ファイル入力→f, 対話型→i
 static const std::string EXPLAINT = "デアセンブルしたいコードをuint32(hex)で入力してください";
 static const std::string FILE_EXPLAINT = "デアセンブルしたいファイルのパスを入力してください（デフォルト: test/test.s.out）";
 static const std::string PROMPT = ">>>";
-static const std::string DEFALUT_PATH = "test/test.s.out";
+static const std::string DEFAULT_PATH = "./test/test.s.out";
 static const std::string FILE_INPUT = "f";
 static const std::string INTERACTIVE_INPUT = "i";
 
@@ -38,16 +38,19 @@ void fileInput(){
     std::string input;
     std::cout << PROMPT;
     std::getline(std::cin, input);    
+    if(input == "") input = DEFAULT_PATH;
     std::ifstream ifs(input);
-    if(!ifs){
+    if(ifs){
         std::string line;
         while(!ifs.eof()){
             uint32_t res = 0;
             for (int i = 0; i < INST_BYTE_N; i++)
             {
                 std::getline(ifs, line);
-                res |= (std::stoi(line, nullptr, 16)) << i*8;
+                if(line == "") break;
+                res |= (std::stoi(line, nullptr, 16)) << (INST_BYTE_N -1-i)*8;
             }
+            if(res == 0) break;
             Instruction inst = deassemble(res);
             AssemblySimulator::printInstByRegInd(0, inst);
         }

@@ -402,17 +402,17 @@ void AssemblySimulator::printInstByRegInd(const int & lineN, const Instruction &
             break;
         case INST_REGIMM:
         case INST_CONTROL:
-            if(instruction.opcode == "jr" | instruction.opcode == "jalr"){
+            if(instruction.opcode == "jr" || instruction.opcode == "jalr"){
                 for(int i = 0; i < instruction.operandN -1; i++){
                     ss << std::setw(PRINT_INST_NUM_SIZE) << " %" +  std::to_string(instruction.regInd[i]);
                 }
-                ss <<  " " <<   std::to_string(instruction.immediate);
-                ss << "(" << " %" +  std::to_string(instruction.regInd[instruction.operandN-1]) << ")";
+                ss <<  " " << std::setw(3) <<   std::to_string(instruction.immediate);
+                ss << "(" << "%" +  std::to_string(instruction.regInd[instruction.operandN-1]) << ")";
             }else{
                 for(int i = 0; i < instruction.operandN; i++){
                     ss << std::setw(PRINT_INST_NUM_SIZE) << " %" +  std::to_string(instruction.regInd[i]);
                 }
-                ss <<  " " <<   std::to_string(instruction.immediate);
+                ss <<  " " <<  std::setw(PRINT_INST_NUM_SIZE-1) << std::to_string(instruction.immediate);
             }
             break;
         case INST_LOAD:
@@ -420,8 +420,10 @@ void AssemblySimulator::printInstByRegInd(const int & lineN, const Instruction &
             for(int i = 0; i < instruction.operandN -1; i++){
                 ss << std::setw(PRINT_INST_NUM_SIZE) << " %" +  std::to_string(instruction.regInd[i]);
             }
-            ss <<  " " <<   std::to_string(instruction.immediate);
-            ss << "(" << " %" +  std::to_string(instruction.regInd[instruction.operandN-1]) << ")";
+            ss <<  " " << std::setw(3)<<  std::to_string(instruction.immediate);
+            ss << "(" << "%" +  std::to_string(instruction.regInd[instruction.operandN-1]) << ")";
+            break;
+        case INST_OTHERS:
             break;
         default:
             std::cout << IMPLEMENT_ERROR << std::endl;
