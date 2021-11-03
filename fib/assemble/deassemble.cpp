@@ -1,4 +1,5 @@
 #include "../sims/parser.hpp"
+#include "../utils/utils.hpp"
 
 #include <iostream>
 static constexpr uint32_t OPCODE_MASK = 0x7f;
@@ -6,6 +7,7 @@ static constexpr uint32_t REG_MASK = 0x1f;
 static constexpr uint32_t RD_SHIFT_N = 7;
 static constexpr uint32_t RS1_SHIFT_N = 15;
 static constexpr uint32_t RS2_SHIFT_N = 20;
+static constexpr uint32_t IMM_SHIFT_N = 20;
 static constexpr uint32_t FUNCT_3_SHIFT_N = 12;
 static constexpr uint32_t FUNCT_3_MASK = 0x7;
 static constexpr uint32_t FUNCT_7_MASK = 0xfe000000;
@@ -18,7 +20,14 @@ void printError(std::string  message){
     std::cout << ERROR_TOP << message << std::endl;
 }
 
-Instruction &reg3Parse(const uint32_t &code){
+// 即値をパース
+int32_t &immParse(const uint32_t &code ){
+    int32_t ans = static_cast<int32_t>(code);
+    ans = shiftRightArithmatic(ans, IMM_SHIFT_N);
+    return ans;
+}
+
+Instruction &RRegParse(const uint32_t &code){
     Instruction inst = {};
     inst.operandN = 3;
     inst.regInd[0] = (code >> RD_SHIFT_N) & REG_MASK;
@@ -28,10 +37,21 @@ Instruction &reg3Parse(const uint32_t &code){
     return inst;
 }
 
+Instruction &IRegParse(const uint32_t &code ){
+    Instruction inst = {};
+    inst.operandN = 2;
+    inst.regInd[0] = (code >> RD_SHIFT_N) & REG_MASK;
+    inst.regInd[1] = (code >> RS1_SHIFT_N) & REG_MASK;
+    inst.immediate = immParse(code);
+
+    return inst;
+}
+
+
 
 // 整数レジスタを使うR形式命令をパース
-Instruction &intRparse(const uint32_t &code){
-    Instruction &inst = reg3Parse(code);
+Instruction &intRParse(const uint32_t &code){
+    Instruction &inst = RRegParse(code);
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
     uint32_t funct7 = code & FUNCT_7_MASK;
     switch(funct7){
@@ -89,14 +109,34 @@ Instruction &intRparse(const uint32_t &code){
     return inst;
 }
 
+// 整数の即値演算系I形式をパース
+Instruction &intIParse(const uint32_t & code){
+    Instruction &inst = IRegParse(code);
+    uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
+    switch(funct3){
+        case 0b0:
+            inst.opcode = "addi"; break;
+        case 0b111:
+            inst.opcode = "andi"; break;
+        case 0b110:
+            inst.opcode = "ori"; break;
+        case 0b100:
+            inst.opcode = "xori"; break;
+        default:
+            printError("intIParse: " + INVALID_CODE);
+    }
+    return inst;
+}
+
 // 符号なしintをアセンブリに戻す
 // lineN, opcode, labelには入れない
-Instruction deassemble(uint32_t  code){
+Instruction &deassemble(const uint32_t &code){
     uint8_t opcode = static_cast<uint8_t>(code & OPCODE_MASK);
     switch(opcode){
         case 0b0110011:
-            intRparse(code);
+            intRParse(code);
             break;
+        case 0b0010011:
 
         default:
             printError(NOT_IMPLEMENTED);
