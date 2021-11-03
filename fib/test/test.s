@@ -52,5 +52,5 @@ test2:
     fadd f8 f5 f3 # f8 3.125
     fmul f9 f3 f4 # f9 -28
     fmul f10 f5 f4 # f10  6.125 
-    fsw f7 -4(%x6) # 00 00 a8 40
-    fsw f10 0(%x6) # 00 00 30 c1
+    fsw f7 -4(%x6) # 00 00 30 c1
+    fsw f10 0(%x6) # 00 00 c4 40

@@ -48,7 +48,8 @@ enum class NumberBase{
     BIN = 2, 
     OCT = 8, 
     DEC = 10, 
-    HEX = 16
+    HEX = 16, 
+    FLOAT = -1
 };
 
 union MemoryUnit{ // メモリの1ワードに対応するユニット

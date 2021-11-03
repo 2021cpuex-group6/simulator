@@ -5,6 +5,16 @@
 #include <vector>
 #include <regex>
 
+
+static const std::string INVALID_COMMAND = "コマンドの書式が不正です";
+static const std::string INVALID_REG_NAME = "レジスタ名が不正です";
+static const std::string NOT_SELECTED_REGISTER = "レジスタを指定してください";
+static const std::string NOT_SPECIFIED_WRITE_VALUE = "書き込む値を指定してください";
+static const std::string NOT_IMPLEMENTED_UNSIGNED = "unsignedでの書き込みは未実装です";
+static const std::string NOT_SPECIFIED_LINE_N = "行数を指定してください";
+static const std::string OUT_OF_RANGE_INT = "入力がintの範囲外です";
+static const std::string OUT_OF_RANGE = "値が範囲外です";
+
 InteractiveShell::InteractiveShell(AssemblySimulator & sim, AssemblyParser& parse, const bool &  forGUI):  forGUI(forGUI), simulator(sim), parser(parse){}
 
 void InteractiveShell::start(){
@@ -179,7 +189,7 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
 
 std::pair<int, int> InteractiveShell::getRROptionInput(std::string input)const{
     // レジスタ系のコマンドのオプション部分を読み取る
-    const std::regex optionRe(R"(-[bodhu])");
+    const std::regex optionRe(R"(-[bodhuf])");
     std::smatch m;
     int optionB = static_cast<int>(NumberBase::DEC);
     int optionS = 1;
@@ -196,6 +206,8 @@ std::pair<int, int> InteractiveShell::getRROptionInput(std::string input)const{
             optionB = static_cast<int>(NumberBase::HEX);
         }else if(res == "-u"){
             optionS = 0;
+        }else if(res == "-f"){
+            optionB = static_cast<int>(NumberBase::FLOAT);
         }
         input = m.suffix();
     }
@@ -226,6 +238,8 @@ std::pair<Command, std::vector<int>> InteractiveShell::getRWInput(const std::str
     //  0 ... 指定されたレジスタのインデックス（指定なしならエラー）
     //  1 ... 整数レジスタに書き込むなら1浮動小数点なら0
     //  2 ... 書き込むint
+    std::istringstream stream(inputString);
+
     int writeValue = 0;
     int regInd = -1;
 
@@ -242,12 +256,26 @@ std::pair<Command, std::vector<int>> InteractiveShell::getRWInput(const std::str
         interactiveErrorWithGUI(NOT_SELECTED_REGISTER);
         return {Command::Invalid, {}};
     }
+    std::string  command,reg,value;
+    stream >> command >> reg>> value;
 
-    const std::regex numRe(R"(\s+([0-9a-f]+))");
+    const std::regex numRe(R"(\s*([0-9a-f\.]+))");
     std::smatch m;
-    if(std::regex_search(inputString, m, numRe)){
+    if(std::regex_search(value, m, numRe)){
         std::string res = m[1].str();
-        writeValue = std::stoi(res, 0, optionPair.first);
+        try{
+            if(optionPair.first == static_cast<int>(NumberBase::FLOAT)){
+                MemoryUnit mu(std::stof(res));
+                writeValue = mu.si;
+            }else{
+                writeValue = std::stoi(res, 0, optionPair.first);
+            }
+
+        }catch(const std::invalid_argument & e){
+            interactiveErrorWithGUI(INVALID_COMMAND);
+        }catch(const std::out_of_range &e){
+            interactiveErrorWithGUI(OUT_OF_RANGE);
+        }
     }else{
         // 書き込む値の指定なし
         interactiveErrorWithGUI(NOT_SPECIFIED_WRITE_VALUE);
