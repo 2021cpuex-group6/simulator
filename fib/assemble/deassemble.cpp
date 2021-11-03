@@ -17,7 +17,7 @@ static std::string  NOT_IMPLEMENTED = "未実装";
 static std::string  INVALID_CODE = "不正なコードです．";
 
 void printError(std::string  message){
-    std::cout << ERROR_TOP << message << std::endl;
+    throw std::invalid_argument(ERROR_TOP + message);
 }
 
 // 即値をパース
@@ -262,6 +262,46 @@ Instruction &SParse(const uint32_t &code){
     return inst;
 }
 
+Instruction &FRParse(const uint32_t &code){
+    Instruction &inst = RRegParse(code);
+    uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
+    if(funct3 != 0u){
+        printError("FRParse: " + INVALID_CODE);
+    }
+    uint32_t funct7 = shiftRightLogical(code & FUNCT_7_MASK, 25);
+    switch(funct7){
+        case 0u:
+            inst.opcode = "fadd"; break;
+        case 0x04:
+            inst.opcode = "fsub"; break;
+        case 0x08:
+            inst.opcode = "fmul"; break;
+        case 0x0c:
+            inst.opcode = "fdiv"; break;
+        case 0x50:
+            inst.opcode = "flt"; break;
+        default:
+            inst.operandN = 2;
+            if(inst.regInd[2] != 0u){
+                printError("FRParse: " + INVALID_CODE);
+            }
+            switch(funct7){
+                case 0x2c:
+                    inst.opcode = "fsqrt"; break;
+                case 0x70:
+                    inst.opcode = "fmv"; break;
+                case 0x68:
+                    inst.opcode = "itof"; break;
+                case 0x60:
+                    inst.opcode = "floor"; break;
+                default:
+                    printError("FRParse: " + INVALID_CODE);
+            }
+    }
+
+    return inst;
+}
+
 // 符号なしintをアセンブリに戻す
 // lineN, opcode, labelには入れない
 Instruction &deassemble(const uint32_t &code){
@@ -279,6 +319,26 @@ Instruction &deassemble(const uint32_t &code){
             return JIParse(code);
         case 0b0000011:
             return LIParse(code);
+        case 0b0100011:
+            return SParse(code);
+        case 0b1010011:
+            return FRParse(code);
+        case 0b0000111:
+            Instruction &inst = IRegParse(code);
+            uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
+            if(funct3 != 0b010){
+                printError("FLIParse: " + INVALID_CODE);
+            }
+            inst.opcode = "flw";
+            return inst;
+        case 0b0100111:
+            Instruction &inst = SRegParse(code);
+            uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
+            if(funct3 != 0b010){
+                printError("FLIParse: " + INVALID_CODE);
+            }
+            inst.opcode = "fsw";
+            return inst;   
         default:
             printError(NOT_IMPLEMENTED);
 
