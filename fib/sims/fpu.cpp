@@ -258,7 +258,7 @@ bool mulCheck(const uint32_t& input1, const uint32_t& input2){
     if(!isNormalized(ans)){
         return true;
     }
-    uint32_t myAns = fmul(in1.u32, in2.u32);
+    uint32_t myAns = FPUUnit::fmul(in1.u32, in2.u32);
     Float32 myAns_;
     myAns_.u32 = myAns;
     float dif = fabs(myAns_.f32 - ans);
@@ -279,7 +279,7 @@ bool divCheck(const uint32_t& input1, const uint32_t& input2){
     if(!isNormalized(ans)){
         return true;
     }
-    uint32_t myAns = fdiv(in1.u32, in2.u32);
+    uint32_t myAns = FPUUnit::fdiv(in1.u32, in2.u32);
     Float32 myAns_;
     myAns_.u32 = myAns;
     float dif = fabs(myAns_.f32 - ans);
@@ -307,12 +307,12 @@ CheckResult printOperationCheck(const Float32 &f1, const Float32 &f2, const Chec
                 break;
             case CheckedOperation::MUL:
                 res = mulCheck(f1.u32, f2.u32);
-                myAns.u32 = fmul(f1.u32, f2.u32);
+                myAns.u32 = FPUUnit::fmul(f1.u32, f2.u32);
                 trueAns.f32 = f1.f32 * f2.f32;
                 break;
             case CheckedOperation::DIV:
                 res = divCheck(f1.u32, f2.u32);
-                myAns.u32 = fdiv(f1.u32, f2.u32);
+                myAns.u32 = FPUUnit::fdiv(f1.u32, f2.u32);
                 trueAns.f32 = f1.f32 / f2.f32;
                 break;
             default:
