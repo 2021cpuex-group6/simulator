@@ -14,6 +14,8 @@ main: $(SIMOBJS)
 fpuChecker: $(FPUOBJS)
 	g++ $(CFLAGS) -o $@ $^
 
+tools: tools.cpp
+	g++ $(CFLAGS) -o $@ $^
 
 deassembler: $(DEASSEMOBJS)
 	g++ $(CFLAGS) -lstdc++fs -o $@ $^
@@ -25,4 +27,4 @@ assembler: $(ASSEMOBJS)
 	g++ $(CFLAGS) -o $@ -c $<
 
 clean:
-	rm  $(SIMOBJS) $(ASSEMOBJS) $(DEASSEMOBJS) $(FPUOBJS) main assembler code fpuChecker deassembler
+	rm  $(SIMOBJS) $(ASSEMOBJS) $(DEASSEMOBJS) $(FPUOBJS) main assembler code fpuChecker deassembler tools
