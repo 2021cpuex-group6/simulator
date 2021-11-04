@@ -43,7 +43,7 @@ int32_t BImmParse(const uint32_t &code){
 int32_t JImmParse(const uint32_t &code){
     uint32_t part1 = code & 0x80000000;
     uint32_t part2 = (code & 0x7fe00000) >> 20;
-    uint32_t part3 = (code & 0x800000) >> 9;
+    uint32_t part3 = (code & 0x100000) >> 9;
     uint32_t part4 = (code & 0xff000);
     uint32_t res = part2 | part3 | part4;
     if(part1 != 0){
