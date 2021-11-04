@@ -9,7 +9,7 @@
 #include "../utils/utils.hpp"
 #include "assemble.hpp"
 
-static constexpr bool ELIMINATE_NOP = false; // NOP命令を飛ばすか
+static constexpr bool ELIMINATE_NOP = true; // コメント等を飛ばすか
 static constexpr int START_ADDRESS = 0; //ファイルのはじめの命令が配置されるアドレス
 static constexpr int INSTRUCTION_BYTE_N = 4;
 static constexpr int32_t NOP = 0x13;
@@ -66,22 +66,21 @@ void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log) {
         const int32_t & binary_op  = assemble_op(op, line_count, addr_count);
 
         int32_t byte;
-        if(binary_op != NOP || !ELIMINATE_NOP){
-            // 通常の命令かNOPを出力する設定の時
-            for (int i = 0; i < INSTRUCTION_BYTE_N; i++) {
-                // 1バイトずつ出力
-                byte = (binary_op >> (8*(3-i))) & 0xff;
-                ofs << std::hex << byte << std::endl;
-                if (output_log)
-                    std::cout << std::hex << (unsigned int)byte << std::endl;
-            }
-        }else{
-            // 出力しない場合、行数だけインクリメントし、命令アドレスは動かさない
-            line_count ++;
+        // 通常の命令の時
+        for (int i = 0; i < INSTRUCTION_BYTE_N; i++) {
+            // 1バイトずつ出力
+            byte = (binary_op >> (8*(3-i))) & 0xff;
+            ofs << std::hex << byte << std::endl;
             if (output_log)
-                std::cout << line << " " << std::hex << binary_op << std::endl;
-            continue;
+                std::cout << std::hex << (unsigned int)byte << std::endl;
         }
+        // }else{
+        //     // 出力しない場合、行数だけインクリメントし、命令アドレスは動かさない
+        //     line_count ++;
+        //     if (output_log)
+        //         std::cout << line << " " << std::hex << binary_op << std::endl;
+        //     continue;
+        // }
         line_count ++;
         addr_count += INSTRUCTION_BYTE_N;
         if (output_log)
@@ -137,6 +136,7 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
         }
 
     } else if (style == I) {
+        if(opecode == "nop") return output;
         std::string op1, op2;
         int32_t imm;
         iss >> op1 >> op2 >> imm;
@@ -271,7 +271,7 @@ static void check_labels(std::istream& ifs){
                     // ラベルの重複
                     assemble_error(DOUBLE_LABEL, line_count);
                 }
-            line_count ++;
+                line_count ++;
                 continue;
             }
             if( ELIMINATE_NOP){
@@ -302,9 +302,9 @@ static int32_t get_relative_address_with_check(const std::string &label,
         // 範囲外だった
         assemble_error(LABEL_TOO_FAR, line);
     }
-    int32_t mask = (MASK_BITS>>(32-max_bit)); // 負数の右シフトが不定だったので、この実装になった
+    int32_t mask =  shiftRightArithmatic(MASK_BITS, 32-max_bit); // 負数の右シフトが不定だったので、この実装になった
 
-    return (address >> 1) & mask;
+    return (shiftRightArithmatic(address, 1)) & mask;
 
 
 }
@@ -382,6 +382,7 @@ void init_opcode_map(){
     output = 0b0010011;
     output |= (0b000 << 12);
     opecode_map.insert({"addi", {I, output}});
+    opecode_map.insert({"nop", {I, output}});
     output = 0b0010011;
     output |= (0b010 << 12);
     opecode_map.insert({"slti", {I, output}});

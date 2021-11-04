@@ -1,10 +1,10 @@
 #include <iostream>
-#include <experimental/filesystem>
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include "assemble/assemble.hpp"
 
-namespace fs = std::experimental::filesystem;
+namespace fs = std::filesystem;
 
 int main() {
     
