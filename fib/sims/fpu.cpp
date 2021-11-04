@@ -7,6 +7,20 @@
 #include <bitset>
 #include <math.h>
 
+static const std::string PARAM_DIR = "params/";
+static const std::string FSQRT_PARAM_A_FILE = "fsqrt_parama.txt";
+static const std::string FSQRT_PARAM_B_FILE = "fsqrt_paramb.txt";
+
+FPUUnit::FPUUnit(){
+    initFsqrtParam();
+}
+
+// fsqrt のパラメータをロード
+void FPUUnit::initFsqrtParam(){
+
+}
+
+
 std::vector<uint32_t> separateFloat(const uint32_t &input){
     // inputに入った32ビットfloatを符号，指数部，仮数部に分離する
     uint32_t sign = input  & (0b1 << (INT_BIT_N-1));

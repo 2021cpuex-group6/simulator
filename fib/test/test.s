@@ -1,4 +1,3 @@
-.global	min_caml_start
 # テスト用
 start:
     jal x4 test # x4は5行目
@@ -29,6 +28,7 @@ test2:
     addi x4 x0 17
     div x3 x4 x2 # x3 = -1
     jal x1 additional  # これで別ファイルに飛んで戻ってくる
+.global	min_caml_start
     addi x1 x0 21 # シフト数
     addi %x2 x0 1532 # x2 1 0111 1111 00
     addi x3 %x0 516 # x3 0 1000 0001 00
@@ -51,6 +51,19 @@ test2:
     fsub f7 f4 f3 # f7 -11
     fadd f8 f5 f3 # f8 3.125
     fmul f9 f3 f4 # f9 -28
+    fmv f10 f9 # f10 -28
     fmul f10 f5 f4 # f10  6.125 
+    floor f11 f10 # f11  6.00
+    floor f12 f5 # f12 -1
+    ftoi x10 f12 # x10 -1
+    ftoi x11 f5 # x11 -1
+    ftoi x12 f8 # x12 3
+    addi x1 x0 23
+    addi x2 x0 -431
+    addi x3 x0 1023
+    itof f13 x1 
+    itof f14 x2
+    itof f15 x3
+    itof f16 x0
     fsw f7 -4(%x6) # 00 00 30 c1
     fsw f10 0(%x6) # 00 00 c4 40

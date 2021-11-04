@@ -39,6 +39,7 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     {"fdiv",     {3, -1, -1, -1, INST_REGONLY}}, 
     {"fmv",     {2, -1, -1, -1, INST_2REGF}}, 
     {"itof",     {2, -1, -1, -1, INST_2REGF}}, 
+    {"ftoi",     {2, -1, -1, -1, INST_2REGF}}, 
     {"floor",     {2, -1, -1, -1, INST_2REGF}}, 
     {"fsqrt",     {2, -1, -1, -1, INST_2REGF}}, 
     {"addi",    {3, 2, -1, 12, INST_REGIMM}}, 

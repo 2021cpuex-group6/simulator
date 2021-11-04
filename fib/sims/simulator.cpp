@@ -6,6 +6,7 @@
 #include <bitset>
 #include <iomanip>
 #include <set>
+#include <cmath>
 
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI):forGUI(forGUI), pc(0), fcsr(0), end(false),
@@ -696,11 +697,22 @@ BeforeData AssemblySimulator::do2RegInst(const std::string &opcode, const Instru
     BeforeData ans = {opcode, pc, false, ind1Pair.first, fRegisters[ind1Pair.first].si, false};
 
     float ansF = 0;
-    if(opcode == "itof"){
+    if(opcode == "ftoi"){
+        // これだけ整数レジスタへの書き込み
+        ans.isInteger = true;
+        ans.regValue = iRegisters[ind1Pair.first];
+        if(!(ind1Pair.second && !ind2Pair.second)){
+            launchError(ILEGAL_REGISTER_KIND);
+        }
+        int32_t value = std::round(fRegisters[ind2Pair.first].f);
+        writeReg(ind1Pair.first, value, true);
+        return ans;
+    
+    }else if(opcode == "itof"){
         if(!ind2Pair.second){
             launchError(ILEGAL_REGISTER_KIND);
         }
-
+        ansF = iRegisters[ind2Pair.first];
     }else{
         if(ind2Pair.second){
             launchError(ILEGAL_REGISTER_KIND);
@@ -710,7 +722,7 @@ BeforeData AssemblySimulator::do2RegInst(const std::string &opcode, const Instru
         }else if(opcode == "fsqrt"){
 
         }else if(opcode == "floor"){
-
+            ansF = std::floor(fRegisters[ind2Pair.first].f);
         }
     }
 

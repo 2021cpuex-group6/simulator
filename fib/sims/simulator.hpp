@@ -1,9 +1,11 @@
 #ifndef SIMULATOR_H
 #define SIMULATOR_H
 
+#include "fpu.hpp"
 #include "parser.hpp"
 #include <array>
 #include <set>
+
 constexpr int REGISTERS_N = 32;
 constexpr int PRINT_REGISTERS_COL = 4;
 constexpr size_t REGISTER_BIT_N = 32;
