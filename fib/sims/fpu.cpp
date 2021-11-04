@@ -74,14 +74,14 @@ uint32_t faddsub(const uint32_t & x1, const uint32_t& x2, const bool &isSub){
     
 }
 
-uint32_t fadd(const uint32_t & x1, const uint32_t& x2){
+uint32_t FPUUnit::fadd(const uint32_t & x1, const uint32_t& x2){
     return faddsub(x1, x2, false);
 }
-uint32_t fsub(const uint32_t & x1, const uint32_t& x2){
+uint32_t FPUUnit::fsub(const uint32_t & x1, const uint32_t& x2){
     return faddsub(x1, x2, true);
 }
 
-uint32_t fmul(const uint32_t & x1, const uint32_t& x2){
+uint32_t FPUUnit::fmul(const uint32_t & x1, const uint32_t& x2){
     // 浮動小数点の積
 
     // 0
@@ -147,7 +147,7 @@ uint32_t fmul(const uint32_t & x1, const uint32_t& x2){
     return (sy << (INT_BIT_N-1)) | (ey << (INT_BIT_N-9)) | my;
 }
 
-uint32_t fdiv(const uint32_t & x1, const uint32_t& x2){
+uint32_t FPUUnit::fdiv(const uint32_t & x1, const uint32_t& x2){
     auto x1_ =  separateFloat(x1);
     auto x2_ =  separateFloat(x2);
 

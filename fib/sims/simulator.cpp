@@ -19,6 +19,7 @@ AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &u
     for(const auto & item : opcodeInfoMap){
         opCounter.insert({item.first, 0});
     }
+    fpu = FPUUnit();
 }
 
         
@@ -867,11 +868,13 @@ void AssemblySimulator::launchWarning(const std::string &message)const{
 void AssemblySimulator::doFALU(const std::string &opcode, const int &targetR, const uint32_t &source0, const uint32_t &source1){
     uint32_t ans = 0;
     if(opcode == "fadd"){
-        ans = fadd(source0, source1);
+        ans = fpu.fadd(source0, source1);
     }else if(opcode == "fsub"){
-        ans = fsub(source0, source1);
+        ans = fpu.fsub(source0, source1);
     }else if(opcode == "fmul"){
-        ans = fmul(source0, source1);
+        ans = fpu.fmul(source0, source1);
+    }else if(opcode == "fdiv"){
+        ans = fpu.fdiv(source0, source1);
     }
     fRegisters[targetR] = MemoryUnit(ans);
 }

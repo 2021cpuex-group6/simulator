@@ -111,6 +111,8 @@ class AssemblySimulator{
         int historyPoint; // 次に履歴を保存するインデックス
         std::array<BeforeData, HISTORY_RESERVE_N> beforeHistory; // もとに戻れるようにデータをとる
         std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N> *dram;  
+
+        FPUUnit fpu;
         
         AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI);
         ~AssemblySimulator();
