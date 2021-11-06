@@ -635,6 +635,7 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
             ans = do2RegInst(opcode, instruction);
         }else if(opKind == INST_OTHERS){
 
+
         }else{
             // 演算命令
             auto indPair =getRegIndWithError(instruction.operand[0]); 
@@ -674,14 +675,23 @@ BeforeData AssemblySimulator::doInst(const Instruction &instruction){
                 // 浮動小数点数
                 ans.regValue = fRegisters[targetR].si;
                 auto ind0Pair = getRegIndWithError(instruction.operand[1]);
-                auto ind1Pair = getRegIndWithError(instruction.operand[2]);
-                if(ind0Pair.second || ind1Pair.second){
-                    // 整数レジスタが混じってる
-                    launchError(MIXED_REGISTER_ERROR);
+                if(opcode == "fsqrt"){
+                    if(ind0Pair.second){
+                        // 整数レジスタが混じってる
+                        launchError(MIXED_REGISTER_ERROR);
+                    }                    
+                    uint32_t source0 = fRegisters[ind0Pair.first].i;
+                    doFALU(opcode, targetR, source0, 0);
+                }else{
+                    auto ind1Pair = getRegIndWithError(instruction.operand[2]);
+                    if(ind0Pair.second || ind1Pair.second){
+                        // 整数レジスタが混じってる
+                        launchError(MIXED_REGISTER_ERROR);
+                    }
+                    uint32_t source0 = fRegisters[ind0Pair.first].i;
+                    uint32_t source1 = fRegisters[ind1Pair.first].i;
+                    doFALU(opcode, targetR, source0, source1);
                 }
-                uint32_t source0 = fRegisters[ind0Pair.first].i;
-                uint32_t source1 = fRegisters[ind1Pair.first].i;
-                doFALU(opcode, targetR, source0, source1);
 
             }
         }
@@ -887,6 +897,8 @@ void AssemblySimulator::doFALU(const std::string &opcode, const int &targetR, co
         ans = fpu.fmul(source0, source1);
     }else if(opcode == "fdiv"){
         ans = fpu.fdiv(source0, source1);
+    }else if(opcode == "fsqrt"){
+        ans = fpu.fsqrt(source0);
     }
     fRegisters[targetR] = MemoryUnit(ans);
 }
