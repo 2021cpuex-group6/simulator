@@ -2,6 +2,7 @@
 #include "../utils/utils.hpp"
 #include "fpu.hpp"
 #include <random>
+#include <fstream>
 #include <vector>
 #include <iostream>
 #include <bitset>
@@ -10,6 +11,7 @@
 static const std::string PARAM_DIR = "params/";
 static const std::string FSQRT_PARAM_A_FILE = "fsqrt_parama.txt";
 static const std::string FSQRT_PARAM_B_FILE = "fsqrt_paramb.txt";
+static const std::string PARAM_FILE_ERROR = "パラメータファイルが存在しません";
 
 FPUUnit::FPUUnit(){
     initFsqrtParam();
@@ -17,6 +19,27 @@ FPUUnit::FPUUnit(){
 
 // fsqrt のパラメータをロード
 void FPUUnit::initFsqrtParam(){
+    fsqrtParamA, fsqrtParamB = {};
+    std::ifstream ifs1(PARAM_DIR + FSQRT_PARAM_A_FILE);
+    if(ifs1){
+        std::string input;
+        for(int i = 0; i < FSQRT_PARAM_LINE_N; i++){
+            std::getline(ifs1, input);
+            fsqrtParamA[i] = static_cast<uint32_t>(std::stoi(input, nullptr, 16));
+        }
+    }else{
+        throw std::invalid_argument(PARAM_FILE_ERROR);
+    }
+    std::ifstream ifs2(PARAM_DIR + FSQRT_PARAM_B_FILE);
+    if(ifs2){
+        std::string input;
+        for(int i = 0; i < FSQRT_PARAM_LINE_N; i++){
+            std::getline(ifs2, input);
+            fsqrtParamB[i] = static_cast<uint32_t>(std::stoi(input, nullptr, 16));
+        }
+    }else{
+        throw std::invalid_argument(PARAM_FILE_ERROR);
+    }
 
 }
 
@@ -206,6 +229,19 @@ uint32_t FPUUnit::fdiv(const uint32_t & x1, const uint32_t& x2){
 
 }
 
+// 平方根
+uint32_t FPUUnit::fsqrt(const uint32_t & x)const{
+    uint32_t address = (shiftRightLogical(x, 14)) & 0x3ff;
+    uint32_t a = fsqrtParamA[address];
+    uint32_t b = fsqrtParamB[address];
+    uint32_t bx = ((x & 0x3fff) * b) & 0x7ffffff;
+    uint32_t sbx  = shiftRightLogical(bx, 13);
+    uint32_t y_m = (a + sbx) & 0x7fffff;
+    uint32_t aex = ((shiftRightLogical(x, 23) & 0xff) + 127) & 0x1ff;
+    uint32_t y_e = (x & 0x7fc00000) != 0 ? shiftRightLogical(aex, 1) : 0;
+    return (x & 0x80000000) | (y_e << 23) | y_m;
+}
+
 bool isNormalized(const float & input){
     // 入力された値が正規化数か調べる
     Float32 float32;
@@ -289,7 +325,29 @@ bool divCheck(const uint32_t& input1, const uint32_t& input2){
     return dif < standard;
 }
 
-CheckResult printOperationCheck(const Float32 &f1, const Float32 &f2, const CheckedOperation & op){
+bool FPUUnit::sqrtCheck(const uint32_t& input1)const{
+    // 平方根の結果が合うかを調べる
+    // // 入力が負なら問答無用でtrue
+    // c++の実装の結果で答えが非正規化数になるものは結果によらずtrue
+    Float32 in1;
+    in1.u32 = input1;
+    if(in1.f32 < 0) return true;
+    float ans = sqrt(in1.f32);
+    if(!isNormalized(ans)){
+        return true;
+    }
+    uint32_t myAns = fsqrt(in1.u32);
+    Float32 myAns_;
+    myAns_.u32 = myAns;
+    float dif = fabs(myAns_.f32 - ans);
+    float factor = pow(2, -20);
+    float standard = fmax(fabs(ans) * factor, pow(2, -126));
+
+    return dif < standard;
+}
+
+CheckResult FPUUnit::printOperationCheck(const Float32 &f1, const Float32 &f2,
+                                             const CheckedOperation & op)const{
     // add, subの結果が正しいか調べ、print
     if(isNormalized(f1.f32) && isNormalized(f2.f32)){
         bool res = false;
@@ -315,6 +373,11 @@ CheckResult printOperationCheck(const Float32 &f1, const Float32 &f2, const Chec
                 myAns.u32 = FPUUnit::fdiv(f1.u32, f2.u32);
                 trueAns.f32 = f1.f32 / f2.f32;
                 break;
+            case CheckedOperation::SQRT:
+                res = sqrtCheck(f1.u32);
+                myAns.u32 = FPUUnit::fsqrt(f1.u32);
+                trueAns.f32 = sqrt(f1.f32);
+                break;
             default:
                 break;
         }
@@ -334,7 +397,7 @@ CheckResult printOperationCheck(const Float32 &f1, const Float32 &f2, const Chec
 }
 
 
-void randomOperationCheck(const int iterN, const CheckedOperation &op){
+void FPUUnit::randomOperationCheck(const int iterN, const CheckedOperation &op)const{
     // ランダムでadd, subの実装とc++の結果を比べる
     std::random_device rnd;
     int checkedN = 0;
@@ -342,28 +405,35 @@ void randomOperationCheck(const int iterN, const CheckedOperation &op){
     
     for(int i=0; i < iterN; i++){
         Float32 f1, f2;
-        if(i < 20){
-            f1.u32 = 0;
-        }else if(i < 150){
-            f1.u32 = rnd();
-            f1.u32 |= 0x7c000000;
-        }else if(i < 250){
-            f1.u32 = rnd();
-            f1.u32 &= 0x02ffffff;
-        }else if(i < 350){
-            f1.u32 = rnd();
-            f1.u32 &= 0x01ffffff;
+        CheckResult res;
+        if(op != CheckedOperation::SQRT){
+            if(i < 20){
+                f1.u32 = 0;
+            }else if(i < 150){
+                f1.u32 = rnd();
+                f1.u32 |= 0x7c000000;
+            }else if(i < 250){
+                f1.u32 = rnd();
+                f1.u32 &= 0x02ffffff;
+            }else if(i < 350){
+                f1.u32 = rnd();
+                f1.u32 &= 0x01ffffff;
+            }else{
+                f1.u32 = rnd();
+            }
+            if(i % 10 == 0){
+                f2.u32 = f1.u32;
+            }else if (i % 15 == 0){
+                f2.f32 = f1.f32 * -1;
+            }else{
+                f2.u32 = rnd();
+            }
         }else{
             f1.u32 = rnd();
+            f1.u32 = f1.u32 & 0x7fffffff;
+            f2.u32 = 0;
         }
-        if(i % 10 == 0){
-            f2.u32 = f1.u32;
-        }else if (i % 15 == 0){
-            f2.f32 = f1.f32 * -1;
-        }else{
-            f2.u32 = rnd();
-        }
-        CheckResult res = printOperationCheck(f1, f2, op);
+        res = printOperationCheck(f1, f2, op);
         switch (res){
             case CheckResult::INVALID:
                 wrongN++;
