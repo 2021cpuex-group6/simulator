@@ -722,7 +722,9 @@ BeforeData AssemblySimulator::do2RegInst(const std::string &opcode, const Instru
         if(!ind2Pair.second){
             launchError(ILEGAL_REGISTER_KIND);
         }
-        ansF = iRegisters[ind2Pair.first];
+        // c++の実装とは一致しないので注意
+        MemoryUnit mu(fpu.itof(static_cast<uint32_t>(iRegisters[ind2Pair.first])));
+        ansF = mu.f;
     }else{
         if(ind2Pair.second){
             launchError(ILEGAL_REGISTER_KIND);

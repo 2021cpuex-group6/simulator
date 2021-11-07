@@ -33,6 +33,7 @@ class FPUUnit{
         static uint32_t fsub(const uint32_t & x1, const uint32_t& x2);
         static uint32_t fmul(const uint32_t & x1, const uint32_t& x2);
         static uint32_t fdiv(const uint32_t & x1, const uint32_t& x2);
+        static std::pair<uint32_t, bool> itofDebug(const uint32_t & x, const bool &);
         static uint32_t itof(const uint32_t & x);
         static int32_t ftoi(const uint32_t & x);
         uint32_t fsqrt(const uint32_t &x)const;

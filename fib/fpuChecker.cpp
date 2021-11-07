@@ -5,7 +5,7 @@ int main(){
     // randomOperationCheck(1000000, CheckedOperation::ADD);
     // randomOperationCheck(1000000, CheckedOperation::SUB);
     FPUUnit fpu = FPUUnit();
-    fpu.randomOperationCheck(1000, CheckedOperation::FTOI);
-    fpu.randomOperationCheck(1000, CheckedOperation::ITOF);
+    fpu.randomOperationCheck(10000000, CheckedOperation::FTOI);
+    fpu.randomOperationCheck(10000000, CheckedOperation::ITOF);
 
 }

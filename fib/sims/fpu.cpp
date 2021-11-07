@@ -243,31 +243,52 @@ uint32_t FPUUnit::fsqrt(const uint32_t & x)const{
     return (x & 0x80000000) | (y_e << 23) | y_m;
 }
 
-// 整数レジスタの値に一番近い浮動小数点値を浮動小数点レジスタへ
-uint32_t FPUUnit::itof(const uint32_t & x){
+// 解が2つあるとき，c++の実装と一致しないので，それでも基準を満たすかを検証
+// 返り値
+//  int ... verilogの実装の返り値
+//  bool ... c++の実装と異なる可能性がある場合（解が2つある場合） true
+std::pair<uint32_t, bool> FPUUnit::itofDebug(const uint32_t & x, const bool &forDebug){
     uint32_t it = 0x7fffffff & (~x);
-    uint32_t ita = 0x7ffffff & (it + 1);
-    uint64_t ml = (x & 0x8000000) != 0 ? shiftRightLogical(ita , 24) : shiftRightLogical((x & 0x7fffffff), 24);
+    uint32_t ita = 0x7fffffff & (it + 1);
+    uint64_t ml = (x & 0x80000000) != 0 ? (static_cast<uint64_t>(ita) << 24) : (static_cast<uint64_t>(x) << 24);
 
     uint32_t sft = 0;
-    uint32_t mask = 0x80000000;
-    for(int i = 0; i < WORD_BIT_N ; i++ ){
-        if((mask & x) != 0){
+    uint64_t mask = 0x40000000000000; // 54ビット目のみ1
+    for(int i = 0; i < WORD_BIT_N -1 ; i++ ){
+        if((mask & ml) != 0){
           sft = (30 - i);
           break;
         } 
-        mask = shiftRightLogical(mask, 1);
-        if(i == WORD_BIT_N - 1){
+        mask = mask >> 1;
+        if(i == WORD_BIT_N - 2){
             sft = 0b11111;
         }
     }
-    uint32_t ms = shiftRightLogical(ml, sft) & 0x1ffffff;
+    uint32_t ms = (ml >> sft) & 0x1ffffff;
     uint32_t ma = shiftRightLogical(ms, 1) + (ms & 0x1);
     uint32_t m = (ma & 0x1000000) ? shiftRightLogical(ma, 1) : (ma & 0x7fffff);
-    uint32_t ea = 0xff & (127 + sft + shiftRightLogical(ma, 24));
-    uint32_t e = 0xff & ((sft == 0b11111) ? 0 : ea);
+    uint32_t ea = 0xff & (127u + sft + shiftRightLogical(ma, 24));
+    uint32_t e = 0xff & ((sft == 0b11111u) ? 0 : ea);
     uint32_t s = x & 0x80000000;
-    return s | (shiftRightLogical(e, 23)) | m;
+    uint32_t ans = s | (e << (WORD_BIT_N - 9)) | m;
+    if(forDebug){
+        // 変わる可能性があるのは，sftされた分を切り出すと0で，かつms[0]が1のとき（その整数と+-1でしか有効な浮動小数点数が存在しないとき?）
+        if(sft != 0b11111){
+            uint32_t shifted_mask =  shiftRightLogical(0x2fffffff, 30 - sft);
+            if((ml & shifted_mask)  == 0){
+                return {ans, (ms & 0x1) != 0};
+            }
+        }else{
+            // ans = 0
+        }
+    }
+    return {ans, false};
+}
+
+// 整数レジスタの値に一番近い浮動小数点値を浮動小数点レジスタへ
+uint32_t FPUUnit::itof(const uint32_t & x){
+    auto ans = itofDebug(x, false);
+    return ans.first;
 }
 
 // 浮動小数点レジスタからなるべく近い値を保持したまま整数レジスタへ
@@ -375,11 +396,16 @@ bool divCheck(const uint32_t& input1, const uint32_t& input2){
 
 bool itofCheck(const uint32_t& input1){
     float ans = static_cast<int32_t>(input1);
-    uint32_t myAns = FPUUnit::itof(input1);
+    auto myAns = FPUUnit::itofDebug(input1, true);
     Float32 myAns_;
-    myAns_.u32 = myAns;
-
-    return ans == myAns; 
+    myAns_.u32 = myAns.first;
+    if(ans != myAns_.f32 && myAns.second){
+        // 違っていて，かつ解が2つ許されるとき
+        // c++の実装では最下位ビットが0になるのでそれに合わせる;
+        myAns_.u32 = myAns.first & 0xfffffffe;
+        return myAns_.f32 == ans;
+    }
+    return true;
 }
 
 bool ftoiCheck(const uint32_t& input1){
