@@ -12,6 +12,7 @@ static const std::string PARAM_DIR = "params/";
 static const std::string FSQRT_PARAM_A_FILE = "fsqrt_parama.txt";
 static const std::string FSQRT_PARAM_B_FILE = "fsqrt_paramb.txt";
 static const std::string PARAM_FILE_ERROR = "パラメータファイルが存在しません";
+static const int WORD_BIT_N = 32;
 
 FPUUnit::FPUUnit(){
     initFsqrtParam();
@@ -242,6 +243,53 @@ uint32_t FPUUnit::fsqrt(const uint32_t & x)const{
     return (x & 0x80000000) | (y_e << 23) | y_m;
 }
 
+// 整数レジスタの値に一番近い浮動小数点値を浮動小数点レジスタへ
+uint32_t FPUUnit::itof(const uint32_t & x){
+    uint32_t it = 0x7fffffff & (~x);
+    uint32_t ita = 0x7ffffff & (it + 1);
+    uint64_t ml = (x & 0x8000000) != 0 ? shiftRightLogical(ita , 24) : shiftRightLogical((x & 0x7fffffff), 24);
+
+    uint32_t sft = 0;
+    uint32_t mask = 0x80000000;
+    for(int i = 0; i < WORD_BIT_N ; i++ ){
+        if((mask & x) != 0){
+          sft = (30 - i);
+          break;
+        } 
+        mask = shiftRightLogical(mask, 1);
+        if(i == WORD_BIT_N - 1){
+            sft = 0b11111;
+        }
+    }
+    uint32_t ms = shiftRightLogical(ml, sft) & 0x1ffffff;
+    uint32_t ma = shiftRightLogical(ms, 1) + (ms & 0x1);
+    uint32_t m = (ma & 0x1000000) ? shiftRightLogical(ma, 1) : (ma & 0x7fffff);
+    uint32_t ea = 0xff & (127 + sft + shiftRightLogical(ma, 24));
+    uint32_t e = 0xff & ((sft == 0b11111) ? 0 : ea);
+    uint32_t s = x & 0x80000000;
+    return s | (shiftRightLogical(e, 23)) | m;
+}
+
+// 浮動小数点レジスタからなるべく近い値を保持したまま整数レジスタへ
+int32_t FPUUnit::ftoi(const uint32_t & x){
+    auto x1_ =  separateFloat(x);
+    uint32_t s1 = shiftRightLogical(x1_[0], INT_BIT_N-1);
+    uint32_t e1 = x1_[1] >> (INT_BIT_N - 9u);
+    uint32_t m1 = x1_[2];
+
+    uint32_t sft = (157 - e1) & 0x1f;
+    bool flg = (e1 < 126u) || (157u < e1);
+    uint32_t ml = 0x80000000 | (m1 << 8);
+    uint32_t ms = shiftRightLogical(ml, sft);
+    uint32_t ma = 0x7fffffff & (shiftRightLogical(ms, 1) + (0x1 & ms));
+    uint32_t mata = 0x7fffffff & ((~ma) + 1) ;
+    
+    uint32_t ans =  flg ? 0u : (0x1 == s1 ? (0x80000000 | mata) : ma);
+    return static_cast<int32_t>(ans);
+}
+
+
+
 bool isNormalized(const float & input){
     // 入力された値が正規化数か調べる
     Float32 float32;
@@ -325,6 +373,25 @@ bool divCheck(const uint32_t& input1, const uint32_t& input2){
     return dif < standard;
 }
 
+bool itofCheck(const uint32_t& input1){
+    float ans = static_cast<int32_t>(input1);
+    uint32_t myAns = FPUUnit::itof(input1);
+    Float32 myAns_;
+    myAns_.u32 = myAns;
+
+    return ans == myAns; 
+}
+
+bool ftoiCheck(const uint32_t& input1){
+    Float32 in1;
+    in1.u32 = input1;
+    if(in1.f32 < (1 -pow(2, 31)) || (pow(2, 31) -1) < in1.f32) return true;
+    int32_t ans = std::round(in1.f32);
+    int32_t myAns = FPUUnit::ftoi(in1.f32);
+
+    return ans == myAns;
+}
+
 bool FPUUnit::sqrtCheck(const uint32_t& input1)const{
     // 平方根の結果が合うかを調べる
     // // 入力が負なら問答無用でtrue
@@ -378,6 +445,16 @@ CheckResult FPUUnit::printOperationCheck(const Float32 &f1, const Float32 &f2,
                 myAns.u32 = FPUUnit::fsqrt(f1.u32);
                 trueAns.f32 = sqrt(f1.f32);
                 break;
+            case CheckedOperation::FTOI:
+                res = ftoiCheck(f1.u32);
+                myAns.u32 = static_cast<int32_t>(FPUUnit::ftoi(f1.u32));
+                trueAns.u32 = std::round(f1.f32);
+                break;
+            case CheckedOperation::ITOF:
+                res = itofCheck(f1.u32);
+                myAns.u32 = FPUUnit::itof(f1.u32);
+                trueAns.f32 = static_cast<int32_t>(f1.u32);
+                break;
             default:
                 break;
         }
@@ -406,7 +483,7 @@ void FPUUnit::randomOperationCheck(const int iterN, const CheckedOperation &op)c
     for(int i=0; i < iterN; i++){
         Float32 f1, f2;
         CheckResult res;
-        if(op != CheckedOperation::SQRT){
+        if(static_cast<int>(op) < static_cast<int>(CheckedOperation::SQRT)){
             if(i < 20){
                 f1.u32 = 0;
             }else if(i < 150){
@@ -430,7 +507,16 @@ void FPUUnit::randomOperationCheck(const int iterN, const CheckedOperation &op)c
             }
         }else{
             f1.u32 = rnd();
-            f1.u32 = f1.u32 & 0x7fffffff;
+            if(op == CheckedOperation::SQRT){
+                f1.u32 = f1.u32 & 0x7fffffff;
+            }else if(op == CheckedOperation::FTOI){
+                // 浮動小数点数を2^31 -1 ~ -2^31 + 1の間に(なるべく)入るようにする
+                if(f1.u32 & 0x80000000){
+                    f1.u32 &= 0x9fffffff;
+                }else{
+                    f1.u32 |= 0x60000000;
+                }
+            }
             f2.u32 = 0;
         }
         res = printOperationCheck(f1, f2, op);
