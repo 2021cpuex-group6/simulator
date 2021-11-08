@@ -33,7 +33,7 @@ void InteractiveShell::start(){
 
         switch(input.first){
             case Command::DoAll:
-                simulator.launch();
+                simulator.launch(!forGUI);
                 if(!forGUI){
                     simulator.printRegisters(NumberBase::DEC, true, true);
                     simulator.printOpCounter();

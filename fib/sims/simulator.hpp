@@ -122,7 +122,7 @@ class AssemblySimulator{
         void printOpCounter()const;
         void next(bool, const bool&);
         void doNextBreak();
-        void launch();
+        void launch(const bool &);
         static void printInstByRegInd(const int & lineN, const Instruction &instruction);
         static void printInstruction(const int &, const Instruction &);
         void printInstructionInSim(const int &, const Instruction &)const;

@@ -7,7 +7,9 @@
 #include <iomanip>
 #include <set>
 #include <cmath>
+#include <chrono>
 
+static const std::string TIME_FORMAT = "Time: %.10lfms\n";
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI):forGUI(forGUI), pc(0), fcsr(0), end(false),
           parser(parser), iRegisters({0}), fRegisters({MemoryUnit(0)}),
@@ -254,8 +256,8 @@ void AssemblySimulator::writeReg(const int &regInd, const int32_t &value, const 
     }
 }
 
-void AssemblySimulator::launch(){
-    // 終了まで実行する
+// 終了まで実行する
+void AssemblySimulator::launch(const bool &printTime){
     if(end){
         // すでに終わっている
         if(forGUI){
@@ -266,8 +268,15 @@ void AssemblySimulator::launch(){
         }
         return;
     }
+    std::chrono::system_clock::time_point  startT, endT;
+    startT = std::chrono::system_clock::now();
     while(!end){
         next(false, false);
+    }
+    endT = std::chrono::system_clock::now(); 
+    double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(endT-startT).count();
+    if(printTime && !forGUI){
+        printf(TIME_FORMAT.c_str(), elapsed);
     }
 }
 
