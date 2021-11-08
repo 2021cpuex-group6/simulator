@@ -17,6 +17,8 @@ constexpr int HISTORY_RESERVE_N = 1024;
 constexpr int SHIFT_MASK5 = 0b11111;
 constexpr int MEM_BYTE_N = 0x1000000; //メモリのバイト数 2^24
 constexpr int MEM_ADDRESS_HEX_LEN = 8;
+constexpr int OPKIND_MASK = 0x7;
+constexpr int OPKIND_BIT_N = 3;
 
 const std::string BREAKPOINT_NOT_FOUND = "ブレークポイントが見つかりませんでした";
 const std::string FILE_END = "終了しました";
@@ -89,11 +91,14 @@ struct BeforeData{
     bool writeMem; //メモリに書き込んだか
     uint32_t memAddress; // 書き込んだアドレス
     uint32_t memValue;
+    uint8_t opcodeInt; // 高速化時の命令データ
 };
+
 
 
 class AssemblySimulator{
     public:
+        bool useEfficient = false; // 高速化verを使うか
         bool useBinary = false;
         bool onWarning = true;
         bool forGUI;
@@ -107,6 +112,7 @@ class AssemblySimulator{
 
         int instCount; // 実行命令数
         std::map<std::string, int> opCounter; //実行命令の統計
+        std::map<uint8_t, int> efficientOpCounter; // uint8_t ver
         std::set<int> breakPoints; // ブレークポイントの集合　行数で管理（1始まり）
 
         int historyN;   // 現在保持している履歴の数
@@ -140,6 +146,15 @@ class AssemblySimulator{
         BeforeData popHistory();
 
     // private:
+        BeforeData efficientDoInst(const Instruction &);
+        void efficientDoALU(const uint8_t &op, const int &targetR, const int &source0, const int &source1);
+        void efficientDoFALU(const uint8_t &opcode, const int &targetR, const uint32_t &source0, const uint32_t &source1);
+        BeforeData efficientDoControl(const uint8_t &opcode, const Instruction &instruction);
+        BeforeData efficientDoJump(const uint8_t &opcode, const Instruction &instruction);
+        BeforeData efficientDoLoad(const uint8_t &opcode, const Instruction &instruction);
+        BeforeData efficientDoStore(const uint8_t &opcode, const Instruction &instruction);
+        BeforeData efficientDoMix(const uint8_t &opcode, const Instruction &instruction);
+
         int getIRegIndWithError(const std::string &regName)const;
         int getFRegIndWithError(const std::string &regName)const;
         std::pair<int, bool> getRegIndWithError(const std::string &regName)const;
