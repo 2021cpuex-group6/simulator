@@ -121,6 +121,7 @@ class AssemblySimulator{
         std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N> *dram;  
 
         FPUUnit fpu;
+        std::map<uint8_t, std::string> inverseOpMap; // uint8_tのopcodeから文字列へ変換
         
         AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI);
         ~AssemblySimulator();

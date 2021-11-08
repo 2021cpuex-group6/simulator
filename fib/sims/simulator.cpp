@@ -26,6 +26,7 @@ AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &u
         efficientOpCounter.insert({static_cast<uint8_t>(item.second[5]), 0});
     }
     fpu = FPUUnit();
+    inverseOpMap = AssemblyParser::getInverseOpMap();
 }
 
         
@@ -326,13 +327,23 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
         Instruction inst = parser.instructionVector[instInd];
         nowLine = inst.lineN;
         jumpComment = false;
-        beforeData = doInst(inst);
-        if(printInst && !forGUI){
-            printInstructionInSim(inst.lineN, inst);
-            printDif(beforeData, false);
-        }else if(printInst){
+        if(useEfficient){
+            beforeData = efficientDoInst(inst);
+        }else{
+            beforeData = doInst(inst);
+        }
+        if(printInst){
+            try{
+                beforeData.instruction = inverseOpMap.at(beforeData.opcodeInt);
+            }catch(const std::out_of_range &e){
+                launchError(ILEGAL_INNER_OPCODE);
+            }
+            if(!forGUI){
+                printInstructionInSim(inst.lineN, inst);
+            }
             printDif(beforeData, false);
         }
+
         addHistory(beforeData);
     }while(jumpComment);
 
@@ -361,6 +372,14 @@ void AssemblySimulator::back(){
     BeforeData before;
     try{
         before = popHistory();
+        if(useEfficient){
+            // before.instruction を入力する
+            try{
+                before.instruction = inverseOpMap.at(before.opcodeInt);
+            }catch(const std::out_of_range &e){
+                launchError(ILEGAL_INNER_OPCODE);
+            }
+        }
     }catch (const std::out_of_range & e){
         if(forGUI){
             std::cout << GUI_NO_HISTORY << std::endl;
@@ -461,7 +480,11 @@ void AssemblySimulator::printInstruction(const int & lineN, const Instruction &i
 void AssemblySimulator::printInstructionInSim(const int & lineN, const Instruction &instruction)const{
     // 受け取った命令を画面表示
     auto indPair = parser.getFileNameAndLine(lineN);
-    printInstruction(indPair.second, instruction);
+    if(useBinary){
+        printInstByRegInd(indPair.second, instruction);
+    }else{
+        printInstruction(indPair.second, instruction);
+    }
 }
 
 void AssemblySimulator::deleteBreakPoint(const int &instInd){
@@ -500,6 +523,7 @@ void AssemblySimulator::printBreakList()const{
 
 void AssemblySimulator::printDif(const BeforeData & before, const bool &back)const{
     // 差分を表示 GUI用にbackのときも実装
+    
     if(forGUI){
         // 変化のあったレジスタ名とその変化後の値を表示
         if(before.instruction != "nop"){
