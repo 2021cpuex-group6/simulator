@@ -1,5 +1,5 @@
 #include "parser.hpp"
-#include "assemble/deassemble.hpp"
+#include "../assemble/deassemble.hpp"
 #include <vector>
 #include <map>
 #include <iostream>
@@ -83,6 +83,7 @@ std::map<uint8_t, std::string> AssemblyParser::getInverseOpMap(){
             ans.insert({static_cast<uint8_t>(e.second[5]), e.first});
         }
     }
+    return ans;
 }
 
 int AssemblyParser::getImmediate(const int& lineN, const int& immediateBitN, const std::string& intStr)const {

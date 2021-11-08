@@ -1247,6 +1247,8 @@ void AssemblySimulator::efficientDoALU(const uint8_t &opcode, const int &targetR
 
 void AssemblySimulator::efficientDoFALU(const uint8_t &opcode, const int &targetR, const uint32_t &source0, const uint32_t &source1){
     uint32_t ans = 0;
+    float ansF;
+    MemoryUnit mu;
     switch(opcode){
         case 0b00:
             ans = fpu.fadd(source0, source1); break;
@@ -1259,8 +1261,8 @@ void AssemblySimulator::efficientDoFALU(const uint8_t &opcode, const int &target
         case 0b10000:
             ans = fpu.fsqrt(source0); break;
         case 0b11000:
-            MemoryUnit mu(source0);
-            float ansF = std::floor(mu.f);
+            mu.i = (source0);
+            ansF = std::floor(mu.f);
             mu.f = ansF;
             ans = mu.i;
             break;
@@ -1379,7 +1381,6 @@ BeforeData AssemblySimulator::efficientDoMix(const uint8_t &opcode, const Instru
     int targetReg = instruction.regInd[0];
     BeforeData ans = {"", pc, false, -1, 0u, false, 0u, 0u, instruction.opcodeInt};
 
-    float ansF = 0;
     if(opcode & 0b1){
         // 書き込み先は整数レジスタ
         ans.isInteger = true;
@@ -1415,7 +1416,7 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
     ans.opcodeInt = opcode;
     ans.pc = pc;
     int targetR, source0, source1;
-    uint32_t source0, source1;
+    uint32_t sourceU0, sourceU1;
     switch(opKind){
         case 0b000:
             // 整数R (レジスタ3つ)
@@ -1463,14 +1464,14 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             ans.writeMem = false;
             ans.regInd = targetR;
             ans.regValue = fRegisters[targetR].si;
-            source0 = fRegisters[instruction.regInd[1]].i;
+            sourceU0 = fRegisters[instruction.regInd[1]].i;
             if(opFunct & 0b10000){
                 // fsqrtなど，入力が１つ
-                source1 = 0;
+                sourceU1 = 0;
             }else{
-                source0 = fRegisters[instruction.regInd[2]].i;
+                sourceU0 = fRegisters[instruction.regInd[2]].i;
             }
-            efficientDoFALU(opFunct, targetR, source0, source1);
+            efficientDoFALU(opFunct, targetR, sourceU0, sourceU1);
             break;
         case 0b111:
             // 混合
