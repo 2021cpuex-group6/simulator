@@ -59,6 +59,7 @@ class AssemblyParser{
         std::map<std::string, int> labelMap; //値は次の命令のinstructionVectorでのインデックス
         AssemblyParser(const std::vector<std::string> &filePaths, const bool &useBin, const bool &forGUI);
         std::pair<std::string, int> getFileNameAndLine(const int &lineN)const;
+        static std::map<uint8_t, std::string > getInverseOpMap();
     private:
         std::vector<int> startLines; // 各ファイルが何行目から始まるのかを記す
         bool forGUI;

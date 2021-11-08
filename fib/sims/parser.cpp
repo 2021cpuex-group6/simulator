@@ -75,6 +75,16 @@ int getFileLen(const std::string& filePath){
     return ans;
 }
 
+// opcodeInfoMapのopcodeIntをキーとして命令名を値として持つmapを作る
+std::map<uint8_t, std::string> AssemblyParser::getInverseOpMap(){
+    std::map<uint8_t, std::string> ans = {};
+    for(auto e: opcodeInfoMap){
+        if(e.first != "nop"){
+            ans.insert({static_cast<uint8_t>(e.second[5]), e.first});
+        }
+    }
+}
+
 int AssemblyParser::getImmediate(const int& lineN, const int& immediateBitN, const std::string& intStr)const {
     // 即値を示す文字をintに変換
     // その際、即値が範囲内かも判定
