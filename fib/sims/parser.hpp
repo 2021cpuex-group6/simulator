@@ -40,6 +40,7 @@ struct Instruction{
     int regInd[MAX_OPERAND_N];
     int immediate;
     std::string label;
+    uint8_t opcodeInt; // 高速化のため，opcodeをuint8_t
 };
 constexpr int INST_REGONLY = 0;
 constexpr int INST_2REGF = 1;
@@ -63,6 +64,7 @@ class AssemblyParser{
         bool forGUI;
         bool useBin;
         void parseFiles(const std::vector<std::string> &filePaths);
+        void deassembleFile(const std::string &filePath);
         std::pair<int, int> parseFile(const std::string &filePath,
              const int &startLine, const int &instN);
         void parseBinFile(const std::string &filePath);

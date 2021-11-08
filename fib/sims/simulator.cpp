@@ -234,7 +234,7 @@ void AssemblySimulator::writeReg(const int &regInd, const int32_t &value, const 
     if(regInd < REGISTERS_N){
         if(regInd == 0 && !forGUI){
                 // 0レジスタへの書き込み
-                std::cout << ZERO_REG_WRITE_ERROR << std::endl;
+                // std::cout << ZERO_REG_WRITE_ERROR << std::endl;
                 return;
         }
         if(isInteger){

@@ -1,4 +1,5 @@
 #include "parser.hpp"
+#include "assemble/deassemble.hpp"
 #include <vector>
 #include <map>
 #include <iostream>
@@ -7,9 +8,10 @@
 #include <cmath>
 
 
-
+static const std::string SOME_BINARY_FILES = "バイナリファイルは複数入力できません.";
 static const std::string IMPLEMENT_ERROR = "実装エラー：バグ報告してください．";
 static constexpr int START_LINE = 1;// すでに1行追加された状態で命令を追加していく
+static constexpr int INST_BYTE_N = 4;
 
 std::map<std::string, std::vector<int>>opcodeInfoMap = {
     // 命令の情報を持つ
@@ -19,46 +21,47 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     //  2 ...ラベルが何番目に入るか（入らなければ-1）
     //  3 ...即値のビット数（なければ-1）
     //  4 ...命令種別
+    //  5 ...opcodeInt
 
-    {"nop",     {0, -1, -1, -1, INST_OTHERS}}, 
-    {"add",     {3, -1, -1, -1, INST_REGONLY}}, 
-    {"sub",     {3, -1, -1, -1, INST_REGONLY}},
-    {"mul",     {3, -1, -1, -1, INST_REGONLY}},
-    {"div",     {3, -1, -1, -1, INST_REGONLY}},
-    {"and",     {3, -1, -1, -1, INST_REGONLY}}, 
-    {"slt",     {3, -1, -1, -1, INST_REGONLY}},
-    {"sltu",     {3, -1, -1, -1, INST_REGONLY}}, 
-    {"sll",     {3, -1, -1, -1, INST_REGONLY}}, 
-    {"sra",     {3, -1, -1, -1, INST_REGONLY}}, 
-    {"srl",     {3, -1, -1, -1, INST_REGONLY}}, 
-    {"or",      {3, -1, -1, -1, INST_REGONLY}}, 
-    {"xor",     {3, -1, -1, -1, INST_REGONLY}},
-    {"fadd",     {3, -1, -1, -1, INST_REGONLY}}, 
-    {"fsub",     {3, -1, -1, -1, INST_REGONLY}}, 
-    {"fmul",     {3, -1, -1, -1, INST_REGONLY}}, 
-    {"fdiv",     {3, -1, -1, -1, INST_REGONLY}}, 
-    {"fmv",     {2, -1, -1, -1, INST_2REGF}}, 
-    {"itof",     {2, -1, -1, -1, INST_2REGF}}, 
-    {"ftoi",     {2, -1, -1, -1, INST_2REGF}}, 
-    {"floor",     {2, -1, -1, -1, INST_2REGF}}, 
-    {"fsqrt",     {2, -1, -1, -1, INST_2REGF}}, 
-    {"addi",    {3, 2, -1, 12, INST_REGIMM}}, 
-    {"andi",    {3, 2, -1, 12, INST_REGIMM}}, 
-    {"ori",    {3, 2, -1, 12, INST_REGIMM}}, 
-    {"xori",    {3, 2, -1, 12, INST_REGIMM}}, 
-    {"blt",     {3, -1, 2, -1, INST_CONTROL}}, 
-    {"beq",     {3, -1, 2, -1, INST_CONTROL}}, 
-    {"bne",     {3, -1, 2, -1, INST_CONTROL}}, 
-    {"j",       {1, -1, 0, -1, INST_CONTROL}},
-    {"jal",      {2, -1, 1, -1, INST_CONTROL}}, 
-    {"jr",       {1, 0, -1, 12, INST_CONTROL}}, 
-    {"jalr",     {2, 1, -1, 12, INST_CONTROL}}, 
-    {"lw",       {2, 1, -1, 12, INST_LOAD}}, 
-    {"lbu",       {2, 1, -1, 12, INST_LOAD}},
-    {"flw",       {2, 1, -1, 12, INST_LOAD}},
-    {"sw",       {2, 1, -1, 12, INST_STORE}},
-    {"sb",       {2, 1, -1, 12, INST_STORE}},
-    {"fsw",       {2, 1, -1, 12, INST_STORE}}
+    {"nop",     {0, -1, -1, -1, INST_OTHERS, 0b0000000}}, 
+    {"add",     {3, -1, -1, -1, INST_REGONLY, 0b0000000}}, 
+    {"sub",     {3, -1, -1, -1, INST_REGONLY, 0b0100000}},
+    // {"mul",     {3, -1, -1, -1, INST_REGONLY}},
+    // {"div",     {3, -1, -1, -1, INST_REGONLY}},
+    {"and",     {3, -1, -1, -1, INST_REGONLY, 0b00001000}}, 
+    {"slt",     {3, -1, -1, -1, INST_REGONLY, 0b01000000}},
+    {"sltu",    {3, -1, -1, -1, INST_REGONLY, 0b01001000}}, 
+    {"sll",     {3, -1, -1, -1, INST_REGONLY, 0b10000000}}, 
+    {"sra",     {3, -1, -1, -1, INST_REGONLY, 0b10010000}}, 
+    {"srl",     {3, -1, -1, -1, INST_REGONLY, 0b10011000}}, 
+    {"or",      {3, -1, -1, -1, INST_REGONLY, 0b00010000}}, 
+    {"xor",     {3, -1, -1, -1, INST_REGONLY, 0b00011000}},
+    {"fadd",     {3, -1, -1, -1, INST_REGONLY, 0b0000110}}, 
+    {"fsub",     {3, -1, -1, -1, INST_REGONLY, 0b0100110}}, 
+    {"fmul",     {3, -1, -1, -1, INST_REGONLY, 0b0001110}}, 
+    {"fdiv",     {3, -1, -1, -1, INST_REGONLY, 0b0010110}}, 
+    {"fmv",     {2, -1, -1, -1, INST_2REGF, 0b11001110}}, 
+    {"itof",     {2, -1, -1, -1, INST_2REGF, 0b00010111}}, 
+    {"ftoi",     {2, -1, -1, -1, INST_2REGF, 0b00001111}}, 
+    {"floor",     {2, -1, -1, -1, INST_2REGF, 0b11000110}}, 
+    {"fsqrt",     {2, -1, -1, -1, INST_2REGF, 0b10000110}}, 
+    {"addi",    {3, 2, -1, 12, INST_REGIMM, 0b00000001}}, 
+    {"andi",    {3, 2, -1, 12, INST_REGIMM, 0b00001001}}, 
+    {"ori",    {3, 2, -1, 12, INST_REGIMM, 0b00010001}}, 
+    {"xori",    {3, 2, -1, 12, INST_REGIMM, 0b00011001}}, 
+    {"blt",     {3, -1, 2, -1, INST_CONTROL, 0b00001010}}, 
+    {"beq",     {3, -1, 2, -1, INST_CONTROL, 0b00010010}}, 
+    {"bne",     {3, -1, 2, -1, INST_CONTROL, 0b00100010}}, 
+    {"j",       {1, -1, 0, -1, INST_CONTROL, 0b00000011}},
+    {"jal",      {2, -1, 1, -1, INST_CONTROL, 0b00000011}}, 
+    {"jr",       {1, 0, -1, 12, INST_CONTROL, 0b00001011}}, 
+    {"jalr",     {2, 1, -1, 12, INST_CONTROL, 0b00011011}}, 
+    {"lw",       {2, 1, -1, 12, INST_LOAD, 0b00001100}}, 
+    {"lbu",       {2, 1, -1, 12, INST_LOAD, 0b00010100}},
+    {"flw",       {2, 1, -1, 12, INST_LOAD, 0b00100100}},
+    {"sw",       {2, 1, -1, 12, INST_STORE, 0b00000101}},
+    // {"sb",       {2, 1, -1, 12, INST_STORE, 0b}},
+    {"fsw",       {2, 1, -1, 12, INST_STORE, 0b00001101}}
 };
 
 
@@ -119,6 +122,7 @@ void AssemblyParser::parseError(const int& lineN, const std::string& error)const
 
 AssemblyParser::AssemblyParser(const std::vector<std::string> &filePaths, const bool &useBinary,
          const bool& forGUI): filePaths(filePaths), forGUI(forGUI), useBin(useBinary){
+
     int allLen = 0;
     for(const std::string path: filePaths){
         int fileLen = getFileLen(path);
@@ -126,10 +130,14 @@ AssemblyParser::AssemblyParser(const std::vector<std::string> &filePaths, const 
         allLen += fileLen;
         startLines.emplace_back(fileLen);
     }
-    instructionVector.resize(allLen);
     if(useBin){
-
+        instructionVector.resize(allLen / INST_BYTE_N);
+        if(filePaths.size() != 1u){
+            parseError(0, SOME_BINARY_FILES);
+        }
+        deassembleFile(filePaths[0]);
     }else{
+        instructionVector.resize(allLen);
         parseFiles(filePaths);
     }
 
@@ -204,6 +212,32 @@ std::pair<int, int> AssemblyParser::parseFile(const std::string& filePath, const
     }
     return {lineN, nowInstN};
 }
+
+// ファイルをデアセンブル
+void AssemblyParser::deassembleFile(const std::string &filePath){
+    std::ifstream ifs(filePath);
+    int lineN = 1;
+    if(ifs){
+        std::string line;
+        while(!ifs.eof()){
+            uint32_t res = 0;
+            for (int i = 0; i < INST_BYTE_N; i++)
+            {
+                std::getline(ifs, line);
+                if(line == "") break;
+                res |= (std::stoi(line, nullptr, 16)) << (INST_BYTE_N -1-i)*8;
+            }
+            if(res == 0) break;
+            Instruction inst = deassemble(lineN, res);
+            instructionVector[lineN-1] = inst;
+            lineN++;
+        }
+        instructionVector.resize(lineN-1);
+    }else{
+        parseError(0, FILE_NOTFOUND);
+    }
+}
+
 
 void AssemblyParser::instParse(const int &lineN, const int &instN, std::string instLine){
     // 命令部分をパース

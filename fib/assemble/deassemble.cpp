@@ -125,16 +125,16 @@ Instruction intRParse(const uint32_t &code){
                     printError("intRparse: " + INVALID_CODE);
             }
             break;
-        case 0x02000000:
-            switch(funct3){
-                case 0:
-                    inst.opcode = "mul"; break;
-                case 0b100:
-                    inst.opcode = "div"; break;
-                default:
-                    printError("intRparse: " + INVALID_CODE);
-            }
-            break;
+        // case 0x02000000:
+        //     switch(funct3){
+        //         case 0:
+        //             inst.opcode = "mul"; break;
+        //         case 0b100:
+        //             inst.opcode = "div"; break;
+        //         default:
+        //             printError("intRparse: " + INVALID_CODE);
+        //     }
+        //     break;
         case 0x0:
             switch(funct3){
                 case 0:
@@ -317,38 +317,52 @@ Instruction deassemble(const uint32_t &lineN, uint32_t code){
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
     switch(opcode){
         case 0b0110011:
-            return intRParse(code);
+            inst =  intRParse(code);
+            break;
         case 0b0010011:
-            return intIParse(code);
+            inst =  intIParse(code);
+            break;
         case 0b1100011:
-            return BParse(code);
+            inst = BParse(code);
+            break;
         case 0b1101111:
-            return JParse(code);
+            inst = JParse(code);
+            break;
         case 0b1100111:
-            return JIParse(code);
+            inst = JIParse(code);
+            break;
         case 0b0000011:
-            return LIParse(code);
+            inst = LIParse(code);
+            break;
         case 0b0100011:
-            return SParse(code);
+            inst = SParse(code);
+            break;
         case 0b1010011:
-            return FRParse(code);
+            inst = FRParse(code);
+            break;
         case 0b0000111:
             inst = IRegParse(code);
             if(funct3 != 0b010){
                 printError("FLIParse: " + INVALID_CODE);
             }
             inst.opcode = "flw";
-            return inst;
+            break;
         case 0b0100111:
             inst = SRegParse(code);
             if(funct3 != 0b010){
                 printError("FLIParse: " + INVALID_CODE);
             }
             inst.opcode = "fsw";
-            return inst;   
+            break;  
         default:
             printError(NOT_IMPLEMENTED);
-
     }
+    try{
+        inst.opcodeInt = static_cast<uint8_t>(opcodeInfoMap.at(inst.opcode)[5]);
+    }catch(const std::out_of_range &e){
+        // 不正なopecode
+        printError(NOT_IMPLEMENTED);
+    }
+    return inst;
 
 }

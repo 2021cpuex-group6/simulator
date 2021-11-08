@@ -33,7 +33,6 @@ int main(int argc, char* argv[]){
         }
     }
 
-
     AssemblyParser parser(fileNames, useBin, forGUI);
     AssemblySimulator simulator(parser, useBin, forGUI);
 
