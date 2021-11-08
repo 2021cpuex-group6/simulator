@@ -23,7 +23,7 @@ void interactive(){
         std::getline(std::cin, input);
         try{
             uint32_t ans = std::stoi(input, nullptr, 16);
-            Instruction inst = deassemble(ans);
+            Instruction inst = deassemble(0, ans);
             AssemblySimulator::printInstruction(0, inst);
         }catch(const std::invalid_argument &e){
             std::cout << ERROR << std::endl;
@@ -40,6 +40,7 @@ void fileInput(){
     std::getline(std::cin, input);    
     if(input == "") input = DEFAULT_PATH;
     std::ifstream ifs(input);
+    int lineN = 1;
     if(ifs){
         std::string line;
         while(!ifs.eof()){
@@ -51,7 +52,7 @@ void fileInput(){
                 res |= (std::stoi(line, nullptr, 16)) << (INST_BYTE_N -1-i)*8;
             }
             if(res == 0) break;
-            Instruction inst = deassemble(res);
+            Instruction inst = deassemble(lineN++, res);
             AssemblySimulator::printInstByRegInd(0, inst);
         }
     }

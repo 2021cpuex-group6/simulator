@@ -310,9 +310,10 @@ Instruction FRParse(const uint32_t &code){
 
 // 符号なしintをアセンブリに戻す
 // lineN, opcode, labelには入れない
-Instruction deassemble(uint32_t code){
+Instruction deassemble(const uint32_t &lineN, uint32_t code){
     uint32_t opcode = (code & OPCODE_MASK);
     Instruction inst;
+    inst.lineN = lineN;
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
     switch(opcode){
         case 0b0110011:

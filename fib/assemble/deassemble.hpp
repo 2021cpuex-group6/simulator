@@ -2,4 +2,4 @@
 #include "../sims/parser.hpp"
 
 
-Instruction deassemble(uint32_t code);
+Instruction deassemble(const uint32_t &lineN, uint32_t code);
