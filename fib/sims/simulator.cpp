@@ -234,31 +234,7 @@ void AssemblySimulator::printRegisters(const NumberBase &base, const bool &sign,
 
 }
 
-void AssemblySimulator::writeReg(const int &regInd, const int32_t &value, const bool& isInteger){
-    if(regInd < REGISTERS_N){
-        if(regInd == 0 && !forGUI){
-                // 0レジスタへの書き込み
-                // std::cout << ZERO_REG_WRITE_ERROR << std::endl;
-                return;
-        }
-        if(isInteger){
-            iRegisters[regInd] = value;
 
-        }else{
-            fRegisters[regInd] = MemoryUnit(value);
-        }
-    }else{
-        if(isInteger){
-            if(value % INST_BYTE_N != 0  && !forGUI){
-                // アラインに合わない値が入力されているので注意
-                std::cout << PC_NOT_ALIGNED_WRITE << std::endl;
-            }
-            pc = value;
-        }else{
-            fcsr = static_cast<uint32_t>(value);
-        }
-    }
-}
 
 // 終了まで実行する
 void AssemblySimulator::launch(const bool &printTime){

@@ -3,6 +3,7 @@
 
 #include "fpu.hpp"
 #include "parser.hpp"
+#include <iostream>
 #include <array>
 #include <set>
 
@@ -138,23 +139,47 @@ class AssemblySimulator{
         void setBreakPoint(const int &);
         void deleteBreakPoint(const int &);
         static std::pair<int, bool> getRegInd(const std::string &regName);
-        void writeReg(const int &, const int32_t &, const bool &);
+        inline void writeReg(const int &regInd, const int32_t &value, const bool& isInteger){
+            if(regInd < REGISTERS_N){
+                if(regInd == 0 && !forGUI){
+                        // 0レジスタへの書き込み
+                        // std::cout << ZERO_REG_WRITE_ERROR << std::endl;
+                        return;
+                }
+                if(isInteger){
+                    iRegisters[regInd] = value;
+
+                }else{
+                    fRegisters[regInd] = MemoryUnit(value);
+                }
+            }else{
+                if(isInteger){
+                    if(value % INST_BYTE_N != 0  && !forGUI){
+                        // アラインに合わない値が入力されているので注意
+                        std::cout << PC_NOT_ALIGNED_WRITE << std::endl;
+                    }
+                    pc = value;
+                }else{
+                    fcsr = static_cast<uint32_t>(value);
+                }
+            }
+        }
         void reset();
         void addHistory(const BeforeData &);
         void back();
-        uint32_t readMem(const uint32_t& address, const MemAccess &memAccess)const;
-        void writeMem(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value);
+        inline uint32_t readMem(const uint32_t& address, const MemAccess &memAccess)const;
+        inline void writeMem(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value);
         BeforeData popHistory();
 
     // private:
-        BeforeData efficientDoInst(const Instruction &);
-        void efficientDoALU(const uint8_t &op, const int &targetR, const int &source0, const int &source1);
-        void efficientDoFALU(const uint8_t &opcode, const int &targetR, const uint32_t &source0, const uint32_t &source1);
-        BeforeData efficientDoControl(const uint8_t &opcode, const Instruction &instruction);
-        BeforeData efficientDoJump(const uint8_t &opcode, const Instruction &instruction);
-        BeforeData efficientDoLoad(const uint8_t &opcode, const Instruction &instruction);
-        BeforeData efficientDoStore(const uint8_t &opcode, const Instruction &instruction);
-        BeforeData efficientDoMix(const uint8_t &opcode, const Instruction &instruction);
+        inline BeforeData efficientDoInst(const Instruction &);
+        inline void efficientDoALU(const uint8_t &op, const int &targetR, const int &source0, const int &source1);
+        inline void efficientDoFALU(const uint8_t &opcode, const int &targetR, const uint32_t &source0, const uint32_t &source1);
+        inline BeforeData efficientDoControl(const uint8_t &opcode, const Instruction &instruction);
+        inline BeforeData efficientDoJump(const uint8_t &opcode, const Instruction &instruction);
+        inline BeforeData efficientDoLoad(const uint8_t &opcode, const Instruction &instruction);
+        inline BeforeData efficientDoStore(const uint8_t &opcode, const Instruction &instruction);
+        inline BeforeData efficientDoMix(const uint8_t &opcode, const Instruction &instruction);
 
         int getIRegIndWithError(const std::string &regName)const;
         int getFRegIndWithError(const std::string &regName)const;
