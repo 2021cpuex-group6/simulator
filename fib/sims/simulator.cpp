@@ -1301,7 +1301,7 @@ BeforeData AssemblySimulator::efficientDoJump(const uint8_t &opcode, const Instr
 
     }else{
         // 即値ジャンプ
-        pc = instruction.immediate;
+        pc += instruction.immediate;
     }
     return ans;
 }

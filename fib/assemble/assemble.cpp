@@ -134,7 +134,36 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
             output |= (rg1 << 7) | (rg2 << 15) | (rg3 << 20);
 
         }
+    } else if (style == RF2){
+        std::string op1, op2;
+        iss >> op1 >> op2;
+        int32_t rg1 = static_cast<int32_t>(fregister_to_binary(op1, line));
+        int32_t rg2 = static_cast<int32_t>(fregister_to_binary(op2, line));
+        output |= rounding_mode <<12;
+        output |= (rg1 << 7) | (rg2 << 15) ;
+    } else if (style == MIX){
+        std::string op1, op2, op3;
+        if(opecode == "ftoi"){
+            iss >> op1 >> op2;
+            int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+            int32_t rg2 = static_cast<int32_t>(fregister_to_binary(op2, line));
+            output |= rounding_mode <<12;
+            output |= (rg1 << 7) | (rg2 << 15) ;
+        }else if(opecode == "itof"){
+            iss >> op1 >> op2;
+            int32_t rg1 = static_cast<int32_t>(fregister_to_binary(op1, line));
+            int32_t rg2 = static_cast<int32_t>(register_to_binary(op2, line));
+            output |= rounding_mode <<12;
+            output |= (rg1 << 7) | (rg2 << 15) ;
+        }else if(opecode == "fle"){
+            iss >> op1 >> op2 >> op3;
+            int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+            int32_t rg2 = static_cast<int32_t>(fregister_to_binary(op2, line));
+            int32_t rg3 = static_cast<int32_t>(fregister_to_binary(op3, line));
+            output |= rounding_mode <<12;
+            output |= (rg1 << 7) | (rg2 << 15) | (rg3 << 20);
 
+        }
     } else if (style == I) {
         if(opecode == "nop") return output;
         std::string op1, op2;
@@ -447,10 +476,22 @@ void init_opcode_map(){
     output |= (0b1000<< 25);
     opecode_map.insert({"fmul", {RF, output}});
     output |= (0b1100<< 25);
-    opecode_map.insert({"finv", {RF, output}});
+    opecode_map.insert({"fdiv", {RF, output}});
     output = 0b1010011;
     output |= (0b010110<< 25);
-    opecode_map.insert({"fsqrt", {RF, output}});
+    opecode_map.insert({"fsqrt", {RF2, output}});
+    output = 0b1010011;
+    output |= (0b1100000<< 25);
+    opecode_map.insert({"floor", {RF2, output}});
+    output = 0b1010011;
+    output |= (0b1110000<< 25);
+    opecode_map.insert({"fmv", {RF2, output}});
+    output = 0b1010011;
+    output |= (0b1101000<< 25);
+    opecode_map.insert({"itof", {MIX, output}});
+    output = 0b1010011;
+    output |= (0b1100100<< 25);
+    opecode_map.insert({"ftoi", {MIX, output}});
     // jはjalの書き込みレジスタx0版
     output = 0b1101111;
     opecode_map.insert({"j", {J, output}});

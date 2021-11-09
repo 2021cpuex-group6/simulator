@@ -203,6 +203,8 @@ Instruction JIParse(const uint32_t & code){
         inst.opcode = "jalr";
     }else{
         inst.operandN = 1;
+        inst.regInd[0] = inst.regInd[1];
+        inst.regInd[1] = 0;
         inst.opcode = "jr";
     }
     return inst;
@@ -300,6 +302,8 @@ Instruction FRParse(const uint32_t &code){
                     inst.opcode = "itof"; break;
                 case 0x60:
                     inst.opcode = "floor"; break;
+                case 0x64:
+                    inst.opcode = "ftoi"; break;
                 default:
                     printError("FRParse: " + INVALID_CODE);
             }

@@ -1,7 +1,7 @@
 CFLAGS := -g -Wall -O0 -std=c++17
 SIMSRCS := $(wildcard sims/*.cpp) $(wildcard utils/*.cpp) assemble/deassemble.cpp main.cpp
 DEASSEMSRCS = $(wildcard utils/*.cpp) $(wildcard assemble/*.cpp) deassembler.cpp $(wildcard sims/*.cpp)
-ASSEMSRCS := $(wildcard assemble/*.cpp) $(wildcard utils/*.cpp) assembler.cpp
+ASSEMSRCS :=assemble/assemble.cpp $(wildcard utils/*.cpp) assembler.cpp
 FPUSRCS := utils/utils.cpp sims/fpu.cpp fpuChecker.cpp
 SIMOBJS :=  $(patsubst %.cpp,%.o,$(SIMSRCS))
 ASSEMOBJS :=  $(patsubst %.cpp,%.o,$(ASSEMSRCS))
