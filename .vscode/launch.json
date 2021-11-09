@@ -30,7 +30,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/fib/main",
-            "args": ["test/fib.s.out", "-b"], 
+            "args": ["test/test.s.out", "-b"], 
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/fib",
             "environment": [],

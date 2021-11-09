@@ -1085,22 +1085,43 @@ void AssemblySimulator::printOpCounter() const{
     std::stringstream ss;
     int count = 0;
 
-    for(auto x:opCounter){
-        if(forGUI){
-            // 各命令につき一行
-            std::cout << x.first << " " << x.second << std::endl;
-            
-        }else{
-            ss << std::setw(PRINT_INST_NUM_SIZE)<< x.first <<  ": " << std::setw(PRINT_INST_NUM_SIZE) <<
-                std::internal << x.second << ",     ";
-            
-            if(++count == PRINT_INST_COL){
-                count = 0;
-                std::cout << ss.str() << std::endl;
-                ss.str("");
-                ss.clear(std::stringstream::goodbit);
+    if(useEfficient){
+        for(auto x:efficientOpCounter){
+            if(forGUI){
+                // 各命令につき一行
+                std::cout << inverseOpMap.at(x.first) << " " << x.second << std::endl;
+                
+            }else{
+                ss << std::setw(PRINT_INST_NUM_SIZE)<< inverseOpMap.at(x.first) <<  ": " << std::setw(PRINT_INST_NUM_SIZE) <<
+                    std::internal << x.second << ",     ";
+                
+                if(++count == PRINT_INST_COL){
+                    count = 0;
+                    std::cout << ss.str() << std::endl;
+                    ss.str("");
+                    ss.clear(std::stringstream::goodbit);
+                }
             }
         }
+    }else{
+        for(auto x:opCounter){
+            if(forGUI){
+                // 各命令につき一行
+                std::cout << x.first << " " << x.second << std::endl;
+                
+            }else{
+                ss << std::setw(PRINT_INST_NUM_SIZE)<< x.first <<  ": " << std::setw(PRINT_INST_NUM_SIZE) <<
+                    std::internal << x.second << ",     ";
+                
+                if(++count == PRINT_INST_COL){
+                    count = 0;
+                    std::cout << ss.str() << std::endl;
+                    ss.str("");
+                    ss.clear(std::stringstream::goodbit);
+                }
+            }
+        }
+
     }
     
 }
@@ -1344,9 +1365,6 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
     BeforeData before = {"", pc, loadInteger, loadRegInd, beforeValue, false, 0u, 0u, instruction.opcodeInt};
     
     if(loadInteger){
-        uint32_t value = readMem(address, MemAccess::WORD);
-        fRegisters[loadRegInd] = MemoryUnit(value);
-    }else{
         if(opcode & 0b1){
             // lw
             uint32_t value = readMem(address, MemAccess::WORD);
@@ -1356,6 +1374,9 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
             uint32_t value = readMem(address, MemAccess::BYTE);
             writeReg(loadRegInd, ((~0xff) &iRegisters[loadRegInd]) | value, true);
         }
+    }else{
+        uint32_t value = readMem(address, MemAccess::WORD);
+        fRegisters[loadRegInd] = MemoryUnit(value);
     }
 
     return before;
@@ -1379,7 +1400,7 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
 // 書き込み，読み込みをするレジスタの種類が違う命令
 BeforeData AssemblySimulator::efficientDoMix(const uint8_t &opcode, const Instruction &instruction){
     int targetReg = instruction.regInd[0];
-    BeforeData ans = {"", pc, false, -1, 0u, false, 0u, 0u, instruction.opcodeInt};
+    BeforeData ans = {"", pc, false, targetReg, 0u, false, 0u, 0u, instruction.opcodeInt};
 
     if(opcode & 0b1){
         // 書き込み先は整数レジスタ
@@ -1469,7 +1490,7 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
                 // fsqrtなど，入力が１つ
                 sourceU1 = 0;
             }else{
-                sourceU0 = fRegisters[instruction.regInd[2]].i;
+                sourceU1 = fRegisters[instruction.regInd[2]].i;
             }
             efficientDoFALU(opFunct, targetR, sourceU0, sourceU1);
             break;
