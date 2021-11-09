@@ -10,7 +10,7 @@
 #include "assemble.hpp"
 
 static constexpr bool ELIMINATE_NOP = true; // コメント等を飛ばすか
-static constexpr int START_ADDRESS = 0; //ファイルのはじめの命令が配置されるアドレス
+static constexpr int START_ADDRESS = 4; //ファイルのはじめの命令が配置されるアドレス (エントリポイント分ずらしておく)
 static constexpr int INSTRUCTION_BYTE_N = 4;
 static constexpr int32_t NOP = 0x13;
 static constexpr int32_t MASK_BITS = ~(1 << 31); // 右シフトが不定にならないように最上位以外1
@@ -20,6 +20,9 @@ static const std::string DOUBLE_LABEL = "ラベルが重複しています";
 static const std::string LABEL_NOT_FOUND = "ラベルが見つかりませんでした";
 static const std::string LABEL_TOO_FAR = "遷移先のラベルが遠すぎます。実装を見直してください。";
 static const std::string OUT_OF_RANGE_IMM = "範囲外の即値です";
+static const std::string GLOBAL_TAG = ".global";
+static const std::string ENTRY_POINT = "min_caml_start";
+static const std::string ENTRY_POINT_LABEL = "+ENTRY";
 static const std::regex label_re(R"(^([0-9a-zA-Z_.]+)\s*:\s*(#.*)*)");
 static const std::regex address_re(R"(\s*([\-0-9]+)\(\s*([a-z0-9%]+)\s*\))");
 static int8_t rounding_mode = 0x000; // 浮動小数点演算の丸め方
@@ -42,11 +45,33 @@ static int32_t get_relative_address_with_check(const std::string &label,
 static void check_labels(std::istream& ifs);
 static std::string delete_comment(std::string line);
 
+// エントリポイントがあれば追加
+// 見つかればtrueを返す
+void addEntryPoint(std::ofstream& ofs,  bool output_log){
+    int32_t binary_op;
+    if(label_map.find(ENTRY_POINT_LABEL) != label_map.end()){
+        binary_op  = assemble_op("j " + ENTRY_POINT_LABEL, -1, 0);
+    }else{
+        binary_op  = assemble_op("nop", -1, 0);
+    }
+    int32_t byte;
+    // 通常の命令の時
+    for (int i = 0; i < INSTRUCTION_BYTE_N; i++) {
+        // 1バイトずつ出力
+        byte = (binary_op >> (8*(3-i))) & 0xff;
+        ofs << std::hex << byte << std::endl;
+        if (output_log)
+            std::cout << std::hex << (unsigned int)byte << std::endl;
+    }
+
+}
+
 void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log) {
     // 一行ずつアセンブル
     check_labels(ifs); // labelをmapに格納
     int line_count = 1;             // 読み込んだファイルの行数
     int addr_count = START_ADDRESS; // 出力する命令のアドレス
+    addEntryPoint(ofs, output_log); // 見つかればj, 見つからなければnopが挿入される
     while(!ifs.eof()) {
         std::string line, op;
         std::getline(ifs,line);
@@ -54,7 +79,9 @@ void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log) {
         op = delete_comment(line);
         std::regex space_like(R"([\t\s\n\r]+)");
         std::regex label(R"(^.+:[\t\s\n\r]*$)");
-        if (op.size() == 0 || std::regex_match(op, space_like) || std::regex_match(op, label)) {
+        std::regex dotLabel(R"(^\.global\s*.*)");
+        if (op.size() == 0 || std::regex_match(op, space_like) ||
+                 std::regex_match(op, label) || std::regex_match(op, dotLabel) ) {
             // 出力しない場合、行数だけインクリメントし、命令アドレスは動かさない
             // TODO: これあっている？
             line_count ++;
@@ -299,6 +326,18 @@ static void check_labels(std::istream& ifs){
                 if(! pib.second){
                     // ラベルの重複
                     assemble_error(DOUBLE_LABEL, line_count);
+                }
+                line_count ++;
+                continue;
+            }else if(opecode == GLOBAL_TAG){
+                iss >> opecode;
+                if(opecode == ENTRY_POINT){
+                    // エントリポイント
+                    auto pib =  label_map.insert({ENTRY_POINT_LABEL, addr_count});
+                    if(! pib.second){
+                        // ラベルの重複
+                        assemble_error(DOUBLE_LABEL, line_count);
+                    }
                 }
                 line_count ++;
                 continue;
