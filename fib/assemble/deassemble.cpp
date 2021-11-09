@@ -97,10 +97,12 @@ Instruction BRegParse(const uint32_t &code ){
 
 
 Instruction SRegParse(const uint32_t &code ){
+    // S命令はrs1がメモリアドレスを指すレジスタ，rs2が出力元となり，命令列と逆のため，
+    // わかりやすくするためにここで交換する
     Instruction inst = {};
     inst.operandN = 2;
-    inst.regInd[0] = (code >> RS1_SHIFT_N) & REG_MASK;
-    inst.regInd[1] = (code >> RS2_SHIFT_N) & REG_MASK;
+    inst.regInd[0] = (code >> RS2_SHIFT_N) & REG_MASK;
+    inst.regInd[1] = (code >> RS1_SHIFT_N) & REG_MASK;
     inst.immediate = SImmParse(code);
 
     return inst;

@@ -478,7 +478,7 @@ void init_opcode_map(){
     output |= (0b1100<< 25);
     opecode_map.insert({"fdiv", {RF, output}});
     output = 0b1010011;
-    output |= (0b010110<< 25);
+    output |= (0b0101100<< 25);
     opecode_map.insert({"fsqrt", {RF2, output}});
     output = 0b1010011;
     output |= (0b1100000<< 25);
