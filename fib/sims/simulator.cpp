@@ -40,8 +40,12 @@ void AssemblySimulator::reset(){
     pc = 0;
     end = false;
     instCount = 0;
+    nowLine = 0;
     for(auto &e: opCounter){
         opCounter[e.first] = 0;
+    }
+    for(auto &e: efficientOpCounter){
+        efficientOpCounter[e.first] = 0;
     }
     iRegisters.fill(0);
     MemoryUnit mu;

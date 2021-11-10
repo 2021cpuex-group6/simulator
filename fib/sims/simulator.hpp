@@ -193,7 +193,7 @@ class AssemblySimulator{
         BeforeData doLoad(const std::string &opcode, const Instruction &instruction);
         BeforeData doStore(const std::string &opcode, const Instruction &instruction);
         BeforeData doControl(const std::string &opcode, const Instruction &instruction);
-        void incrementPC();
+        inline void incrementPC();
         std::string getRegisterInfoUnit(const int&, const NumberBase&, const bool &sign, const bool &isInteger) const ;
         std::string getIRegisterInfoUnit(const int&, const NumberBase&, const bool &sign) const ;
         std::string getFRegisterInfoUnit(const int&, const NumberBase&, const bool &sign, const bool &useFNotaion) const ;
