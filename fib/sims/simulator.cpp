@@ -47,10 +47,13 @@ void AssemblySimulator::reset(){
     for(auto &e: efficientOpCounter){
         efficientOpCounter[e.first] = 0;
     }
-    iRegisters.fill(0);
+    for(int i = 0; i < REGISTERS_N; i++){
+        iRegisters[i] = 0;
+        MemoryUnit mu_(0u);
+        fRegisters[i] = mu_;
+    }
     MemoryUnit mu;
     mu.i = 0;
-    fRegisters.fill(mu);
     breakPoints.clear();
     historyN = 0;
     historyPoint = 0;

@@ -108,8 +108,8 @@ class AssemblySimulator{
         uint32_t fcsr; //浮動小数点演算の状態管理　いらないかも
         bool end; //終了フラグ
         const AssemblyParser &parser;
-        std::array<int, REGISTERS_N> iRegisters;
-        std::array<MemoryUnit, REGISTERS_N> fRegisters;
+        int iRegisters[REGISTERS_N];
+        MemoryUnit fRegisters[REGISTERS_N];
 
         int instCount; // 実行命令数
         std::map<std::string, int> opCounter; //実行命令の統計
