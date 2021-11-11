@@ -20,6 +20,7 @@ static const std::string DOUBLE_LABEL = "ラベルが重複しています";
 static const std::string LABEL_NOT_FOUND = "ラベルが見つかりませんでした";
 static const std::string LABEL_TOO_FAR = "遷移先のラベルが遠すぎます。実装を見直してください。";
 static const std::string OUT_OF_RANGE_IMM = "範囲外の即値です";
+static const std::string NOT_FOUND_FILE = "以下のファイルが見つかりません: ";
 static const std::string GLOBAL_TAG = ".global";
 static const std::string ENTRY_POINT = "min_caml_start";
 static const std::string ENTRY_POINT_LABEL = "+ENTRY";
@@ -38,11 +39,12 @@ static std::pair<int32_t, int32_t> get_address_reg_imm(const std::string &input,
 
 static int8_t register_to_binary(std::string reg_name, const int &line);
 static int8_t fregister_to_binary(std::string reg_name, const int &line);
-static std::int32_t assemble_op(const std::string &op, const int &line, const int addr);
+static std::int32_t assemble_op(const std::string &op, const int &line, const int addr, const std::map<std::string, int> &label_dict);
 static void assemble_error(const std::string &message, const int & line);
 static int32_t get_relative_address_with_check(const std::string &label,
-                                const int & now_addr, const int & max_bit, const int &line);
-static void check_labels(std::istream& ifs);
+                                const int & now_addr, const int & max_bit, const int &line, 
+                                const std::map<std::string, int> &label_dict);
+static int check_labels(std::istream& ifs, const int &start_addr, std::map<std::string, int> &label_dict);
 static std::string delete_comment(std::string line);
 
 // エントリポイントがあれば追加
@@ -50,9 +52,9 @@ static std::string delete_comment(std::string line);
 void addEntryPoint(std::ofstream& ofs,  bool output_log){
     int32_t binary_op;
     if(label_map.find(ENTRY_POINT_LABEL) != label_map.end()){
-        binary_op  = assemble_op("j " + ENTRY_POINT_LABEL, -1, 0);
+        binary_op  = assemble_op("j " + ENTRY_POINT_LABEL, -1, 0, label_map);
     }else{
-        binary_op  = assemble_op("nop", -1, 0);
+        binary_op  = assemble_op("nop", -1, 0, label_map);
     }
     int32_t byte;
     // 通常の命令の時
@@ -68,7 +70,7 @@ void addEntryPoint(std::ofstream& ofs,  bool output_log){
 
 void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log) {
     // 一行ずつアセンブル
-    check_labels(ifs); // labelをmapに格納
+    check_labels(ifs, START_ADDRESS, label_map); // labelをmapに格納
     int line_count = 1;             // 読み込んだファイルの行数
     int addr_count = START_ADDRESS; // 出力する命令のアドレス
     addEntryPoint(ofs, output_log); // 見つかればj, 見つからなければnopが挿入される
@@ -90,7 +92,7 @@ void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log) {
             continue;
         }
 
-        const int32_t & binary_op  = assemble_op(op, line_count, addr_count);
+        const int32_t & binary_op  = assemble_op(op, line_count, addr_count, label_map);
 
         int32_t byte;
         // 通常の命令の時
@@ -118,7 +120,7 @@ void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log) {
 }
 
 
-static std::int32_t assemble_op(const std::string & op, const int& line, const int addr) {
+static std::int32_t assemble_op(const std::string & op, const int& line, const int addr, const std::map<std::string, int> &label_dict) {
     // 一行をパースし、命令の数値表現を返す
     int32_t output = 0;
     std::istringstream iss(op);
@@ -222,13 +224,13 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
         std::string op1, op2;
         if(opecode == "j"){
             iss >> op1;
-            int32_t label_addr = get_relative_address_with_check(op1, addr, 21, line);
+            int32_t label_addr = get_relative_address_with_check(op1, addr, 21, line, label_dict);
             label_addr = get_J_imm(label_addr);
             output |= label_addr;
         }else if(opecode == "jal"){
             iss >> op1 >> op2;
             int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
-            int32_t label_addr = get_relative_address_with_check(op2, addr, 21, line);
+            int32_t label_addr = get_relative_address_with_check(op2, addr, 21, line, label_dict);
             label_addr = get_J_imm(label_addr);
             output |= label_addr | (rg1 << 7);
         }
@@ -237,7 +239,7 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
         iss >> op1 >> op2 >> op3;
         int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
         int32_t rg2 = static_cast<int32_t>(register_to_binary(op2, line));
-        int32_t label_addr = get_relative_address_with_check(op3, addr, 13, line);
+        int32_t label_addr = get_relative_address_with_check(op3, addr, 13, line, label_dict);
         label_addr = get_B_imm(label_addr);
         output |= label_addr | (rg1 << 15) | (rg2 << 20);
 
@@ -302,11 +304,12 @@ static void assemble_error(const std::string &message, const int & line){
     throw std::invalid_argument(std::to_string(line) + "行目:" + message);
 }
 
-static void check_labels(std::istream& ifs){
-    // 初めにファイルを全探索してラベルを探す
-    // そのあと、ファイルポインタをもとにもどす
+// 初めにファイルを全探索してラベルを探す
+// そのあと、ファイルポインタをもとにもどす
+// 返り値が最終アドレス
+static int check_labels(std::istream& ifs,const int &start_addr, std::map<std::string, int> &label_dict){
     int line_count = 1;
-    int addr_count = START_ADDRESS;
+    int addr_count = start_addr;
     while(!ifs.eof()) {
         std::string op;
         std::getline(ifs,op);
@@ -322,7 +325,7 @@ static void check_labels(std::istream& ifs){
             std::smatch m;
             if(std::regex_match(op, m, label_re)){
                 // ラベル
-                auto pib =  label_map.insert({m[1].str(), addr_count});
+                auto pib =  label_dict.insert({m[1].str(), addr_count});
                 if(! pib.second){
                     // ラベルの重複
                     assemble_error(DOUBLE_LABEL, line_count);
@@ -333,7 +336,7 @@ static void check_labels(std::istream& ifs){
                 iss >> opecode;
                 if(opecode == ENTRY_POINT){
                     // エントリポイント
-                    auto pib =  label_map.insert({ENTRY_POINT_LABEL, addr_count});
+                    auto pib =  label_dict.insert({ENTRY_POINT_LABEL, addr_count});
                     if(! pib.second){
                         // ラベルの重複
                         assemble_error(DOUBLE_LABEL, line_count);
@@ -353,15 +356,31 @@ static void check_labels(std::istream& ifs){
     }
     ifs.clear();
     ifs.seekg(0, std::ios_base::beg);
+    return addr_count;
 }
 
+// 複数ファイルにまたがってラベル検索をする
+void check_labels_many_files(const std::vector<std::string> &files, std::map<std::string, int> &label_dict){
+    int start_addr = START_ADDRESS;
+    for(auto file: files){
+        std::ifstream ifs(file);
+        if (!ifs) {
+            assemble_error(NOT_FOUND_FILE + file, -1);
+        }
+        start_addr = check_labels(ifs, start_addr, label_dict);
+    }
+
+}
+
+
 static int32_t get_relative_address_with_check(const std::string &label, 
-                        const int & now_addr, const int & max_bit, const int & line){
+                        const int & now_addr, const int & max_bit, const int & line,
+                        const std::map<std::string, int> &label_dict){
     // ラベル名から相対アドレスを手に入れる。(1ビット右シフト済)
     // その際、既定の範囲内かも調べ、そうでなかったらエラーを出す
     int32_t address;
     try{
-        address = label_map.at(label);
+        address = label_dict.at(label);
     }catch(const std::out_of_range &e){
         assemble_error(LABEL_NOT_FOUND, line);
     }

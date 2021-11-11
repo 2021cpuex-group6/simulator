@@ -23,3 +23,4 @@ enum op_style {
 void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log);
 void init_opcode_map();
 void init_label_map();
+void check_labels_many_files(const std::vector<std::string> &files, std::map<std::string, int> &label_map);

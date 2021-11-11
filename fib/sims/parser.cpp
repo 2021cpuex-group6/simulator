@@ -162,6 +162,8 @@ void AssemblyParser::parseFiles(const std::vector<std::string> &filePaths){
     topInst.lineN = 1;
     topInst.opcode = "nop";
     topInst.operandN = 0;
+    topInst.opcodeInt = static_cast<uint8_t>(opcodeInfoMap[topInst.opcode][5]);
+
 
     instructionVector[0] = topInst;
 
