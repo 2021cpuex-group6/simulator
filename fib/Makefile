@@ -1,6 +1,6 @@
-CFLAGS := -g -Wall -O3 -mtune=native -march=native -mfpmath=both -std=c++17
+CFLAGS := -g -Wall -O0 -std=c++17
 # -O3 -mtune=native -march=native -mfpmath=both
-SIMSRCS := $(wildcard sims/*.cpp) $(wildcard utils/*.cpp) assemble/deassemble.cpp main.cpp
+SIMSRCS := $(wildcard sims/*.cpp) $(wildcard utils/*.cpp) $(wildcard assemble/*.cpp) main.cpp
 DEASSEMSRCS = $(wildcard utils/*.cpp) $(wildcard assemble/*.cpp) deassembler.cpp $(wildcard sims/*.cpp)
 ASSEMSRCS :=assemble/assemble.cpp $(wildcard utils/*.cpp) assembler.cpp
 FPUSRCS := utils/utils.cpp sims/fpu.cpp fpuChecker.cpp

@@ -369,7 +369,7 @@ BeforeData AssemblySimulator::efficientDoJump(const uint8_t &opcode, const Instr
         // 即値ジャンプ
         pc += instruction.immediate;
     }
-    return std::move(ans);
+    return ans;
 }
 
 // 制御系の命令実行
@@ -394,7 +394,7 @@ BeforeData AssemblySimulator::efficientDoControl(const uint8_t &opcode, const In
     }else{
         BeforeData ans = {"", pc,false, -1, -1, false, 0, 0, instruction.opcodeInt};
         incrementPC();
-        return std::move(ans);
+        return ans;
     }
 }
 
@@ -424,7 +424,7 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
         fRegisters[loadRegInd] = MemoryUnit(value);
     }
 
-    return std::move(before);
+    return before;
 }
 
 
@@ -439,7 +439,7 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
     int regInd = instruction.regInd[0];
     uint32_t value = (opcode & 0b1) == 0 ? iRegisters[regInd] : fRegisters[regInd].i;
     writeMem(address, MemAccess::WORD, value);
-    return std::move(before);
+    return before;
 }
 
 // 書き込み，読み込みをするレジスタの種類が違う命令
@@ -458,14 +458,14 @@ BeforeData AssemblySimulator::efficientDoMix(const uint8_t &opcode, const Instru
             int32_t value = std::round(fRegisters[instruction.regInd[1]].f);
             writeReg(targetReg, value, true);
         }
-        return std::move(ans);
+        return ans;
     }else{
         // itof
         ans.isInteger = false;
         ans.regValue = fRegisters[targetReg].si;
         uint32_t ansInt = fpu.itof(static_cast<uint32_t>(iRegisters[instruction.regInd[1]]));
         writeReg(targetReg, ansInt, false);
-        return std::move(ans);
+        return ans;
     }
 
 }
@@ -548,7 +548,7 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
     }
 
     incrementPC();
-    return std::move(ans);
+    return ans;
 }
 
 #endif

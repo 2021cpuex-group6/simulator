@@ -39,7 +39,6 @@ static std::pair<int32_t, int32_t> get_address_reg_imm(const std::string &input,
 
 static int8_t register_to_binary(std::string reg_name, const int &line);
 static int8_t fregister_to_binary(std::string reg_name, const int &line);
-static std::int32_t assemble_op(const std::string &op, const int &line, const int addr, const std::map<std::string, int> &label_dict);
 static void assemble_error(const std::string &message, const int & line);
 static int32_t get_relative_address_with_check(const std::string &label,
                                 const int & now_addr, const int & max_bit, const int &line, 
@@ -120,7 +119,7 @@ void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log) {
 }
 
 
-static std::int32_t assemble_op(const std::string & op, const int& line, const int addr, const std::map<std::string, int> &label_dict) {
+std::int32_t assemble_op(const std::string & op, const int& line, const int addr, const std::map<std::string, int> &label_dict) {
     // 一行をパースし、命令の数値表現を返す
     int32_t output = 0;
     std::istringstream iss(op);

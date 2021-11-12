@@ -1,5 +1,6 @@
 #include "parser.hpp"
 #include "../assemble/deassemble.hpp"
+#include "../assemble/assemble.hpp"
 #include <vector>
 #include <map>
 #include <iostream>
@@ -148,6 +149,9 @@ AssemblyParser::AssemblyParser(const std::vector<std::string> &filePaths, const 
         }
         deassembleFile(filePaths[0]);
     }else{
+        init_opcode_map();
+        check_labels_many_files(filePaths, labelMap);
+
         instructionVector.resize(allLen);
         parseFiles(filePaths);
     }
@@ -158,14 +162,13 @@ void AssemblyParser::parseFiles(const std::vector<std::string> &filePaths){
     int startLine = START_LINE;
     int nowInstN = 1;
     // エントリポイント用にnop命令を先頭に入れる
-    Instruction topInst;
-    topInst.lineN = 1;
-    topInst.opcode = "nop";
-    topInst.operandN = 0;
-    topInst.opcodeInt = static_cast<uint8_t>(opcodeInfoMap[topInst.opcode][5]);
-
-
-    instructionVector[0] = topInst;
+    int32_t binary_op;
+    if(labelMap.find(ENTRY_POINT_LABEL) != labelMap.end()){
+        binary_op  = assemble_op("j " + ENTRY_POINT_LABEL, -1, 0, labelMap);
+    }else{
+        binary_op  = assemble_op("nop", -1, 0, labelMap);
+    }
+    instructionVector[0] = deassemble(1, binary_op);
 
     for(const std::string path: filePaths){
         auto parseRes = parseFile(path, startLine, nowInstN);
@@ -205,17 +208,14 @@ std::pair<int, int> AssemblyParser::parseFile(const std::string& filePath, const
 
         if(std::regex_match(line, m, instRe)){
             // 命令
-            instParse(lineN, nowInstN++,  m[1].str());
+            // instParse(lineN, nowInstN++,  m[1].str());
+            uint32_t op = assemble_op(m[1].str(), lineN, nowInstN * INST_BYTE_N, labelMap);
+            instructionVector[nowInstN] = deassemble(lineN, op);
+            ++nowInstN;
         }else if(std::regex_match(line, m, labelRe)){
-            // ラベル
-            auto pib =  labelMap.insert({m[1].str(), nowInstN});
-            if(! pib.second){
-                // ラベルの重複
-                parseError(lineN, DOUBLE_LABEL);
-            }
         }else if(std::regex_match(line, m, spaceRe)){
         }else if(std::regex_match(line, m, metaCommandRe)){
-            metaCommandParse(lineN, nowInstN, m[1].str());
+            // metaCommandParse(lineN, nowInstN, m[1].str());
             
         }else{
             // 不正な行

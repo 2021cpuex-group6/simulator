@@ -15,7 +15,7 @@ static const std::string TIME_FORMAT = "Time: %.10lfms\n";
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI):useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
           parser(parser), iRegisters({0}), fRegisters({MemoryUnit(0)}),
           instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}){
-    useEfficient = useBin;
+    useEfficient = true;
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
     MemoryUnit mu;
     mu.i = 0;
@@ -310,11 +310,11 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
         Instruction inst = parser.instructionVector[instInd];
         nowLine = inst.lineN;
         jumpComment = false;
-        if(useEfficient){
-            beforeData = efficientDoInst(inst);
-        }else{
-            beforeData = doInst(inst);
-        }
+        beforeData = efficientDoInst(inst);
+        // if(useEfficient){
+        // }else{
+        //     beforeData = doInst(inst);
+        // }
         if(printInst){
             try{
                 beforeData.instruction = inverseOpMap.at(beforeData.opcodeInt);
