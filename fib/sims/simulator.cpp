@@ -100,7 +100,7 @@ std::string AssemblySimulator::getFRegisterInfoUnit(const int &regN, const Numbe
 
 
     if(useFNotation){
-        ss << regName << " " << std::to_string(fRegisters[regN].f);
+        ss << regName << std::setw(12) << std::to_string(fRegisters[regN].f);
     }else{
         unsigned int  numSize = 0;
         switch (base){
@@ -121,7 +121,7 @@ std::string AssemblySimulator::getFRegisterInfoUnit(const int &regN, const Numbe
                 break;
             default :
                 prefix = "";
-                numSize = 10;
+                numSize = 12;
                 if (sign){
                     ss << regName  << std::setw(numSize) << std::internal << value;
                 }else{
@@ -184,7 +184,7 @@ std::string AssemblySimulator::getIRegisterInfoUnit(const int &regN, const Numbe
             break;
         default :
             prefix = "";
-            numSize = 10;
+            numSize = 12;
             if (sign){
                 ss << regName  << std::setw(numSize) << std::internal << value;
             }else{
@@ -463,11 +463,11 @@ void AssemblySimulator::printInstruction(const int & lineN, const Instruction &i
 void AssemblySimulator::printInstructionInSim(const int & lineN, const Instruction &instruction)const{
     // 受け取った命令を画面表示
     auto indPair = parser.getFileNameAndLine(lineN);
-    if(useBinary){
-        printInstByRegInd(indPair.second, instruction);
-    }else{
-        printInstruction(indPair.second, instruction);
-    }
+    // if(useBinary){
+    printInstByRegInd(indPair.second, instruction);
+    // }else{
+    // printInstruction(indPair.second, instruction);
+    // }
 }
 
 void AssemblySimulator::deleteBreakPoint(const int &instInd){
