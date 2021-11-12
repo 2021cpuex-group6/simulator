@@ -1,4 +1,5 @@
 # テスト用
+.global	min_caml_start
 start:
     jal x4 test # x4は5行目
     addi x1 x1 1000
@@ -8,6 +9,7 @@ start:
 test:
     jalr x3 12(%x4) # 8行目に飛ぶ x3は12行目
 test2:
+    jal x1 additional
     addi x1 x0 0 # x1 = 0
     addi x4 x0 4 # x4 = 4
     addi x2 x0 520  # x2 = 512 + 8 10 00001000
@@ -19,16 +21,13 @@ test2:
     lw x1 0(x1) # x1 = -1
     addi x1 x0 10
     addi x2 x0 11
-    mul x3 x1 x2  # x3 = 110
-    addi x6 x0 20 
-    sub x2 x2 x6 # x2 = -9
-    mul x4 x2 x1 # x4 = -90
-    div x3 x3 x1 # x3 = 11
-    div x3 x3 x2 # x3 = -1
-    addi x4 x0 17
-    div x3 x4 x2 # x3 = -1
-    jal x1 additional  # これで別ファイルに飛んで戻ってくる
-.global	min_caml_start
+    addi x10 x0 2
+    addi x1  x0 24
+    addi x2 x0 -8
+    sra %x3 %x2 x10
+    sra %x4 %x1 x10 
+    srl %x5 %x2 x10
+    srl %x6 %x1 x10
     addi x1 x0 21 # シフト数
     addi %x2 x0 1532 # x2 1 0111 1111 00
     addi x3 %x0 516 # x3 0 1000 0001 00
@@ -67,3 +66,20 @@ test2:
     itof f16 x0
     fsw f7 -4(%x6) # 00 00 30 c1
     fsw f10 0(%x6) # 00 00 c4 40
+    addi x1 x0 1
+    addi x2 x0 20
+    sll x1 x1 x2
+    addi x2 x0 0
+loop1: # 2^20 回繰り返す
+    add x3 x2 x0 
+    addi x4 x0 3
+    itof f1 x4
+    itof f2 x3
+    fadd f3 f1 f2
+    fmul f4 f1 f2
+    fsqrt f3 f3
+    sll x3 x3 x2
+    sw x2 0(x0)
+    lw x3 0(x0)
+    addi x2 x2 1
+    blt x2 x1 loop1
