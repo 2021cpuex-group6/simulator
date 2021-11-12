@@ -318,7 +318,7 @@ static int check_labels(std::istream& ifs,const int &start_addr, std::map<std::s
         iss >> opecode;
         try{
             // mapからオペコードの情報を取得
-            const auto & opecode_data = opecode_map.at(opecode);
+            opecode_map.at(opecode);
         }catch (const std::out_of_range & e){
             // NOPのとき
             std::smatch m;

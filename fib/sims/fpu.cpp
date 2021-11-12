@@ -20,7 +20,7 @@ FPUUnit::FPUUnit(){
 
 // fsqrt のパラメータをロード
 void FPUUnit::initFsqrtParam(){
-    fsqrtParamA, fsqrtParamB = {};
+    fsqrtParamA = {}; fsqrtParamB = {};
     std::ifstream ifs1(PARAM_DIR + FSQRT_PARAM_A_FILE);
     if(ifs1){
         std::string input;
@@ -445,6 +445,8 @@ CheckResult FPUUnit::printOperationCheck(const Float32 &f1, const Float32 &f2,
     if(isNormalized(f1.f32) && isNormalized(f2.f32)){
         bool res = false;
         Float32 myAns, trueAns;
+        myAns.u32 = 0;
+        trueAns.u32 = 0;
         switch(op){
             case CheckedOperation::ADD:
                 res = addSubCheck(f1.u32, f2.u32, false);

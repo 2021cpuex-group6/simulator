@@ -14,7 +14,7 @@ static const std::string TIME_FORMAT = "Time: %.10lfms\n";
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI):useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
           parser(parser), iRegisters({0}), fRegisters({MemoryUnit(0)}),
-          instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}){
+          instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory(){
     useEfficient = true;
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
     MemoryUnit mu;
@@ -378,7 +378,7 @@ void AssemblySimulator::back(){
     pc = before.pc;
     if(before.instruction != ""){
         instCount--;
-        opCounter[before.instruction] = opCounter[before.instruction] -1;
+        efficientOpCounter[before.opcodeInt] = efficientOpCounter[before.opcodeInt] -1;
         if(before.regInd >= 0){
             if(before.isInteger){
                 iRegisters[before.regInd] = before.regValue;
@@ -1057,14 +1057,14 @@ void AssemblySimulator::printOpCounter() const{
     int count = 0;
 
     if(useEfficient){
-        for(auto x:efficientOpCounter){
+        for(auto x:opcodeInfoMap){
             if(forGUI){
                 // 各命令につき一行
-                std::cout << inverseOpMap.at(x.first) << " " << x.second << std::endl;
+                std::cout << x.first << "  " <<  efficientOpCounter.at(static_cast<uint8_t>((x.second)[5])) << std::endl;
                 
             }else{
-                ss << std::setw(PRINT_INST_NUM_SIZE)<< inverseOpMap.at(x.first) <<  ": " << std::setw(PRINT_INST_NUM_SIZE) <<
-                    std::internal << x.second << ",     ";
+                ss << std::setw(PRINT_INST_NUM_SIZE)<< x.first <<  ": " << std::setw(PRINT_INFO_NUM_SIZE) <<
+                    std::internal << efficientOpCounter.at(static_cast<uint8_t>((x.second)[5])) << ",     ";
                 
                 if(++count == PRINT_INST_COL){
                     count = 0;
