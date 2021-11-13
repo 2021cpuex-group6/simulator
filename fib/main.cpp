@@ -6,18 +6,22 @@
 #include <regex>
 
 const std::string LACK_ARGUMENT = "引数にアセンブリファイルを入力してください";                                                                                                           
+const std::string INVALID_CASH_WAY = "ウェイ数が不適切です．";    
 const std::string OPTION_ALL = "-a";
 const std::string OPTION_BIN = "-b";
 const std::string OPTION_GUI = "-g";
+const std::string OPTION_CASH = "-c";
 
 int main(int argc, char* argv[]){
     // bool doAll = false; //対話型にせず全実行するか
     bool useBin = false; //バイナリを使うかアセンブリか
     bool forGUI = false; // GUI用の出力か
+    int cashWay = 1;
     std::vector<std::string> fileNames;
 
     if(argc < 2){
         std::cout << LACK_ARGUMENT << std::endl;
+        return;
     }
     int optionN = 1;
     while(optionN < argc){
@@ -27,7 +31,13 @@ int main(int argc, char* argv[]){
         }else if(arg == OPTION_BIN){
             useBin = true;
         }else if(arg == OPTION_GUI){
-            forGUI = true;                
+            forGUI = true;          
+        }else if(startsWith(arg, OPTION_CASH)){    
+            cashWay = std::stoi(arg.substr(2));
+            if(!isPowerOf2(cashWay, CASH_SIZE)){
+                // ウェイ数が2べきではない
+                std::cout << INVALID_CASH_WAY << std::endl;
+            }
         }else{
             fileNames.emplace_back(arg);
         }

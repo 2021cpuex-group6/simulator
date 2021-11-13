@@ -28,6 +28,7 @@ constexpr int MEM_ADDRESS_HEX_LEN = 8;
 constexpr int OPKIND_MASK = 0x7;
 constexpr int OPKIND_BIT_N = 3;
 constexpr bool USE_EFFICIENT = true;
+constexpr int CASH_SIZE = 0x1000; // キャッシュの総サイズ
 static const std::string ILEGAL_INNER_OPCODE = "不正な内部オペコードです(実装ミス)";
 const std::string BREAKPOINT_NOT_FOUND = "ブレークポイントが見つかりませんでした";
 const std::string FILE_END = "終了しました";
@@ -130,6 +131,8 @@ class AssemblySimulator{
 
         FPUUnit fpu;
         std::map<uint8_t, std::string> inverseOpMap; // uint8_tのopcodeから文字列へ変換
+
+        
         
         AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI);
         ~AssemblySimulator();
