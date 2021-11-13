@@ -28,7 +28,7 @@ constexpr int MEM_ADDRESS_HEX_LEN = 8;
 constexpr int OPKIND_MASK = 0x7;
 constexpr int OPKIND_BIT_N = 3;
 constexpr bool USE_EFFICIENT = true;
-constexpr int CASH_SIZE = 0x1000; // キャッシュの総サイズ
+constexpr int CASH_SIZE = 0x1000; // キャッシュの総行数　２べきにすること
 static const std::string ILEGAL_INNER_OPCODE = "不正な内部オペコードです(実装ミス)";
 const std::string BREAKPOINT_NOT_FOUND = "ブレークポイントが見つかりませんでした";
 const std::string FILE_END = "終了しました";
@@ -102,6 +102,17 @@ struct BeforeData{
     uint32_t memAddress; // 書き込んだアドレス
     uint32_t memValue;
     uint8_t opcodeInt; // 高速化時の命令データ
+    bool useMem; // メモリを使ったか (hit, miss数の復元に必要)
+    bool changeCash; // キャッシュが変更されたか == ミスしたか
+    uint32_t cashAddress; // 書き換えたキャッシュのアドレス
+    CashRow cashRow; // 前のキャッシュデータ
+};
+
+// キャッシュの一行に対応するデータ
+struct CashRow{
+    uint32_t address; //面倒なのでアドレスをそのまま保存してる
+    bool valid;
+
 };
 
 
@@ -119,7 +130,7 @@ class AssemblySimulator{
         int iRegisters[REGISTERS_N];
         MemoryUnit fRegisters[REGISTERS_N];
 
-        int instCount; // 実行命令数
+        uint64_t instCount; // 実行命令数
         std::map<std::string, int> opCounter; //実行命令の統計
         std::map<uint8_t, int> efficientOpCounter; // uint8_t ver
         std::set<int> breakPoints; // ブレークポイントの集合　行数で管理（1始まり）
@@ -132,9 +143,16 @@ class AssemblySimulator{
         FPUUnit fpu;
         std::map<uint8_t, std::string> inverseOpMap; // uint8_tのopcodeから文字列へ変換
 
+        CashRow cash[CASH_SIZE]; // キャッシュ
+        int32_t cashWay; //ウェイ数
+        int32_t cashIndexN; // キャッシュのインデックス数 (CASH_SIZE / cashWay)
+        uint64_t cashRHitN; // 読み出し時キャッシュヒット数
+        uint64_t cashWHitN; // 書き込み時キャッシュヒット数
+        uint64_t cashRMissN; //　読み出し時キャッシュミス数
+        uint64_t cashWMissN; //　書き込み時キャッシュミス数
         
-        
-        AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI);
+        AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
+             const bool &forGUI, const int &cashWay);
         ~AssemblySimulator();
         void printRegisters(const NumberBase&, const bool &sign, const bool& useFnotation) const;
         void printOpCounter()const;
@@ -178,7 +196,9 @@ class AssemblySimulator{
         void addHistory(const BeforeData &);
         void back();
         inline uint32_t readMem(const uint32_t& address, const MemAccess &memAccess)const;
+        inline uint32_t readMemWithCashCheck(const uint32_t& address, const MemAccess &memAccess, BeforeData &beforeData);
         inline void writeMem(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value);
+        inline void writeMemWithCashCheck(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value, BeforeData &beforeData);
         BeforeData popHistory();
 
     // private:
@@ -243,8 +263,48 @@ uint32_t AssemblySimulator::readMem(const uint32_t& address, const MemAccess &me
             return -1;
             break;
     }
-
 }
+
+// キャッシュのチェック，書き込みもする
+// 返り値はメモリの値とヒットしたかのboolのpair
+uint32_t AssemblySimulator::readMemWithCashCheck(const uint32_t& address, const MemAccess &memAccess, BeforeData &beforeData){
+    beforeData.useMem = true;
+    uint32_t ans = readMem(address, memAccess);
+    uint32_t index = address & (cashIndexN - 1);
+    uint32_t cashAddress = index * cashWay;
+    for(int i  = 0; i < cashWay; ++i){
+        // 常に先頭から見て先頭から埋めるので，validじゃないものが現れた時点で後ろもvalidじゃない
+        CashRow nowRow = cash[cashAddress];
+        if(!nowRow.valid ){
+            beforeData.cashRow = cash[cashAddress];
+            beforeData.cashAddress = cashAddress;
+            beforeData.changeCash = true;
+            ++cashRMissN;
+            CashRow newRow = {address, true};
+            cash[cashAddress] = newRow;
+            return ans;
+        }
+        if(nowRow.address == address){
+            // ヒット
+            ++cashRHitN ;
+            beforeData.changeCash = false;
+            return ans;
+        }
+        ++cashAddress;
+    }
+    // キャッシュが競合
+    // とりあえず先頭を取り出すことにする
+    cashAddress -= cashWay;
+    
+    beforeData.cashRow = cash[cashAddress];
+    beforeData.cashAddress = cashAddress;
+    beforeData.changeCash = true;
+    ++cashRMissN;
+    CashRow newRow = {address, true};
+    cash[cashAddress] = newRow;
+    return ans;
+}
+
 void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAccess, const uint32_t value){
     // メモリ書き込み
     if(address > MEM_BYTE_N || address + static_cast<unsigned int>(memAccess) > MEM_BYTE_N){

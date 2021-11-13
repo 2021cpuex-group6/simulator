@@ -45,7 +45,7 @@ int main(int argc, char* argv[]){
 
     try{
         AssemblyParser parser(fileNames, useBin, forGUI);
-        AssemblySimulator simulator(parser, useBin, forGUI);
+        AssemblySimulator simulator(parser, useBin, forGUI, cashWay);
 
         InteractiveShell shell(simulator, parser, forGUI);
         shell.start();

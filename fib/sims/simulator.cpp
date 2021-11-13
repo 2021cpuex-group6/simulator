@@ -12,9 +12,13 @@
 
 static const std::string TIME_FORMAT = "Time: %.10lfms\n";
 
-AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI):useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
-          parser(parser), iRegisters({0}), fRegisters({MemoryUnit(0)}),
-          instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory(){
+AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
+                                     const bool &forGUI, const int & cashWay):
+        useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
+        parser(parser), iRegisters({0}), fRegisters({MemoryUnit(0)}),
+        instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0),
+        historyPoint(0), beforeHistory(), cash(), cashWay(cashWay), cashIndexN(CASH_SIZE / cashWay), 
+        cashRHitN(0), cashWHitN(0), cashRMissN(0), cashWMissN(0){
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
     MemoryUnit mu;
     mu.i = 0;
@@ -58,6 +62,14 @@ void AssemblySimulator::reset(){
     historyPoint = 0;
     beforeHistory.fill({});
     (*dram).fill({0});
+    for(int i = 0; i < CASH_SIZE; i++){
+        CashRow row = {false, 0};
+        cash[i] = row;
+    }
+    cashRHitN = 0;
+    cashWHitN = 0;
+    cashRMissN = 0;
+    cashWMissN = 0;
 }
 
 // レジスタ番号を受け取り，その情報を文字列で返す
