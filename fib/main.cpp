@@ -33,11 +33,20 @@ int main(int argc, char* argv[]){
         }
     }
 
-    AssemblyParser parser(fileNames, useBin, forGUI);
-    AssemblySimulator simulator(parser, useBin, forGUI);
+    try{
+        AssemblyParser parser(fileNames, useBin, forGUI);
+        AssemblySimulator simulator(parser, useBin, forGUI);
 
-    InteractiveShell shell(simulator, parser, forGUI);
-    shell.start();
+        InteractiveShell shell(simulator, parser, forGUI);
+        shell.start();
+    }catch(const std::exception &e){
+        if(forGUI){
+            std::cout << GUI_ERROR << std::endl;
+            std::cout << e.what() << std::endl;
+        }else{
+            std::cout << e.what() << std::endl;
+        }
+    }
     // simulator.launch();
     // simulator.printRegisters(NumberBase::DEC, true);
     // simulator.printOpCounter();
