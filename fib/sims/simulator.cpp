@@ -15,7 +15,6 @@ static const std::string TIME_FORMAT = "Time: %.10lfms\n";
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI):useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
           parser(parser), iRegisters({0}), fRegisters({MemoryUnit(0)}),
           instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory(){
-    useEfficient = true;
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
     MemoryUnit mu;
     mu.i = 0;
@@ -355,7 +354,7 @@ void AssemblySimulator::back(){
     BeforeData before;
     try{
         before = popHistory();
-        if(useEfficient){
+        if(USE_EFFICIENT){
             // before.instruction を入力する
             try{
                 before.instruction = inverseOpMap.at(before.opcodeInt);
@@ -704,7 +703,8 @@ void AssemblySimulator::launchWarning(const std::string &message)const{
 
 void AssemblySimulator::printOpCounter() const{
     // 実行命令の統計をプリント
-    if(forGUI){
+    bool useGUIMode = false;
+    if(useGUIMode){
         std::cout << instCount << std::endl;
     }else{
         std::cout << "総実行命令数: " <<  std::to_string(instCount) << std::endl;
@@ -713,9 +713,9 @@ void AssemblySimulator::printOpCounter() const{
     std::stringstream ss;
     int count = 0;
 
-    if(useEfficient){
+    if(USE_EFFICIENT){
         for(auto x:opcodeInfoMap){
-            if(forGUI){
+            if(useGUIMode){
                 // 各命令につき一行
                 std::cout << x.first << "  " <<  efficientOpCounter.at(static_cast<uint8_t>((x.second)[5])) << std::endl;
                 
@@ -733,7 +733,7 @@ void AssemblySimulator::printOpCounter() const{
         }
     }else{
         for(auto x:opCounter){
-            if(forGUI){
+            if(useGUIMode){
                 // 各命令につき一行
                 std::cout << x.first << " " << x.second << std::endl;
                 

@@ -27,6 +27,7 @@ constexpr int MEM_BYTE_N = 0x1000000; //メモリのバイト数 2^24
 constexpr int MEM_ADDRESS_HEX_LEN = 8;
 constexpr int OPKIND_MASK = 0x7;
 constexpr int OPKIND_BIT_N = 3;
+constexpr bool USE_EFFICIENT = true;
 static const std::string ILEGAL_INNER_OPCODE = "不正な内部オペコードです(実装ミス)";
 const std::string BREAKPOINT_NOT_FOUND = "ブレークポイントが見つかりませんでした";
 const std::string FILE_END = "終了しました";
@@ -106,7 +107,6 @@ struct BeforeData{
 
 class AssemblySimulator{
     public:
-        bool useEfficient = false; // 高速化verを使うか
         bool useBinary = false;
         bool onWarning = true;
         bool forGUI;
