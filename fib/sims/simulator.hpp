@@ -191,15 +191,8 @@ class AssemblySimulator{
         int getIRegIndWithError(const std::string &regName)const;
         int getFRegIndWithError(const std::string &regName)const;
         std::pair<int, bool> getRegIndWithError(const std::string &regName)const;
-        BeforeData doInst(const Instruction &);
         void launchError(const std::string &message)const;
         void launchWarning(const std::string &message)const;
-        void doALU(const std::string &opcode, const int &targetR, const int &source0, const int &source1);
-        void doFALU(const std::string &opcode, const int &targetR, const uint32_t &source0, const uint32_t &source1);
-        BeforeData do2RegInst(const std::string &opcode, const Instruction &instruction);
-        BeforeData doLoad(const std::string &opcode, const Instruction &instruction);
-        BeforeData doStore(const std::string &opcode, const Instruction &instruction);
-        BeforeData doControl(const std::string &opcode, const Instruction &instruction);
         inline void incrementPC();
         std::string getRegisterInfoUnit(const int&, const NumberBase&, const bool &sign, const bool &isInteger) const ;
         std::string getIRegisterInfoUnit(const int&, const NumberBase&, const bool &sign) const ;
