@@ -143,19 +143,20 @@ class AssemblySimulator{
         FPUUnit fpu;
         std::map<uint8_t, std::string> inverseOpMap; // uint8_tのopcodeから文字列へ変換
 
-        CashRow cash[CASH_SIZE]; // キャッシュ
-        int32_t cashWay; //ウェイ数
-        int32_t cashIndexN; // キャッシュのインデックス数 (CASH_SIZE / cashWay)
-        uint64_t cashRHitN; // 読み出し時キャッシュヒット数
-        uint64_t cashWHitN; // 書き込み時キャッシュヒット数
-        uint64_t cashRMissN; //　読み出し時キャッシュミス数
-        uint64_t cashWMissN; //　書き込み時キャッシュミス数
+        CashRow cache[CASH_SIZE]; // キャッシュ
+        int32_t cacheWay; //ウェイ数
+        int32_t cacheIndexN; // キャッシュのインデックス数 (CASH_SIZE / cacheWay)
+        uint64_t cacheRHitN; // 読み出し時キャッシュヒット数
+        uint64_t cacheWHitN; // 書き込み時キャッシュヒット数
+        uint64_t cacheRMissN; //　読み出し時キャッシュミス数
+        uint64_t cacheWMissN; //　書き込み時キャッシュミス数
         
         AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
-             const bool &forGUI, const int &cashWay);
+             const bool &forGUI, const int &cacheWay);
         ~AssemblySimulator();
         void printRegisters(const NumberBase&, const bool &sign, const bool& useFnotation) const;
         void printOpCounter()const;
+        void printCacheSystem()const;
         void next(bool, const bool&);
         void doNextBreak();
         void launch(const bool &);
@@ -197,9 +198,9 @@ class AssemblySimulator{
         void back();
         inline bool writeCashBeforeData(const bool &forWrite, const uint32_t& address, BeforeData &beforeData);
         inline uint32_t readMem(const uint32_t& address, const MemAccess &memAccess)const;
-        inline uint32_t readMemWithCashCheck(const uint32_t& address, const MemAccess &memAccess, BeforeData &beforeData);
+        inline uint32_t readMemWithCacheCheck(const uint32_t& address, const MemAccess &memAccess, BeforeData &beforeData);
         inline void writeMem(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value);
-        inline void writeMemWithCashCheck(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value, BeforeData &beforeData);
+        inline void writeMemWithCacheCheck(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value, BeforeData &beforeData);
         BeforeData popHistory();
 
     // private:
@@ -245,29 +246,29 @@ void AssemblySimulator::incrementPC(){
 // メモリにアクセスする際に，cash系のbeforeDataを書き込み，キャッシュデータを書き込む
 bool AssemblySimulator::writeCashBeforeData(const bool &forWrite, const uint32_t& address, BeforeData &beforeData){
     beforeData.useMem = true;
-    uint32_t index = address & (cashIndexN - 1);
-    uint32_t cashAddress = index * cashWay;
-    for(int i  = 0; i < cashWay; ++i){
+    uint32_t index = address & (cacheIndexN - 1);
+    uint32_t cashAddress = index * cacheWay;
+    for(int i  = 0; i < cacheWay; ++i){
         // 常に先頭から見て先頭から埋めるので，validじゃないものが現れた時点で後ろもvalidじゃない
-        CashRow nowRow = cash[cashAddress];
+        CashRow nowRow = cache[cashAddress];
         if(!nowRow.valid ){
-            beforeData.cashRow = cash[cashAddress];
+            beforeData.cashRow = cache[cashAddress];
             beforeData.cashAddress = cashAddress;
             beforeData.changeCash = true;
             if(forWrite){
-                ++cashWMissN;
+                ++cacheWMissN;
             }else{
-                ++cashRMissN;
+                ++cacheRMissN;
             }
             CashRow newRow = {address, true};
-            cash[cashAddress] = newRow;
+            cache[cashAddress] = newRow;
         }
         if(nowRow.address == address){
             // ヒット
             if(forWrite){
-                ++cashWHitN;
+                ++cacheWHitN;
             }else{
-                ++cashRHitN;
+                ++cacheRHitN;
             }
             beforeData.changeCash = false;
         }
@@ -275,18 +276,18 @@ bool AssemblySimulator::writeCashBeforeData(const bool &forWrite, const uint32_t
     }
     // キャッシュが競合
     // とりあえず先頭を取り出すことにする
-    cashAddress -= cashWay;
+    cashAddress -= cacheWay;
     
-    beforeData.cashRow = cash[cashAddress];
+    beforeData.cashRow = cache[cashAddress];
     beforeData.cashAddress = cashAddress;
     beforeData.changeCash = true;
     if(forWrite){
-        ++cashWMissN;
+        ++cacheWMissN;
     }else{
-        ++cashRMissN;
+        ++cacheRMissN;
     }
     CashRow newRow = {address, true};
-    cash[cashAddress] = newRow;
+    cache[cashAddress] = newRow;
 }
 
 uint32_t AssemblySimulator::readMem(const uint32_t& address, const MemAccess &memAccess)const{
@@ -315,7 +316,7 @@ uint32_t AssemblySimulator::readMem(const uint32_t& address, const MemAccess &me
 // キャッシュのチェック，書き込みもする
 // BeforeDataの書き込みも行う
 // 返り値はメモリの値とヒットしたかのboolのpair
-uint32_t AssemblySimulator::readMemWithCashCheck(const uint32_t& address, const MemAccess &memAccess, BeforeData &beforeData){
+uint32_t AssemblySimulator::readMemWithCacheCheck(const uint32_t& address, const MemAccess &memAccess, BeforeData &beforeData){
     uint32_t ans = readMem(address, memAccess);
     writeCashBeforeData(false, address, beforeData);
 }
@@ -344,7 +345,7 @@ void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAc
 }
 
 // キャッシュへの書き込み，BeforeDataへの書き込みも行う
-void AssemblySimulator::writeMemWithCashCheck(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value, BeforeData &beforeData){
+void AssemblySimulator::writeMemWithCacheCheck(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value, BeforeData &beforeData){
     writeMem(address, MemAccess, value);
     writeCashBeforeData(true, address, beforeData);
 }
@@ -490,15 +491,15 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
     if(loadInteger){
         if(opcode & 0b1){
             // lw
-            uint32_t value = readMemWithCashCheck(address, MemAccess::WORD, before);
+            uint32_t value = readMemWithCacheCheck(address, MemAccess::WORD, before);
             writeReg(loadRegInd, value, true);
         }else{
             // lbu
-            uint32_t value = readMemWithCashCheck(address, MemAccess::BYTE, before);
+            uint32_t value = readMemWithCacheCheck(address, MemAccess::BYTE, before);
             writeReg(loadRegInd, ((~0xff) &iRegisters[loadRegInd]) | value, true);
         }
     }else{
-        uint32_t value = readMemWithCashCheck(address, MemAccess::WORD, before);
+        uint32_t value = readMemWithCacheCheck(address, MemAccess::WORD, before);
         fRegisters[loadRegInd] = MemoryUnit(value);
     }
 
@@ -516,7 +517,7 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
 
     int regInd = instruction.regInd[0];
     uint32_t value = (opcode & 0b1) == 0 ? iRegisters[regInd] : fRegisters[regInd].i;
-    writeMemWithCashCheck(address, MemAccess::WORD, value, before);
+    writeMemWithCacheCheck(address, MemAccess::WORD, value, before);
     return before;
 }
 

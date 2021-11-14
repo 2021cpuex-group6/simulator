@@ -16,7 +16,7 @@ int main(int argc, char* argv[]){
     // bool doAll = false; //対話型にせず全実行するか
     bool useBin = false; //バイナリを使うかアセンブリか
     bool forGUI = false; // GUI用の出力か
-    int cashWay = 1;
+    int cacheWay = 1;
     std::vector<std::string> fileNames;
 
     if(argc < 2){
@@ -33,8 +33,8 @@ int main(int argc, char* argv[]){
         }else if(arg == OPTION_GUI){
             forGUI = true;          
         }else if(startsWith(arg, OPTION_CASH)){    
-            cashWay = std::stoi(arg.substr(2));
-            if(!isPowerOf2(cashWay, CASH_SIZE)){
+            cacheWay = std::stoi(arg.substr(2));
+            if(!isPowerOf2(cacheWay, CASH_SIZE)){
                 // ウェイ数が2べきではない
                 std::cout << INVALID_CASH_WAY << std::endl;
             }
@@ -45,7 +45,7 @@ int main(int argc, char* argv[]){
 
     try{
         AssemblyParser parser(fileNames, useBin, forGUI);
-        AssemblySimulator simulator(parser, useBin, forGUI, cashWay);
+        AssemblySimulator simulator(parser, useBin, forGUI, cacheWay);
 
         InteractiveShell shell(simulator, parser, forGUI);
         shell.start();
