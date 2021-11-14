@@ -195,6 +195,7 @@ class AssemblySimulator{
         void reset();
         void addHistory(const BeforeData &);
         void back();
+        inline bool writeCashBeforeData(const bool &forWrite, const uint32_t& address, BeforeData &beforeData);
         inline uint32_t readMem(const uint32_t& address, const MemAccess &memAccess)const;
         inline uint32_t readMemWithCashCheck(const uint32_t& address, const MemAccess &memAccess, BeforeData &beforeData);
         inline void writeMem(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value);
@@ -241,6 +242,52 @@ void AssemblySimulator::incrementPC(){
     }
 }
 
+// メモリにアクセスする際に，cash系のbeforeDataを書き込み，キャッシュデータを書き込む
+bool AssemblySimulator::writeCashBeforeData(const bool &forWrite, const uint32_t& address, BeforeData &beforeData){
+    beforeData.useMem = true;
+    uint32_t index = address & (cashIndexN - 1);
+    uint32_t cashAddress = index * cashWay;
+    for(int i  = 0; i < cashWay; ++i){
+        // 常に先頭から見て先頭から埋めるので，validじゃないものが現れた時点で後ろもvalidじゃない
+        CashRow nowRow = cash[cashAddress];
+        if(!nowRow.valid ){
+            beforeData.cashRow = cash[cashAddress];
+            beforeData.cashAddress = cashAddress;
+            beforeData.changeCash = true;
+            if(forWrite){
+                ++cashWMissN;
+            }else{
+                ++cashRMissN;
+            }
+            CashRow newRow = {address, true};
+            cash[cashAddress] = newRow;
+        }
+        if(nowRow.address == address){
+            // ヒット
+            if(forWrite){
+                ++cashWHitN;
+            }else{
+                ++cashRHitN;
+            }
+            beforeData.changeCash = false;
+        }
+        ++cashAddress;
+    }
+    // キャッシュが競合
+    // とりあえず先頭を取り出すことにする
+    cashAddress -= cashWay;
+    
+    beforeData.cashRow = cash[cashAddress];
+    beforeData.cashAddress = cashAddress;
+    beforeData.changeCash = true;
+    if(forWrite){
+        ++cashWMissN;
+    }else{
+        ++cashRMissN;
+    }
+    CashRow newRow = {address, true};
+    cash[cashAddress] = newRow;
+}
 
 uint32_t AssemblySimulator::readMem(const uint32_t& address, const MemAccess &memAccess)const{
     // メモリ読み込み
@@ -266,43 +313,11 @@ uint32_t AssemblySimulator::readMem(const uint32_t& address, const MemAccess &me
 }
 
 // キャッシュのチェック，書き込みもする
+// BeforeDataの書き込みも行う
 // 返り値はメモリの値とヒットしたかのboolのpair
 uint32_t AssemblySimulator::readMemWithCashCheck(const uint32_t& address, const MemAccess &memAccess, BeforeData &beforeData){
-    beforeData.useMem = true;
     uint32_t ans = readMem(address, memAccess);
-    uint32_t index = address & (cashIndexN - 1);
-    uint32_t cashAddress = index * cashWay;
-    for(int i  = 0; i < cashWay; ++i){
-        // 常に先頭から見て先頭から埋めるので，validじゃないものが現れた時点で後ろもvalidじゃない
-        CashRow nowRow = cash[cashAddress];
-        if(!nowRow.valid ){
-            beforeData.cashRow = cash[cashAddress];
-            beforeData.cashAddress = cashAddress;
-            beforeData.changeCash = true;
-            ++cashRMissN;
-            CashRow newRow = {address, true};
-            cash[cashAddress] = newRow;
-            return ans;
-        }
-        if(nowRow.address == address){
-            // ヒット
-            ++cashRHitN ;
-            beforeData.changeCash = false;
-            return ans;
-        }
-        ++cashAddress;
-    }
-    // キャッシュが競合
-    // とりあえず先頭を取り出すことにする
-    cashAddress -= cashWay;
-    
-    beforeData.cashRow = cash[cashAddress];
-    beforeData.cashAddress = cashAddress;
-    beforeData.changeCash = true;
-    ++cashRMissN;
-    CashRow newRow = {address, true};
-    cash[cashAddress] = newRow;
-    return ans;
+    writeCashBeforeData(false, address, beforeData);
 }
 
 void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAccess, const uint32_t value){
@@ -326,6 +341,12 @@ void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAc
             launchError(IMPLEMENT_ERROR);
             break;
     }
+}
+
+// キャッシュへの書き込み，BeforeDataへの書き込みも行う
+void AssemblySimulator::writeMemWithCashCheck(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value, BeforeData &beforeData){
+    writeMem(address, MemAccess, value);
+    writeCashBeforeData(true, address, beforeData);
 }
 
 
@@ -469,15 +490,15 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
     if(loadInteger){
         if(opcode & 0b1){
             // lw
-            uint32_t value = readMem(address, MemAccess::WORD);
+            uint32_t value = readMemWithCashCheck(address, MemAccess::WORD, before);
             writeReg(loadRegInd, value, true);
         }else{
             // lbu
-            uint32_t value = readMem(address, MemAccess::BYTE);
+            uint32_t value = readMemWithCashCheck(address, MemAccess::BYTE, before);
             writeReg(loadRegInd, ((~0xff) &iRegisters[loadRegInd]) | value, true);
         }
     }else{
-        uint32_t value = readMem(address, MemAccess::WORD);
+        uint32_t value = readMemWithCashCheck(address, MemAccess::WORD, before);
         fRegisters[loadRegInd] = MemoryUnit(value);
     }
 
@@ -495,7 +516,7 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
 
     int regInd = instruction.regInd[0];
     uint32_t value = (opcode & 0b1) == 0 ? iRegisters[regInd] : fRegisters[regInd].i;
-    writeMem(address, MemAccess::WORD, value);
+    writeMemWithCashCheck(address, MemAccess::WORD, value, before);
     return before;
 }
 

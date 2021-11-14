@@ -399,10 +399,32 @@ void AssemblySimulator::back(){
                 fRegisters[before.regInd] = mu;
             }
         }
-        if(before.writeMem){
-            // メモリをもとに戻す
-            writeMem(before.memAddress, MemAccess::WORD, before.memValue);
+        // メモリ，キャッシュ系を戻す
+        if(before.useMem){
+            if(before.changeCash){
+                //キャッシュミスしてた
+                cash[before.cashAddress] = before.cashRow;
+                if(before.writeMem){
+                    // メモリをもとに戻す
+                    writeMem(before.memAddress, MemAccess::WORD, before.memValue);
+                    --cashWMissN;
+                }else{
+                    --cashRMissN;
+                }
+
+            }else{
+                // キャッシュヒット
+                if(before.writeMem){
+                    // メモリをもとに戻す
+                    writeMem(before.memAddress, MemAccess::WORD, before.memValue);
+                    --cashWHitN;
+                }else{
+                    --cashRHitN;
+                }
+
+            }
         }
+
 
     }else{
         // 前の命令はコメントやラベルだった
