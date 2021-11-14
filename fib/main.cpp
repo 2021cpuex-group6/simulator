@@ -21,7 +21,7 @@ int main(int argc, char* argv[]){
 
     if(argc < 2){
         std::cout << LACK_ARGUMENT << std::endl;
-        return;
+        return -1;
     }
     int optionN = 1;
     while(optionN < argc){

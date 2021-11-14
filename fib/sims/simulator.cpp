@@ -67,7 +67,7 @@ void AssemblySimulator::reset(){
     beforeHistory.fill({});
     (*dram).fill({0});
     for(int i = 0; i < CASH_SIZE; i++){
-        CashRow row = {false, 0};
+        CacheRow row = {false, 0};
         cache[i] = row;
     }
     cacheRHitN = 0;
@@ -407,7 +407,7 @@ void AssemblySimulator::back(){
         if(before.useMem){
             if(before.changeCash){
                 //キャッシュミスしてた
-                cache[before.cashAddress] = before.cashRow;
+                cache[before.cashAddress] = before.cacheRow;
                 if(before.writeMem){
                     // メモリをもとに戻す
                     writeMem(before.memAddress, MemAccess::WORD, before.memValue);
@@ -799,15 +799,17 @@ void AssemblySimulator::printCacheSystem()const{
         usedCacheN += e.valid ? 1 : 0;
     }
     float cacheUseRate = ((float) usedCacheN) / CASH_SIZE * 100;
-    std::cout << CACHE_PRINT_ACCESS << std::setprecision(3) << cacheUseRate << "%" << std::endl;
+    std::cout << CACHE_PRINT_USE_RATE << std::setprecision(3) << cacheUseRate << "%" << std::endl;
     std::cout << "読み込み: " << std::endl;
     int32_t accessN = cacheRHitN + cacheRMissN;
     std::cout << CACHE_PRINT_ACCESS << accessN << std::endl;
-    std::cout << CACHE_PRINT_RATE << ((float) cacheRHitN) / accessN  << std::endl;
+    std::cout << CACHE_PRINT_RATE << std::setprecision(3) <<
+         ((float) cacheRHitN) / accessN  * 100 << "%" << std::endl;
     std::cout << "書き込み: " << std::endl;
     accessN = cacheWHitN + cacheWMissN;
     std::cout << CACHE_PRINT_ACCESS << accessN << std::endl;
-    std::cout << CACHE_PRINT_RATE << ((float) cacheWHitN) / accessN  << std::endl;
+    std::cout << CACHE_PRINT_RATE << std::setprecision(3) <<
+         ((float) cacheWHitN) / accessN  * 100 << "%" << std::endl;
 
 }
 
