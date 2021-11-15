@@ -1,13 +1,5 @@
 # テスト用
 .global	min_caml_start
-    addi x1 x0 18
-    addi x2 x0 1;
-    sll x2 x2 x1; # x2 0x4000
-    sw x0 0(x0)
-    sw x0 4(x0)
-    sw x0 0(x2)
-    lw x1 0(x0)
-    lw x1 4(x0)
 start:
     jal x4 test # x4は5行目
     addi x1 x1 1000
@@ -65,6 +57,9 @@ test2:
     ftoi x10 f12 # x10 -1
     ftoi x11 f5 # x11 -1
     ftoi x12 f8 # x12 3
+    fle x1 f6 f7 # x1 0
+    fle x2 f6 f8 # x2 1
+    fle x3 f9 f9 # x3 1
     addi x1 x0 23
     addi x2 x0 -431
     addi x3 x0 1023

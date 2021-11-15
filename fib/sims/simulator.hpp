@@ -413,10 +413,7 @@ void AssemblySimulator::efficientDoFALU(const uint8_t &opcode, const int &target
         case 0b10000:
             ans = fpu.fsqrt(source0); break;
         case 0b11000:
-            mu.i = (source0);
-            ansF = std::floor(mu.f);
-            mu.f = ansF;
-            ans = mu.i;
+            ans = fpu.floor(source0);
             break;
         case 0b11001:
             ans = source0; break;
@@ -538,10 +535,11 @@ BeforeData AssemblySimulator::efficientDoMix(const uint8_t &opcode, const Instru
         ans.isInteger = true;
         ans.regValue = iRegisters[targetReg];
         if(opcode & 0b100){
-            // flt
+            // fle
+            writeReg(targetReg, fpu.fle(fRegisters[instruction.regInd[1]].i, fRegisters[instruction.regInd[2]].i), true);
         }else{
             // ftoi
-            int32_t value = std::round(fRegisters[instruction.regInd[1]].f);
+            int32_t value = fpu.ftoi(fRegisters[instruction.regInd[1]].i);
             writeReg(targetReg, value, true);
         }
         return ans;
