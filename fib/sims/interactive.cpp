@@ -99,6 +99,9 @@ void InteractiveShell::start(){
             case Command::Info:
                 simulator.printOpCounter();
                 break;
+            case Command::CacheInfo:
+                simulator.printCacheSystem();
+                break;
             case Command::Reset:
                 simulator.reset();
                 break;
@@ -130,6 +133,8 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
 
     if(inputString == COMMAND_DO_ALL){
         return {Command::DoAll, {}};
+    }else if(inputString == COMMAND_CACHE){
+        return {Command::CacheInfo, {}};
     }else if(inputString == COMMAND_NEXT_BLOCK){
         return {Command::DoNextBreak, {}};
     }else if(inputString == COMMAND_BREAK_LIST){

@@ -147,7 +147,15 @@ AssemblyParser::AssemblyParser(const std::vector<std::string> &filePaths, const 
         if(filePaths.size() != 1u){
             parseError(0, SOME_BINARY_FILES);
         }
-        deassembleFile(filePaths[0]);
+        try{
+            deassembleFile(filePaths[0]);
+        }catch(const std::invalid_argument &e){
+            if(forGUI){
+                parseError(-1, e.what());
+            }else{
+                throw e;
+            }
+        }
     }else{
         init_opcode_map();
         check_labels_many_files(filePaths, labelMap);
@@ -210,7 +218,15 @@ std::pair<int, int> AssemblyParser::parseFile(const std::string& filePath, const
             // 命令
             // instParse(lineN, nowInstN++,  m[1].str());
             uint32_t op = assemble_op(m[1].str(), lineN, nowInstN * INST_BYTE_N, labelMap);
-            instructionVector[nowInstN] = deassemble(lineN, op);
+            try{
+                instructionVector[nowInstN] = deassemble(lineN, op);
+            }catch(const std::invalid_argument &e){
+                if(forGUI){
+                    parseError(-1, e.what());
+                }else{
+                    throw e;
+                }
+            }
             ++nowInstN;
         }else if(std::regex_match(line, m, labelRe)){
         }else if(std::regex_match(line, m, spaceRe)){

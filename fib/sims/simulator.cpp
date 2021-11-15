@@ -11,10 +11,18 @@
 
 
 static const std::string TIME_FORMAT = "Time: %.10lfms\n";
+static const std::string CACHE_PRINT_USE_RATE = "キャッシュ使用率: ";
+static const std::string CACHE_PRINT_ACCESS = "  アクセス回数: ";
+static const std::string CACHE_PRINT_RATE = "  ヒット率: ";
+static const std::string CACHE_PRINT_READ = "";
 
-AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI):useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
-          parser(parser), iRegisters({0}), fRegisters({MemoryUnit(0)}),
-          instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory(){
+AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
+                                     const bool &forGUI, const int & cacheWay):
+        useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
+        parser(parser), iRegisters({0}), fRegisters({MemoryUnit(0)}),
+        instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0),
+        historyPoint(0), beforeHistory(), cache(), cacheWay(cacheWay), cacheIndexN(CASH_SIZE / cacheWay), 
+        cacheRHitN(0), cacheWHitN(0), cacheRMissN(0), cacheWMissN(0){
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
     MemoryUnit mu;
     mu.i = 0;
@@ -58,6 +66,14 @@ void AssemblySimulator::reset(){
     historyPoint = 0;
     beforeHistory.fill({});
     (*dram).fill({0});
+    for(int i = 0; i < CASH_SIZE; i++){
+        CacheRow row = {false, 0};
+        cache[i] = row;
+    }
+    cacheRHitN = 0;
+    cacheWHitN = 0;
+    cacheRMissN = 0;
+    cacheWMissN = 0;
 }
 
 // レジスタ番号を受け取り，その情報を文字列で返す
@@ -387,10 +403,32 @@ void AssemblySimulator::back(){
                 fRegisters[before.regInd] = mu;
             }
         }
-        if(before.writeMem){
-            // メモリをもとに戻す
-            writeMem(before.memAddress, MemAccess::WORD, before.memValue);
+        // メモリ，キャッシュ系を戻す
+        if(before.useMem){
+            if(before.changeCash){
+                //キャッシュミスしてた
+                cache[before.cashAddress] = before.cacheRow;
+                if(before.writeMem){
+                    // メモリをもとに戻す
+                    writeMem(before.memAddress, MemAccess::WORD, before.memValue);
+                    --cacheWMissN;
+                }else{
+                    --cacheRMissN;
+                }
+
+            }else{
+                // キャッシュヒット
+                if(before.writeMem){
+                    // メモリをもとに戻す
+                    writeMem(before.memAddress, MemAccess::WORD, before.memValue);
+                    --cacheWHitN;
+                }else{
+                    --cacheRHitN;
+                }
+
+            }
         }
+
 
     }else{
         // 前の命令はコメントやラベルだった
@@ -752,6 +790,27 @@ void AssemblySimulator::printOpCounter() const{
 
     }
     
+}
+
+// キャッシュの情報を表示
+void AssemblySimulator::printCacheSystem()const{
+    int32_t usedCacheN = 0;
+    for(auto e: cache){
+        usedCacheN += e.valid ? 1 : 0;
+    }
+    float cacheUseRate = ((float) usedCacheN) / CASH_SIZE * 100;
+    std::cout << CACHE_PRINT_USE_RATE << std::setprecision(3) << cacheUseRate << "%" << std::endl;
+    std::cout << "読み込み: " << std::endl;
+    int32_t accessN = cacheRHitN + cacheRMissN;
+    std::cout << CACHE_PRINT_ACCESS << accessN << std::endl;
+    std::cout << CACHE_PRINT_RATE << std::setprecision(3) <<
+         ((float) cacheRHitN) / accessN  * 100 << "%" << std::endl;
+    std::cout << "書き込み: " << std::endl;
+    accessN = cacheWHitN + cacheWMissN;
+    std::cout << CACHE_PRINT_ACCESS << accessN << std::endl;
+    std::cout << CACHE_PRINT_RATE << std::setprecision(3) <<
+         ((float) cacheWHitN) / accessN  * 100 << "%" << std::endl;
+
 }
 
 

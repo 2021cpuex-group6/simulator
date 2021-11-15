@@ -42,4 +42,7 @@ inline int32_t shiftRightArithmatic(const int32_t &input, const unsigned int & s
     }
     return ans;
 }
+
+bool isPowerOf2(int32_t value, const int32_t limit);
+
 #endif

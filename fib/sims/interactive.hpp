@@ -14,6 +14,7 @@ const std::string COMMAND_NEXT = "n";
 const std::string COMMAND_BREAK_SET = "bs";
 const std::string COMMAND_BREAK_LIST = "bl";
 const std::string COMMAND_BREAK_DELETE = "bd";
+const std::string COMMAND_CACHE = "c";
 const std::string COMMAND_REG_READ = "rr";
 const std::string COMMAND_REG_WRITE = "rw";
 const std::string COMMAND_BACK = "ba";
@@ -30,6 +31,7 @@ enum class Command{
     BreakSet, 
     BreakList,
     BreakDelete,  
+    CacheInfo,
     RegRead, 
     RegWrite, 
     Back, 
