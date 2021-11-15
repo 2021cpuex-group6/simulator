@@ -64,12 +64,12 @@ void addEntryPoint(std::ofstream& ofs, struct output_flags_t output_flags){
 
 void output_file(std::ofstream& ofs, int32_t binary_op ,struct output_flags_t output_flags) {
     for (int i = 0; i < INSTRUCTION_BYTE_N; i++) {
-        int8_t byte = (binary_op >> (8*(3-i))) & 0xff;
+        unsigned int byte = (binary_op >> (8*(3-i))) & 0xff;
         if (output_flags.output_as_binary) {
-            ofs << byte << std::flush;
+            ofs << (unsigned char)byte << std::flush;
         } 
         else {
-            ofs << std::hex << byte << std::endl;
+            ofs << std::hex << (unsigned int)byte << std::endl;
         }
         if (output_flags.output_log)
             std::cout << std::hex << (unsigned int)byte << std::endl;

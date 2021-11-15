@@ -12,6 +12,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < argc; i++) {
         if (strcmp("-b", argv[i]) == 0) {
             output_flags.output_as_binary = true;
+            std::cout << "Output file as binary" << std::endl;
         }
     }
     
@@ -45,10 +46,10 @@ int main(int argc, char* argv[]) {
 
         std::ofstream ofs;
         if (output_flags.output_as_binary) {
-            ofs = std::ofstream(target_path, std::ios::binary);
+            ofs = std::ofstream(target_path, std::ios::out | std::ios::binary);
         }
         else {
-            ofs = std::ofstream(target_path);
+            ofs = std::ofstream(target_path, std::ios::out);
         }
         if (!ofs) {
             std::cout << "Cannot open output file" << std::endl;
