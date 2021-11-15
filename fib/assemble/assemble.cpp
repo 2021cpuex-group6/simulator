@@ -45,34 +45,44 @@ static int32_t get_relative_address_with_check(const std::string &label,
                                 const std::map<std::string, int> &label_dict);
 static int check_labels(std::istream& ifs, const int &start_addr, std::map<std::string, int> &label_dict);
 static std::string delete_comment(std::string line);
+void output_file(std::ofstream& ofs, int binary_op ,struct output_flags_t output_flags);
 
 // エントリポイントがあれば追加
 // 見つかればtrueを返す
-void addEntryPoint(std::ofstream& ofs,  bool output_log){
+void addEntryPoint(std::ofstream& ofs, struct output_flags_t output_flags){
     int32_t binary_op;
     if(label_map.find(ENTRY_POINT_LABEL) != label_map.end()){
         binary_op  = assemble_op("j " + ENTRY_POINT_LABEL, -1, 0, label_map);
     }else{
         binary_op  = assemble_op("nop", -1, 0, label_map);
     }
-    int32_t byte;
     // 通常の命令の時
-    for (int i = 0; i < INSTRUCTION_BYTE_N; i++) {
-        // 1バイトずつ出力
-        byte = (binary_op >> (8*(3-i))) & 0xff;
-        ofs << std::hex << byte << std::endl;
-        if (output_log)
-            std::cout << std::hex << (unsigned int)byte << std::endl;
-    }
+    output_file(ofs, binary_op, output_flags);
 
 }
 
-void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log) {
+
+void output_file(std::ofstream& ofs, int32_t binary_op ,struct output_flags_t output_flags) {
+    for (int i = 0; i < INSTRUCTION_BYTE_N; i++) {
+        int8_t byte = (binary_op >> (8*(3-i))) & 0xff;
+        if (output_flags.output_as_binary) {
+            ofs << byte << std::flush;
+        } 
+        else {
+            ofs << std::hex << byte << std::endl;
+        }
+        if (output_flags.output_log)
+            std::cout << std::hex << (unsigned int)byte << std::endl;
+    }
+}
+
+
+void assembler_main(std::ofstream& ofs, std::istream& ifs, struct output_flags_t output_flags) {
     // 一行ずつアセンブル
     check_labels(ifs, START_ADDRESS, label_map); // labelをmapに格納
     int line_count = 1;             // 読み込んだファイルの行数
     int addr_count = START_ADDRESS; // 出力する命令のアドレス
-    addEntryPoint(ofs, output_log); // 見つかればj, 見つからなければnopが挿入される
+    addEntryPoint(ofs, output_flags); // 見つかればj, 見つからなければnopが挿入される
     while(!ifs.eof()) {
         std::string line, op;
         std::getline(ifs,line);
@@ -86,32 +96,17 @@ void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log) {
             // 出力しない場合、行数だけインクリメントし、命令アドレスは動かさない
             // TODO: これあっている？
             line_count ++;
-            if (output_log)
+            if (output_flags.output_log)
                 std::cout << line << "label or comment line" << std::endl;
             continue;
         }
 
         const int32_t & binary_op  = assemble_op(op, line_count, addr_count, label_map);
 
-        int32_t byte;
-        // 通常の命令の時
-        for (int i = 0; i < INSTRUCTION_BYTE_N; i++) {
-            // 1バイトずつ出力
-            byte = (binary_op >> (8*(3-i))) & 0xff;
-            ofs << std::hex << byte << std::endl;
-            if (output_log)
-                std::cout << std::hex << (unsigned int)byte << std::endl;
-        }
-        // }else{
-        //     // 出力しない場合、行数だけインクリメントし、命令アドレスは動かさない
-        //     line_count ++;
-        //     if (output_log)
-        //         std::cout << line << " " << std::hex << binary_op << std::endl;
-        //     continue;
-        // }
+        output_file(ofs, binary_op, output_flags);
         line_count ++;
         addr_count += INSTRUCTION_BYTE_N;
-        if (output_log)
+        if (output_flags.output_log)
             std::cout << line << " " << std::hex << binary_op << std::endl;
 
     }
@@ -549,6 +544,9 @@ void init_opcode_map(){
     output = 0b1010011;
     output |= (0b1100100<< 25);
     opecode_map.insert({"ftoi", {MIX, output}});
+    output = 0b1010011;
+    output |= (0b1010000<< 25);
+    opecode_map.insert({"fle", {MIX, output}});
     // jはjalの書き込みレジスタx0版
     output = 0b1101111;
     opecode_map.insert({"j", {J, output}});
@@ -567,6 +565,7 @@ void init_opcode_map(){
     // output |= (0b1 << 12);
     // opecode_map.insert({"bge", {B, output}});
     output = 0b0100011;
+    output |= (0b100 << 12);
     opecode_map.insert({"sb", {S, output}});
     output |= (0b010 << 12);
     opecode_map.insert({"sw", {S, output}});
