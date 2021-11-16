@@ -131,6 +131,7 @@ class AssemblySimulator{
         uint32_t fcsr; //浮動小数点演算の状態管理　いらないかも
         bool end; //終了フラグ
         const AssemblyParser &parser;
+        long lastPC = 0;
         int iRegisters[REGISTERS_N];
         MemoryUnit fRegisters[REGISTERS_N];
 
@@ -236,7 +237,7 @@ class AssemblySimulator{
 void AssemblySimulator::incrementPC(){
     // pcのインクリメントと、ファイル末端に到達したかのチェックを行う
     pc += INST_BYTE_N;
-    if(pc == static_cast<long>(parser.instructionVector.size()) * INST_BYTE_N){
+    if(pc == lastPC){
         // 末端に到着
         end = true;
         if(forGUI){
@@ -566,8 +567,8 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
     ++instCount;
     // efficientOpCounter[opcode] = efficientOpCounter[opcode] + 1;
 
-    uint8_t opKind = opcode & OPKIND_MASK;
-    uint8_t opFunct = opcode >> OPKIND_BIT_N;
+    const uint8_t opKind = opcode & OPKIND_MASK;
+    const uint8_t opFunct = opcode >> OPKIND_BIT_N;
     BeforeData ans = {};
     ans.opcodeInt = opcode;
     ans.pc = pc;

@@ -34,6 +34,7 @@ AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &u
     }
     fpu = FPUUnit();
     inverseOpMap = AssemblyParser::getInverseOpMap();
+    lastPC = static_cast<long>(parser.instructionVector.size()) * INST_BYTE_N;
 }
 
         
@@ -321,7 +322,7 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
 
 
         int instInd = pc/INST_BYTE_N;
-        Instruction inst = parser.instructionVector[instInd];
+        const Instruction &inst = parser.instructionVector[instInd];
         nowLine = inst.lineN;
         jumpComment = false;
         BeforeData beforeData = efficientDoInst(inst);

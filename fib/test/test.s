@@ -70,7 +70,7 @@ test2:
     fsw f7 -4(%x6) # 00 00 30 c1
     fsw f10 0(%x6) # 00 00 c4 40
     addi x1 x0 1
-    addi x2 x0 18
+    addi x2 x0 22
     sll x1 x1 x2
     addi x2 x0 0
 loop1: # 2^20 回繰り返す

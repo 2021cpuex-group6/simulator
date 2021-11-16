@@ -287,9 +287,32 @@ std::pair<uint32_t, bool> FPUUnit::itofDebug(const uint32_t & x, const bool &for
 }
 
 // 整数レジスタの値に一番近い浮動小数点値を浮動小数点レジスタへ
+// 最適化のため，上のコードのコピペとなっている．
 uint32_t FPUUnit::itof(const uint32_t & x){
-    auto ans = itofDebug(x, false);
-    return ans.first;
+    uint32_t it = 0x7fffffff & (~x);
+    uint32_t ita = 0x7fffffff & (it + 1);
+    uint64_t ml = (x & 0x80000000) != 0 ? (static_cast<uint64_t>(ita) << 24) : (static_cast<uint64_t>(x) << 24);
+
+    uint32_t sft = 0;
+    uint64_t mask = 0x40000000000000; // 54ビット目のみ1
+    for(int i = 0; i < WORD_BIT_N -1 ; i++ ){
+        if((mask & ml) != 0){
+          sft = (30 - i);
+          break;
+        } 
+        mask = mask >> 1;
+        if(i == WORD_BIT_N - 2){
+            sft = 0b11111;
+        }
+    }
+    uint32_t ms = (ml >> sft) & 0x1ffffff;
+    uint32_t ma = shiftRightLogical(ms, 1) + (ms & 0x1);
+    uint32_t m = (ma & 0x1000000) ? shiftRightLogical(ma, 1) : (ma & 0x7fffff);
+    uint32_t ea = 0xff & (127u + sft + shiftRightLogical(ma, 24));
+    uint32_t e = 0xff & ((sft == 0b11111u) ? 0 : ea);
+    uint32_t s = x & 0x80000000;
+    uint32_t ans = s | (e << (WORD_BIT_N - 9)) | m;
+    return ans;
 }
 
 // 浮動小数点レジスタからなるべく近い値を保持したまま整数レジスタへ
