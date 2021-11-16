@@ -522,7 +522,13 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
 
     int regInd = instruction.regInd[0];
     uint32_t value = (opcode & 0b1) == 0 ? iRegisters[regInd] : fRegisters[regInd].i;
-    writeMemWithCacheCheck(address, MemAccess::WORD, value, before);
+    MemAccess memAccess = MemAccess::WORD;
+    if(opcode & 0b10){
+        // sbの時
+        value &= 0xff;
+        memAccess = MemAccess::BYTE;        
+    }
+    writeMemWithCacheCheck(address, memAccess, value, before);
     return before;
 }
 

@@ -564,9 +564,9 @@ void init_opcode_map(){
     opecode_map.insert({"blt", {B, output}});
     // output |= (0b1 << 12);
     // opecode_map.insert({"bge", {B, output}});
-    // output = 0b0100011;
-    // output |= (0b100 << 12);
-    // opecode_map.insert({"sb", {S, output}});
+    output = 0b0100011;
+    output |= (0b100 << 12);
+    opecode_map.insert({"sb", {S, output}});
     output = 0b0100011;
     output |= (0b010 << 12);
     opecode_map.insert({"sw", {S, output}});

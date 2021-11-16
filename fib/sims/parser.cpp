@@ -61,8 +61,8 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     {"lw",       {2, 1, -1, 12, INST_LOAD, 0b00001100}}, 
     {"lbu",       {2, 1, -1, 12, INST_LOAD, 0b00010100}},
     {"flw",       {2, 1, -1, 12, INST_LOAD, 0b00100100}},
-    {"sw",       {2, 1, -1, 12, INST_STORE, 0b00000101}},
-    // {"sb",       {2, 1, -1, 12, INST_STORE, 0b}},
+    {"sw",       {2, 1, -1, 12, INST_STORE,  0b00000101}},
+    {"sb",       {2, 1, -1, 12, INST_STORE,  0b00010101}},
     {"fsw",       {2, 1, -1, 12, INST_STORE, 0b00001101}}
 };
 
