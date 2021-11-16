@@ -97,10 +97,12 @@ Instruction BRegParse(const uint32_t &code ){
 
 
 Instruction SRegParse(const uint32_t &code ){
+    // S命令はrs1がメモリアドレスを指すレジスタ，rs2が出力元となり，命令列と逆のため，
+    // わかりやすくするためにここで交換する
     Instruction inst = {};
     inst.operandN = 2;
-    inst.regInd[0] = (code >> RS1_SHIFT_N) & REG_MASK;
-    inst.regInd[1] = (code >> RS2_SHIFT_N) & REG_MASK;
+    inst.regInd[0] = (code >> RS2_SHIFT_N) & REG_MASK;
+    inst.regInd[1] = (code >> RS1_SHIFT_N) & REG_MASK;
     inst.immediate = SImmParse(code);
 
     return inst;
@@ -203,6 +205,8 @@ Instruction JIParse(const uint32_t & code){
         inst.opcode = "jalr";
     }else{
         inst.operandN = 1;
+        inst.regInd[0] = inst.regInd[1];
+        inst.regInd[1] = 0;
         inst.opcode = "jr";
     }
     return inst;
@@ -260,7 +264,7 @@ Instruction SParse(const uint32_t &code){
     switch(funct3){
         case 0b010:
             inst.opcode = "sw"; break;
-        case 0b000:
+        case 0b100:
             inst.opcode = "sb"; break;
         default:
             printError("SParse: " + INVALID_CODE);
@@ -285,7 +289,7 @@ Instruction FRParse(const uint32_t &code){
         case 0x0c:
             inst.opcode = "fdiv"; break;
         case 0x50:
-            inst.opcode = "flt"; break;
+            inst.opcode = "fle"; break;
         default:
             inst.operandN = 2;
             if(inst.regInd[2] != 0u){
@@ -300,6 +304,8 @@ Instruction FRParse(const uint32_t &code){
                     inst.opcode = "itof"; break;
                 case 0x60:
                     inst.opcode = "floor"; break;
+                case 0x64:
+                    inst.opcode = "ftoi"; break;
                 default:
                     printError("FRParse: " + INVALID_CODE);
             }

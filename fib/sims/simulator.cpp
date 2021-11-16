@@ -5,17 +5,24 @@
 #include <sstream>
 #include <bitset>
 #include <iomanip>
-#include <set>
 #include <cmath>
+#include <set>
 #include <chrono>
 
-static const std::string ILEGAL_INNER_OPCODE = "不正な内部オペコードです(実装ミス)";
-static const std::string TIME_FORMAT = "Time: %.10lfms\n";
 
-AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin, const bool &forGUI):useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
-          parser(parser), iRegisters({0}), fRegisters({MemoryUnit(0)}),
-          instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0), historyPoint(0), beforeHistory({}){
-    useEfficient = useBin;
+static const std::string TIME_FORMAT = "Time: %.10lfms\n";
+static const std::string CACHE_PRINT_USE_RATE = "キャッシュ使用率: ";
+static const std::string CACHE_PRINT_ACCESS = "  アクセス回数: ";
+static const std::string CACHE_PRINT_RATE = "  ヒット率: ";
+static const std::string CACHE_PRINT_READ = "";
+
+AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
+                                     const bool &forGUI, const int & cacheWay):
+        useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
+        parser(parser), iRegisters({0}), fRegisters({MemoryUnit(0)}),
+        instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0),
+        historyPoint(0), beforeHistory(), cache(), cacheWay(cacheWay), cacheIndexN(CASH_SIZE / cacheWay), 
+        cacheRHitN(0), cacheWHitN(0), cacheRMissN(0), cacheWMissN(0){
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
     MemoryUnit mu;
     mu.i = 0;
@@ -40,18 +47,33 @@ void AssemblySimulator::reset(){
     pc = 0;
     end = false;
     instCount = 0;
+    nowLine = 0;
     for(auto &e: opCounter){
         opCounter[e.first] = 0;
     }
-    iRegisters.fill(0);
+    for(auto &e: efficientOpCounter){
+        efficientOpCounter[e.first] = 0;
+    }
+    for(int i = 0; i < REGISTERS_N; i++){
+        iRegisters[i] = 0;
+        MemoryUnit mu_(0u);
+        fRegisters[i] = mu_;
+    }
     MemoryUnit mu;
     mu.i = 0;
-    fRegisters.fill(mu);
     breakPoints.clear();
     historyN = 0;
     historyPoint = 0;
     beforeHistory.fill({});
     (*dram).fill({0});
+    for(int i = 0; i < CASH_SIZE; i++){
+        CacheRow row = {false, 0};
+        cache[i] = row;
+    }
+    cacheRHitN = 0;
+    cacheWHitN = 0;
+    cacheRMissN = 0;
+    cacheWMissN = 0;
 }
 
 // レジスタ番号を受け取り，その情報を文字列で返す
@@ -93,7 +115,7 @@ std::string AssemblySimulator::getFRegisterInfoUnit(const int &regN, const Numbe
 
 
     if(useFNotation){
-        ss << regName << " " << std::to_string(fRegisters[regN].f);
+        ss << regName << std::setw(12) << std::to_string(fRegisters[regN].f);
     }else{
         unsigned int  numSize = 0;
         switch (base){
@@ -114,7 +136,7 @@ std::string AssemblySimulator::getFRegisterInfoUnit(const int &regN, const Numbe
                 break;
             default :
                 prefix = "";
-                numSize = 10;
+                numSize = 12;
                 if (sign){
                     ss << regName  << std::setw(numSize) << std::internal << value;
                 }else{
@@ -177,7 +199,7 @@ std::string AssemblySimulator::getIRegisterInfoUnit(const int &regN, const Numbe
             break;
         default :
             prefix = "";
-            numSize = 10;
+            numSize = 12;
             if (sign){
                 ss << regName  << std::setw(numSize) << std::internal << value;
             }else{
@@ -234,31 +256,7 @@ void AssemblySimulator::printRegisters(const NumberBase &base, const bool &sign,
 
 }
 
-void AssemblySimulator::writeReg(const int &regInd, const int32_t &value, const bool& isInteger){
-    if(regInd < REGISTERS_N){
-        if(regInd == 0 && !forGUI){
-                // 0レジスタへの書き込み
-                // std::cout << ZERO_REG_WRITE_ERROR << std::endl;
-                return;
-        }
-        if(isInteger){
-            iRegisters[regInd] = value;
 
-        }else{
-            fRegisters[regInd] = MemoryUnit(value);
-        }
-    }else{
-        if(isInteger){
-            if(value % INST_BYTE_N != 0  && !forGUI){
-                // アラインに合わない値が入力されているので注意
-                std::cout << PC_NOT_ALIGNED_WRITE << std::endl;
-            }
-            pc = value;
-        }else{
-            fcsr = static_cast<uint32_t>(value);
-        }
-    }
-}
 
 // 終了まで実行する
 void AssemblySimulator::launch(const bool &printTime){
@@ -327,11 +325,11 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
         Instruction inst = parser.instructionVector[instInd];
         nowLine = inst.lineN;
         jumpComment = false;
-        if(useEfficient){
-            beforeData = efficientDoInst(inst);
-        }else{
-            beforeData = doInst(inst);
-        }
+        beforeData = efficientDoInst(inst);
+        // if(useEfficient){
+        // }else{
+        //     beforeData = doInst(inst);
+        // }
         if(printInst){
             try{
                 beforeData.instruction = inverseOpMap.at(beforeData.opcodeInt);
@@ -372,7 +370,7 @@ void AssemblySimulator::back(){
     BeforeData before;
     try{
         before = popHistory();
-        if(useEfficient){
+        if(USE_EFFICIENT){
             // before.instruction を入力する
             try{
                 before.instruction = inverseOpMap.at(before.opcodeInt);
@@ -395,7 +393,7 @@ void AssemblySimulator::back(){
     pc = before.pc;
     if(before.instruction != ""){
         instCount--;
-        opCounter[before.instruction] = opCounter[before.instruction] -1;
+        efficientOpCounter[before.opcodeInt] = efficientOpCounter[before.opcodeInt] -1;
         if(before.regInd >= 0){
             if(before.isInteger){
                 iRegisters[before.regInd] = before.regValue;
@@ -405,10 +403,32 @@ void AssemblySimulator::back(){
                 fRegisters[before.regInd] = mu;
             }
         }
-        if(before.writeMem){
-            // メモリをもとに戻す
-            writeMem(before.memAddress, MemAccess::WORD, before.memValue);
+        // メモリ，キャッシュ系を戻す
+        if(before.useMem){
+            if(before.changeCash){
+                //キャッシュミスしてた
+                cache[before.cashAddress] = before.cacheRow;
+                if(before.writeMem){
+                    // メモリをもとに戻す
+                    writeMem(before.memAddress, MemAccess::WORD, before.memValue);
+                    --cacheWMissN;
+                }else{
+                    --cacheRMissN;
+                }
+
+            }else{
+                // キャッシュヒット
+                if(before.writeMem){
+                    // メモリをもとに戻す
+                    writeMem(before.memAddress, MemAccess::WORD, before.memValue);
+                    --cacheWHitN;
+                }else{
+                    --cacheRHitN;
+                }
+
+            }
         }
+
 
     }else{
         // 前の命令はコメントやラベルだった
@@ -480,11 +500,11 @@ void AssemblySimulator::printInstruction(const int & lineN, const Instruction &i
 void AssemblySimulator::printInstructionInSim(const int & lineN, const Instruction &instruction)const{
     // 受け取った命令を画面表示
     auto indPair = parser.getFileNameAndLine(lineN);
-    if(useBinary){
-        printInstByRegInd(indPair.second, instruction);
-    }else{
-        printInstruction(indPair.second, instruction);
-    }
+    // if(useBinary){
+    printInstByRegInd(indPair.second, instruction);
+    // }else{
+    // printInstruction(indPair.second, instruction);
+    // }
 }
 
 void AssemblySimulator::deleteBreakPoint(const int &instInd){
@@ -645,214 +665,6 @@ std::string AssemblySimulator::getSeparatedWordString(const uint32_t &value)cons
 }
 
 
-// 命令を処理
-BeforeData AssemblySimulator::doInst(const Instruction &instruction){
-    std::string opcode = instruction.opcode;
-    instCount++;
-    opCounter[opcode] = opCounter[opcode] + 1;
-
-    if(opcode == "nop"){
-        BeforeData ans = {"nop", pc, false, -1, -1, false};
-        pc += INST_BYTE_N;
-        return ans;
-    }
-    std::vector<int> opInfo = opcodeInfoMap[opcode];
-    int opKind = opInfo[4];
-    if(opKind == INST_CONTROL){
-        return doControl(opcode, instruction);
-
-    }else{
-        BeforeData ans = {};
-        if(opKind == INST_LOAD){
-            ans = doLoad(opcode, instruction);
-        }else if(opKind == INST_STORE){
-            ans = doStore(opcode, instruction);
-        }else if(opKind == INST_2REGF){
-            ans = do2RegInst(opcode, instruction);
-        }else if(opKind == INST_OTHERS){
-
-
-        }else{
-            // 演算命令
-            auto indPair =getRegIndWithError(instruction.operand[0]); 
-            int targetR = indPair.first;
-            // ここで前のデータを保存
-            ans.instruction = opcode;
-            ans.pc = pc;
-            ans.isInteger = indPair.second;
-            ans.writeMem = false;
-            ans.regInd = targetR;
-
-            if(ans.isInteger){
-                // 整数演算のとき
-                ans.regValue = iRegisters[targetR];
-                if(targetR == 0){
-                    // x0レジスタへの書き込み
-                    launchWarning(ZERO_REG_WRITE_ERROR);
-                }else{
-                    auto ind0Pair = getRegIndWithError(instruction.operand[1]);
-                    bool ind1IsInt = false;
-                    int source0 = iRegisters[ind0Pair.first];
-                    int source1 = 0;
-                    if(opKind == INST_REGONLY){
-                        auto ind1Pair = getRegIndWithError(instruction.operand[2]);
-                        source1 = iRegisters[ind1Pair.first];
-                        ind1IsInt = ind1Pair.second;
-                    }else{
-                        source1 = instruction.immediate;
-                        ind1IsInt = true;
-                    }
-                    if(!(ind0Pair.second && ind1IsInt)){
-                        launchError(MIXED_REGISTER_ERROR);
-                    }
-                    doALU(opcode, targetR, source0, source1);
-                }
-            }else{
-                // 浮動小数点数
-                ans.regValue = fRegisters[targetR].si;
-                auto ind0Pair = getRegIndWithError(instruction.operand[1]);
-                if(opcode == "fsqrt"){
-                    if(ind0Pair.second){
-                        // 整数レジスタが混じってる
-                        launchError(MIXED_REGISTER_ERROR);
-                    }                    
-                    uint32_t source0 = fRegisters[ind0Pair.first].i;
-                    doFALU(opcode, targetR, source0, 0);
-                }else{
-                    auto ind1Pair = getRegIndWithError(instruction.operand[2]);
-                    if(ind0Pair.second || ind1Pair.second){
-                        // 整数レジスタが混じってる
-                        launchError(MIXED_REGISTER_ERROR);
-                    }
-                    uint32_t source0 = fRegisters[ind0Pair.first].i;
-                    uint32_t source1 = fRegisters[ind1Pair.first].i;
-                    doFALU(opcode, targetR, source0, source1);
-                }
-
-            }
-        }
-        incrementPC();
-        return ans;
-    }
-}
-
-// fmvなど，レジスタを2つしか受け取らない浮動小数点命令
-BeforeData AssemblySimulator::do2RegInst(const std::string &opcode, const Instruction &instruction){
-    auto ind1Pair = getRegIndWithError(instruction.operand[0]);
-    auto ind2Pair = getRegIndWithError(instruction.operand[1]);
-    BeforeData ans = {opcode, pc, false, ind1Pair.first, fRegisters[ind1Pair.first].si, false};
-
-    float ansF = 0;
-    if(opcode == "ftoi"){
-        // これだけ整数レジスタへの書き込み
-        ans.isInteger = true;
-        ans.regValue = iRegisters[ind1Pair.first];
-        if(!(ind1Pair.second && !ind2Pair.second)){
-            launchError(ILEGAL_REGISTER_KIND);
-        }
-        int32_t value = std::round(fRegisters[ind2Pair.first].f);
-        writeReg(ind1Pair.first, value, true);
-        return ans;
-    
-    }else if(opcode == "itof"){
-        if(!ind2Pair.second){
-            launchError(ILEGAL_REGISTER_KIND);
-        }
-        // c++の実装とは一致しないので注意
-        MemoryUnit mu(fpu.itof(static_cast<uint32_t>(iRegisters[ind2Pair.first])));
-        ansF = mu.f;
-    }else{
-        if(ind2Pair.second){
-            launchError(ILEGAL_REGISTER_KIND);
-        }
-        if(opcode == "fmv"){
-            ansF = fRegisters[ind2Pair.first].f;
-        }else if(opcode == "fsqrt"){
-
-        }else if(opcode == "floor"){
-            ansF = std::floor(fRegisters[ind2Pair.first].f);
-        }
-    }
-
-    if(ind1Pair.second){
-        launchError(ILEGAL_REGISTER_KIND);
-    }
-    MemoryUnit ansMu(ansF);
-    writeReg(ind1Pair.first, ansMu.si, false);
-    return ans;
-}
-
-// ストア命令を実行
-BeforeData AssemblySimulator::doStore(const std::string &opcode, const Instruction &instruction){
-    uint32_t address = instruction.immediate;
-    auto indPair = getRegIndWithError(instruction.operand[1]);
-    if(indPair.first == REGISTERS_N || !indPair.second ){
-        launchError(ILEGAL_BASE_REGISTER);
-    }
-    address += iRegisters[indPair.first];
-
-    indPair = getRegIndWithError(instruction.operand[0]);
-    uint32_t beforeAddress = (address/4)*4;
-    BeforeData before = {opcode, pc, false, -1, -1, true, beforeAddress, readMem(beforeAddress, MemAccess::WORD)};
-
-    uint32_t value = indPair.second ? iRegisters[indPair.first] : fRegisters[indPair.first].i;
-    if(opcode == "fsw"){
-        if(indPair.second){
-            launchError(ILEGAL_LOADSTORE_INSTRUCTION);
-        }
-        writeMem(address, MemAccess::WORD, value);
-    }else{
-        if(!indPair.second){
-            launchError(ILEGAL_LOADSTORE_INSTRUCTION);
-        }
-        if(opcode == "sw"){
-            writeMem(address, MemAccess::WORD, value);
-        }else if(opcode == "sb"){
-            writeMem(address, MemAccess::BYTE, (~0xff) & value);
-        }
-
-    }
-    return before;
-}
-
-BeforeData AssemblySimulator::doLoad(const std::string &opcode, const Instruction &instruction){
-    // ロード命令を実行
-    uint32_t address = instruction.immediate;
-    auto indPair = getRegIndWithError(instruction.operand[1]);
-    if(indPair.first == REGISTERS_N || !indPair.second ){
-        launchError(ILEGAL_BASE_REGISTER);
-    }
-    address += iRegisters[indPair.first];
-
-    indPair = getRegIndWithError(instruction.operand[0]);
-    int32_t beforeValue = indPair.second ? iRegisters[indPair.first] : fRegisters[indPair.first].si;
-    BeforeData before = {opcode, pc, indPair.second, indPair.first, beforeValue, false};
-    
-    if(opcode == "flw"){
-        if(indPair.second){
-            // 浮動小数点のレジスタにlw, lbuなどを使っている
-            launchError(ILEGAL_LOADSTORE_INSTRUCTION);
-        }
-        uint32_t value = readMem(address, MemAccess::WORD);
-        fRegisters[indPair.first] = MemoryUnit(value);
-    }else{
-        if(!indPair.second){
-            launchError(ILEGAL_LOADSTORE_INSTRUCTION);
-        }
-
-        if(opcode == "lw"){
-            uint32_t value = readMem(address, MemAccess::WORD);
-            writeReg(indPair.first, value, true);
-        }else if(opcode == "lbu"){
-            uint32_t value = readMem(address, MemAccess::BYTE);
-            writeReg(indPair.first, ((~0xff) &iRegisters[indPair.first]) | value, true);
-        }
-
-    }
-
-    return before;
-}
-
 // レジスタのインデックスとそれが整数レジスタに属するかを返す
 std::pair<int, bool> AssemblySimulator::getRegInd(const std::string &regName){
 
@@ -923,160 +735,14 @@ void AssemblySimulator::launchWarning(const std::string &message)const{
     }
 }
 
-// ターゲットレジスタのインデックス、入力２つを受け取り、演算、レジスタへの書き込みを行う(浮動小数点版)
-// PCの更新はここでは行わない
-void AssemblySimulator::doFALU(const std::string &opcode, const int &targetR, const uint32_t &source0, const uint32_t &source1){
-    uint32_t ans = 0;
-    if(opcode == "fadd"){
-        ans = fpu.fadd(source0, source1);
-    }else if(opcode == "fsub"){
-        ans = fpu.fsub(source0, source1);
-    }else if(opcode == "fmul"){
-        ans = fpu.fmul(source0, source1);
-    }else if(opcode == "fdiv"){
-        ans = fpu.fdiv(source0, source1);
-    }else if(opcode == "fsqrt"){
-        ans = fpu.fsqrt(source0);
-    }
-    fRegisters[targetR] = MemoryUnit(ans);
-}
-
-// ターゲットレジスタのインデックス、入力２つを受け取り、演算、レジスタへの書き込みを行う
-// PCの更新はここでは行わない
-void AssemblySimulator::doALU(const std::string &opcode, const int &targetR, const int &source0, const int &source1){
-    int ans = 0;
-    if(opcode == "add" || opcode == "addi"){
-        // オーバーフローは考慮しない（仕様通り？）
-        ans = source0 + source1;
-    }else if(opcode == "sub"){
-        ans = source0 - source1;
-    }else if(opcode == "mul"){
-        ans = source0 * source1;
-    }else if(opcode == "div"){
-        ans = source0 / source1;
-    }else if(opcode == "and" || opcode == "andi"){
-        ans = source0 & source1;
-    }else if(opcode == "or" || opcode == "ori"){
-        ans = source0 | source1;
-    }else if(opcode == "xor" || opcode == "xori"){
-        ans = source0 ^ source1;
-    }else if(opcode == "slt"){
-        ans = source0 < source1 ? 1 : 0;
-    }else if(opcode == "sltu"){
-        ans = ((unsigned int) source0) < ((unsigned int) source1) ? 1 : 0; 
-    // 以下、シフト演算
-    // RISC-Vではsource1の下位5ビットを（符号なし整数ととらえて？）シフトする 
-    // C, C++では負数の右シフトが算術シフトか論理シフトかは実装依存()なので、無理やり合わせる
-    }else{
-        unsigned int shiftN = source1 & 0b11111;
-        if(opcode == "sll"){
-            ans = source0 << shiftN;
-        }else if(opcode == "srl"){
-            ans = shiftRightLogical(source0, shiftN);
-        }else if(opcode == "sra"){
-            ans = shiftRightArithmatic(source0, shiftN);
-        }
-    }
-    writeReg(targetR, ans, true);
-}
-
-BeforeData AssemblySimulator::doControl(const std::string &opcode, const Instruction &instruction){
-    // 制御系の命令実行
-    // 次命令がpc+4かは不明なのでここでpcの更新をする
-    std::vector<int> opInfo = opcodeInfoMap[opcode];
-    bool jumpFlag = false;
-    if(opInfo[0] == 3){
-        auto ind0Pair = getRegIndWithError(instruction.operand[0]);
-        auto ind1Pair = getRegIndWithError(instruction.operand[1]);
-        if(!(ind0Pair.second && ind1Pair.second)){
-            launchError(ILEGAL_CONTROL_REGISTER);
-        }
-        int reg0 = iRegisters[ind0Pair.first];
-        int reg1 = iRegisters[ind1Pair.first];
-        if(opcode == "blt"){
-            jumpFlag = reg0 < reg1;
-        }else if(opcode == "beq"){
-            jumpFlag = reg0 == reg1;
-        }else if(opcode == "bne"){
-            jumpFlag = reg0 != reg1;
-        }
-    }else{
-        jumpFlag = true;
-    }
-
-    if(jumpFlag){
-        try{
-            BeforeData ans = {opcode, pc,true, -1, -1, false};
-            if(opcode == "jal" || opcode == "jalr"){
-                // レジスタへの書き込み
-                auto dPair = getRegIndWithError(instruction.operand[0]);
-                if(!dPair.second){
-                    launchError(ILEGAL_CONTROL_REGISTER);
-                }
-                int regd = dPair.first;
-                if(regd != 0){
-                    ans.regInd = regd;
-                    ans.regValue = iRegisters[regd];
-                    writeReg(regd, pc+INST_BYTE_N, true);
-                }
-
-            }
-            if(opcode =="jr" || opcode == "jalr"){
-                // 即値とレジスタの値を足して最下位ビットを0にした値がジャンプ先
-                // しかしこのシミュレータは4バイトの固定長命令を使うことを暗に仮定しているので、もう1ビットも0にする
-                int nextPC = instruction.immediate;
-                if(opcode == "jr"){
-                    auto indPair = getRegIndWithError(instruction.operand[0]);
-                    if(!indPair.second){
-                        launchError(ILEGAL_CONTROL_REGISTER);
-                    }
-                    nextPC += iRegisters[indPair.first];
-                }else{
-                    auto indPair = getRegIndWithError(instruction.operand[1]);
-                    if(!indPair.second){
-                        launchError(ILEGAL_CONTROL_REGISTER);
-                    }
-                    nextPC += iRegisters[indPair.first];
-                }
-                nextPC &= (~0) << 2;
-                pc = nextPC;
-
-            }else{
-                int nextPC = parser.labelMap.at(instruction.label) * INST_BYTE_N;
-                pc = nextPC;
-            }
-            return ans;
-        }catch(const std::out_of_range &e){
-            launchError(NOT_FOUND_LABEL);
-            return{};
-        }
-
-    }else{
-        BeforeData ans = {opcode, pc,false, -1, -1, false};
-        incrementPC();
-        return ans;
-    }
-
-}
 
 
-void AssemblySimulator::incrementPC(){
-    // pcのインクリメントと、ファイル末端に到達したかのチェックを行う
-    pc += INST_BYTE_N;
-    if(pc == static_cast<long>(parser.instructionVector.size()) * INST_BYTE_N){
-        // 末端に到着
-        end = true;
-        if(forGUI){
-            std::cout << GUI_END << std::endl;
-        }else{
-            std::cout << FILE_END << std::endl;
-        }
-    }
-}
+
 
 void AssemblySimulator::printOpCounter() const{
     // 実行命令の統計をプリント
-    if(forGUI){
+    bool useGUIMode = false;
+    if(useGUIMode){
         std::cout << instCount << std::endl;
     }else{
         std::cout << "総実行命令数: " <<  std::to_string(instCount) << std::endl;
@@ -1085,71 +751,68 @@ void AssemblySimulator::printOpCounter() const{
     std::stringstream ss;
     int count = 0;
 
-    for(auto x:opCounter){
-        if(forGUI){
-            // 各命令につき一行
-            std::cout << x.first << " " << x.second << std::endl;
-            
-        }else{
-            ss << std::setw(PRINT_INST_NUM_SIZE)<< x.first <<  ": " << std::setw(PRINT_INST_NUM_SIZE) <<
-                std::internal << x.second << ",     ";
-            
-            if(++count == PRINT_INST_COL){
-                count = 0;
-                std::cout << ss.str() << std::endl;
-                ss.str("");
-                ss.clear(std::stringstream::goodbit);
+    if(USE_EFFICIENT){
+        for(auto x:opcodeInfoMap){
+            if(useGUIMode){
+                // 各命令につき一行
+                std::cout << x.first << "  " <<  efficientOpCounter.at(static_cast<uint8_t>((x.second)[5])) << std::endl;
+                
+            }else{
+                ss << std::setw(PRINT_INST_NUM_SIZE)<< x.first <<  ": " << std::setw(PRINT_INFO_NUM_SIZE) <<
+                    std::internal << efficientOpCounter.at(static_cast<uint8_t>((x.second)[5])) << ",     ";
+                
+                if(++count == PRINT_INST_COL){
+                    count = 0;
+                    std::cout << ss.str() << std::endl;
+                    ss.str("");
+                    ss.clear(std::stringstream::goodbit);
+                }
             }
         }
+    }else{
+        for(auto x:opCounter){
+            if(useGUIMode){
+                // 各命令につき一行
+                std::cout << x.first << " " << x.second << std::endl;
+                
+            }else{
+                ss << std::setw(PRINT_INST_NUM_SIZE)<< x.first <<  ": " << std::setw(PRINT_INST_NUM_SIZE) <<
+                    std::internal << x.second << ",     ";
+                
+                if(++count == PRINT_INST_COL){
+                    count = 0;
+                    std::cout << ss.str() << std::endl;
+                    ss.str("");
+                    ss.clear(std::stringstream::goodbit);
+                }
+            }
+        }
+
     }
     
 }
 
-uint32_t AssemblySimulator::readMem(const uint32_t& address, const MemAccess &memAccess)const{
-    // メモリ読み込み
-    if(address > MEM_BYTE_N || address + static_cast<unsigned int>(memAccess) > MEM_BYTE_N){
-        //範囲外
-        launchError(OUT_OF_RANGE_MEMORY);
+// キャッシュの情報を表示
+void AssemblySimulator::printCacheSystem()const{
+    int32_t usedCacheN = 0;
+    for(auto e: cache){
+        usedCacheN += e.valid ? 1 : 0;
     }
-    uint32_t mainAddress = address / WORD_BYTE_N;
-    uint32_t subAddress = address % WORD_BYTE_N;
-    switch(memAccess){
-        case MemAccess::WORD:
-            if(subAddress != 0) launchError(ILEGAL_WORD_ACCESS);
-            return (*dram)[mainAddress].i;
-            break;
-        case MemAccess::BYTE:
-            return static_cast<uint32_t>((*dram)[mainAddress].b[subAddress]);
-            break;
-        default:
-            launchError(IMPLEMENT_ERROR);
-            return -1;
-            break;
-    }
+    float cacheUseRate = ((float) usedCacheN) / CASH_SIZE * 100;
+    std::cout << CACHE_PRINT_USE_RATE << std::setprecision(3) << cacheUseRate << "%" << std::endl;
+    std::cout << "読み込み: " << std::endl;
+    int32_t accessN = cacheRHitN + cacheRMissN;
+    std::cout << CACHE_PRINT_ACCESS << accessN << std::endl;
+    std::cout << CACHE_PRINT_RATE << std::setprecision(3) <<
+         ((float) cacheRHitN) / accessN  * 100 << "%" << std::endl;
+    std::cout << "書き込み: " << std::endl;
+    accessN = cacheWHitN + cacheWMissN;
+    std::cout << CACHE_PRINT_ACCESS << accessN << std::endl;
+    std::cout << CACHE_PRINT_RATE << std::setprecision(3) <<
+         ((float) cacheWHitN) / accessN  * 100 << "%" << std::endl;
 
 }
-void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAccess, const uint32_t value){
-    // メモリ書き込み
-    if(address > MEM_BYTE_N || address + static_cast<unsigned int>(memAccess) > MEM_BYTE_N){
-        //範囲外
-        launchError(OUT_OF_RANGE_MEMORY);
-    }
 
-    uint32_t mainAddress = address / WORD_BYTE_N;
-    uint32_t subAddress = address % WORD_BYTE_N;
-    switch(memAccess){
-        case MemAccess::WORD:
-            if(subAddress != 0) launchError(ILEGAL_WORD_ACCESS);
-            (*dram)[mainAddress].i = value;
-            break;
-        case MemAccess::BYTE:
-            (*dram)[mainAddress].b[subAddress] = static_cast<uint8_t>(value);
-            break;
-        default:
-            launchError(IMPLEMENT_ERROR);
-            break;
-    }
-}
 
  std::string AssemblySimulator::getMemWordString(const uint32_t & address)const{
     std::stringstream ss;
@@ -1204,283 +867,4 @@ void AssemblySimulator::printMem(const uint32_t &address, const uint32_t &wordN,
         std::cout  << std::endl;
     }
     
-}
-
-// ターゲットレジスタのインデックス、入力２つを受け取り、演算、レジスタへの書き込みを行う
-// PCの更新はここでは行わない
-// opcodeはすでにシフトされ，functの部分のみ
-// R, I形式ともに使えるようにfunctは疎を得ている
-void AssemblySimulator::efficientDoALU(const uint8_t &opcode, const int &targetR, const int &source0, const int &source1){
-    int ans = 0;
-    switch(opcode){
-        case 0b00000:
-            ans = source0 + source1;break;
-        case 0b00001:
-            ans = source0 & source1; break;
-        case 0b00010:
-            ans = source0 | source1; break;
-        case 0b00011:
-            ans = source0 ^ source1; break;
-        case 0b00100:
-            ans = source0 - source1; break;
-        case 0b01000:
-            ans = source0 < source1 ? 1u: 0; break;
-        case 0b01001:
-            ans = static_cast<uint32_t>(source0) < static_cast<uint32_t>(source1) ? 1u : 0; break;
-        default:
-            // 残りはシフト演算
-            // RISC-Vではsource1の下位5ビットを（符号なし整数ととらえて？）シフトする 
-            uint32_t shiftN = source1 & 0b11111;
-            switch(opcode){
-                case 0b10000:
-                    ans = source0 << shiftN; break;
-                case 0b10010:
-                    ans = shiftRightLogical(source0, shiftN); break;
-                case 0b10011:
-                    ans = shiftRightArithmatic(source0, shiftN); break;
-                default:
-                    launchError(ILEGAL_INNER_OPCODE);
-            }
-    }
-    writeReg(targetR, ans, true);
-}
-
-void AssemblySimulator::efficientDoFALU(const uint8_t &opcode, const int &targetR, const uint32_t &source0, const uint32_t &source1){
-    uint32_t ans = 0;
-    float ansF;
-    MemoryUnit mu;
-    switch(opcode){
-        case 0b00:
-            ans = fpu.fadd(source0, source1); break;
-        case 0b00001:
-            ans = fpu.fmul(source0, source1); break;   
-        case 0b00010:
-            ans = fpu.fdiv(source0, source1); break;
-        case 0b00100:
-            ans = fpu.fsub(source0, source1); break;
-        case 0b10000:
-            ans = fpu.fsqrt(source0); break;
-        case 0b11000:
-            mu.i = (source0);
-            ansF = std::floor(mu.f);
-            mu.f = ansF;
-            ans = mu.i;
-            break;
-        case 0b11001:
-            ans = source0; break;
-        default:
-            launchError(ILEGAL_INNER_OPCODE);
-    }
-
-    fRegisters[targetR] = MemoryUnit(ans);
-}
-
-// 制御系の命令で，ジャンプするときの処理
-BeforeData AssemblySimulator::efficientDoJump(const uint8_t &opcode, const Instruction &instruction){
-    BeforeData ans = {"", pc,true, -1, -1, false, 0, 0, instruction.opcodeInt};
-    if((opcode & 0b10)){
-        // レジスタへの書き込み (jal, jalr)
-        int writeRegInd = instruction.regInd[0];
-        ans.regInd = writeRegInd;
-        ans.regValue = iRegisters[writeRegInd];
-        writeReg(writeRegInd, pc+INST_BYTE_N, true);
-    }
-    int nextPC = instruction.immediate;
-    if((opcode & 0b1)){
-        // レジスタを使う (jalr, jr)
-        // 即値とレジスタの値を足して最下位ビットを0にした値がジャンプ先
-        // しかしこのシミュレータは4バイトの固定長命令を使うことを暗に仮定しているので、もう1ビットも0にする
-        if(opcode & 0b10){
-            // jalr
-            nextPC += iRegisters[instruction.regInd[1]];
-        }else{
-            nextPC += iRegisters[instruction.regInd[0]];
-        }
-        nextPC &= (~0) << 2;
-        pc = nextPC;
-
-    }else{
-        // 即値ジャンプ
-        pc = instruction.immediate;
-    }
-    return ans;
-}
-
-// 制御系の命令実行
-// 次命令がpc+4かは不明なのでここでpcの更新をする
-BeforeData AssemblySimulator::efficientDoControl(const uint8_t &opcode, const Instruction &instruction){
-    int reg0 = iRegisters[instruction.regInd[0]];
-    int reg1 = iRegisters[instruction.regInd[1]];
-    bool jumpFlag;
-    switch(opcode){
-        case 0b001:
-            jumpFlag = reg0 < reg1; break;
-        case 0b010:
-            jumpFlag = reg0 == reg1; break;
-        case 0b100:
-            jumpFlag = reg0 != reg1; break;
-        default:
-            launchError(ILEGAL_INNER_OPCODE);
-    }
-    if(jumpFlag){
-        // j命令と同じ
-        return efficientDoJump(0b0000, instruction);
-    }else{
-        BeforeData ans = {"", pc,false, -1, -1, false, 0, 0, instruction.opcodeInt};
-        incrementPC();
-        return ans;
-    }
-}
-
-
-BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instruction &instruction){
-    // ロード命令を実行
-    uint32_t address = instruction.immediate;
-    address += iRegisters[instruction.regInd[1]];
-
-    bool loadInteger = (opcode & 0b100) == 0u;
-    int32_t loadRegInd = instruction.regInd[0];
-    int32_t beforeValue = loadInteger ? iRegisters[loadRegInd] : fRegisters[loadRegInd].si;
-    BeforeData before = {"", pc, loadInteger, loadRegInd, beforeValue, false, 0u, 0u, instruction.opcodeInt};
-    
-    if(loadInteger){
-        uint32_t value = readMem(address, MemAccess::WORD);
-        fRegisters[loadRegInd] = MemoryUnit(value);
-    }else{
-        if(opcode & 0b1){
-            // lw
-            uint32_t value = readMem(address, MemAccess::WORD);
-            writeReg(loadRegInd, value, true);
-        }else{
-            // lbu
-            uint32_t value = readMem(address, MemAccess::BYTE);
-            writeReg(loadRegInd, ((~0xff) &iRegisters[loadRegInd]) | value, true);
-        }
-    }
-
-    return before;
-}
-
-
-
-BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Instruction &instruction){
-    uint32_t address = instruction.immediate;
-    address += iRegisters[instruction.regInd[1]];
-
-    uint32_t beforeAddress = (address/4)*4; // 4バイトアラインする
-    BeforeData before = {"", pc, false, -1, -1, true, beforeAddress, readMem(beforeAddress, MemAccess::WORD), instruction.opcodeInt};
-
-    int regInd = instruction.regInd[0];
-    uint32_t value = (opcode & 0b1) == 0 ? iRegisters[regInd] : fRegisters[regInd].i;
-    writeMem(address, MemAccess::WORD, value);
-    return before;
-}
-
-// 書き込み，読み込みをするレジスタの種類が違う命令
-BeforeData AssemblySimulator::efficientDoMix(const uint8_t &opcode, const Instruction &instruction){
-    int targetReg = instruction.regInd[0];
-    BeforeData ans = {"", pc, false, -1, 0u, false, 0u, 0u, instruction.opcodeInt};
-
-    if(opcode & 0b1){
-        // 書き込み先は整数レジスタ
-        ans.isInteger = true;
-        ans.regValue = iRegisters[targetReg];
-        if(opcode & 0b100){
-            // flt
-        }else{
-            // ftoi
-            int32_t value = std::round(fRegisters[instruction.regInd[1]].f);
-            writeReg(targetReg, value, true);
-        }
-        return ans;
-    }else{
-        // itof
-        ans.isInteger = false;
-        ans.regValue = fRegisters[targetReg].si;
-        uint32_t ansInt = fpu.itof(static_cast<uint32_t>(iRegisters[instruction.regInd[1]]));
-        writeReg(targetReg, ansInt, false);
-        return ans;
-    }
-
-}
-
-// 高速化した命令処理
-BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
-    uint8_t opcode = instruction.opcodeInt;
-    instCount++;
-    efficientOpCounter[opcode] = efficientOpCounter[opcode] + 1;
-
-    uint8_t opKind = opcode & OPKIND_MASK;
-    uint8_t opFunct = opcode >> OPKIND_BIT_N;
-    BeforeData ans = {};
-    ans.opcodeInt = opcode;
-    ans.pc = pc;
-    int targetR, source0, source1;
-    uint32_t sourceU0, sourceU1;
-    switch(opKind){
-        case 0b000:
-            // 整数R (レジスタ3つ)
-            // 演算命令
-            // ここで前のデータを保存
-            targetR = instruction.regInd[0];
-            ans.isInteger = true;
-            ans.writeMem = false;
-            ans.regInd = targetR;
-            ans.regValue = iRegisters[targetR];
-            source0 = iRegisters[instruction.regInd[1]];
-            source1 = iRegisters[instruction.regInd[2]];
-            efficientDoALU(opFunct, targetR, source0, source1);
-            break;
-        case 0b001:
-            // 整数I
-            targetR = instruction.regInd[0];
-            ans.isInteger = true;
-            ans.writeMem = false;
-            ans.regInd = targetR;
-            ans.regValue = iRegisters[targetR];
-            source0 = iRegisters[instruction.regInd[1]];
-            source1 = instruction.immediate;
-            efficientDoALU(opFunct, targetR, source0, source1);
-            break;
-        case 0b010:
-            // 制御B
-            return efficientDoControl(opFunct, instruction);
-        case 0b011:
-            // 制御J, I
-            return efficientDoJump(opFunct, instruction); 
-        case 0b100:
-            // メモリI
-            ans = efficientDoLoad(opFunct, instruction); break;
-        case 0b101:
-            // メモリS
-            ans = efficientDoStore(opFunct, instruction); break;
-        case 0b110:
-            // 浮動R
-            targetR = instruction.regInd[0];
-            // ここで前のデータを保存
-            ans.instruction = opcode;
-            ans.pc = pc;
-            ans.isInteger = false;
-            ans.writeMem = false;
-            ans.regInd = targetR;
-            ans.regValue = fRegisters[targetR].si;
-            sourceU0 = fRegisters[instruction.regInd[1]].i;
-            if(opFunct & 0b10000){
-                // fsqrtなど，入力が１つ
-                sourceU1 = 0;
-            }else{
-                sourceU0 = fRegisters[instruction.regInd[2]].i;
-            }
-            efficientDoFALU(opFunct, targetR, sourceU0, sourceU1);
-            break;
-        case 0b111:
-            // 混合
-            ans = efficientDoMix(opFunct, instruction);
-            break;
-        default:
-            launchError(ILEGAL_INNER_OPCODE);
-    }
-
-    incrementPC();
-    return ans;
 }

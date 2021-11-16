@@ -1,5 +1,6 @@
 #include "parser.hpp"
 #include "../assemble/deassemble.hpp"
+#include "../assemble/assemble.hpp"
 #include <vector>
 #include <map>
 #include <iostream>
@@ -32,8 +33,8 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     {"slt",     {3, -1, -1, -1, INST_REGONLY, 0b01000000}},
     {"sltu",    {3, -1, -1, -1, INST_REGONLY, 0b01001000}}, 
     {"sll",     {3, -1, -1, -1, INST_REGONLY, 0b10000000}}, 
-    {"sra",     {3, -1, -1, -1, INST_REGONLY, 0b10010000}}, 
-    {"srl",     {3, -1, -1, -1, INST_REGONLY, 0b10011000}}, 
+    {"sra",     {3, -1, -1, -1, INST_REGONLY, 0b10011000}}, 
+    {"srl",     {3, -1, -1, -1, INST_REGONLY, 0b10010000}}, 
     {"or",      {3, -1, -1, -1, INST_REGONLY, 0b00010000}}, 
     {"xor",     {3, -1, -1, -1, INST_REGONLY, 0b00011000}},
     {"fadd",     {3, -1, -1, -1, INST_REGONLY, 0b0000110}}, 
@@ -43,6 +44,7 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     {"fmv",     {2, -1, -1, -1, INST_2REGF, 0b11001110}}, 
     {"itof",     {2, -1, -1, -1, INST_2REGF, 0b00010111}}, 
     {"ftoi",     {2, -1, -1, -1, INST_2REGF, 0b00001111}}, 
+    {"fle",     {3, -1, -1, -1, INST_2REGF,   0b0101111}}, 
     {"floor",     {2, -1, -1, -1, INST_2REGF, 0b11000110}}, 
     {"fsqrt",     {2, -1, -1, -1, INST_2REGF, 0b10000110}}, 
     {"addi",    {3, 2, -1, 12, INST_REGIMM, 0b00000001}}, 
@@ -53,7 +55,7 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     {"beq",     {3, -1, 2, -1, INST_CONTROL, 0b00010010}}, 
     {"bne",     {3, -1, 2, -1, INST_CONTROL, 0b00100010}}, 
     {"j",       {1, -1, 0, -1, INST_CONTROL, 0b00000011}},
-    {"jal",      {2, -1, 1, -1, INST_CONTROL, 0b00000011}}, 
+    {"jal",      {2, -1, 1, -1, INST_CONTROL, 0b00010011}}, 
     {"jr",       {1, 0, -1, 12, INST_CONTROL, 0b00001011}}, 
     {"jalr",     {2, 1, -1, 12, INST_CONTROL, 0b00011011}}, 
     {"lw",       {2, 1, -1, 12, INST_LOAD, 0b00001100}}, 
@@ -146,8 +148,19 @@ AssemblyParser::AssemblyParser(const std::vector<std::string> &filePaths, const 
         if(filePaths.size() != 1u){
             parseError(0, SOME_BINARY_FILES);
         }
-        deassembleFile(filePaths[0]);
+        try{
+            deassembleFile(filePaths[0]);
+        }catch(const std::invalid_argument &e){
+            if(forGUI){
+                parseError(-1, e.what());
+            }else{
+                throw e;
+            }
+        }
     }else{
+        init_opcode_map();
+        check_labels_many_files(filePaths, labelMap);
+
         instructionVector.resize(allLen);
         parseFiles(filePaths);
     }
@@ -158,12 +171,13 @@ void AssemblyParser::parseFiles(const std::vector<std::string> &filePaths){
     int startLine = START_LINE;
     int nowInstN = 1;
     // エントリポイント用にnop命令を先頭に入れる
-    Instruction topInst;
-    topInst.lineN = 1;
-    topInst.opcode = "nop";
-    topInst.operandN = 0;
-
-    instructionVector[0] = topInst;
+    int32_t binary_op;
+    if(labelMap.find(ENTRY_POINT_LABEL) != labelMap.end()){
+        binary_op  = assemble_op("j " + ENTRY_POINT_LABEL, -1, 0, labelMap);
+    }else{
+        binary_op  = assemble_op("nop", -1, 0, labelMap);
+    }
+    instructionVector[0] = deassemble(1, binary_op);
 
     for(const std::string path: filePaths){
         auto parseRes = parseFile(path, startLine, nowInstN);
@@ -203,17 +217,22 @@ std::pair<int, int> AssemblyParser::parseFile(const std::string& filePath, const
 
         if(std::regex_match(line, m, instRe)){
             // 命令
-            instParse(lineN, nowInstN++,  m[1].str());
-        }else if(std::regex_match(line, m, labelRe)){
-            // ラベル
-            auto pib =  labelMap.insert({m[1].str(), nowInstN});
-            if(! pib.second){
-                // ラベルの重複
-                parseError(lineN, DOUBLE_LABEL);
+            // instParse(lineN, nowInstN++,  m[1].str());
+            uint32_t op = assemble_op(m[1].str(), lineN, nowInstN * INST_BYTE_N, labelMap);
+            try{
+                instructionVector[nowInstN] = deassemble(lineN, op);
+            }catch(const std::invalid_argument &e){
+                if(forGUI){
+                    parseError(-1, e.what());
+                }else{
+                    throw e;
+                }
             }
+            ++nowInstN;
+        }else if(std::regex_match(line, m, labelRe)){
         }else if(std::regex_match(line, m, spaceRe)){
         }else if(std::regex_match(line, m, metaCommandRe)){
-            metaCommandParse(lineN, nowInstN, m[1].str());
+            // metaCommandParse(lineN, nowInstN, m[1].str());
             
         }else{
             // 不正な行

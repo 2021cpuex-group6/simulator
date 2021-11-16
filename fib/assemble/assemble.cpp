@@ -10,7 +10,7 @@
 #include "assemble.hpp"
 
 static constexpr bool ELIMINATE_NOP = true; // コメント等を飛ばすか
-static constexpr int START_ADDRESS = 0; //ファイルのはじめの命令が配置されるアドレス
+static constexpr int START_ADDRESS = 4; //ファイルのはじめの命令が配置されるアドレス (エントリポイント分ずらしておく)
 static constexpr int INSTRUCTION_BYTE_N = 4;
 static constexpr int32_t NOP = 0x13;
 static constexpr int32_t MASK_BITS = ~(1 << 31); // 右シフトが不定にならないように最上位以外1
@@ -20,6 +20,10 @@ static const std::string DOUBLE_LABEL = "ラベルが重複しています";
 static const std::string LABEL_NOT_FOUND = "ラベルが見つかりませんでした";
 static const std::string LABEL_TOO_FAR = "遷移先のラベルが遠すぎます。実装を見直してください。";
 static const std::string OUT_OF_RANGE_IMM = "範囲外の即値です";
+static const std::string NOT_FOUND_FILE = "以下のファイルが見つかりません: ";
+static const std::string GLOBAL_TAG = ".global";
+static const std::string ENTRY_POINT = "min_caml_start";
+static const std::string ENTRY_POINT_LABEL = "+ENTRY";
 static const std::regex label_re(R"(^([0-9a-zA-Z_.]+)\s*:\s*(#.*)*)");
 static const std::regex address_re(R"(\s*([\-0-9]+)\(\s*([a-z0-9%]+)\s*\))");
 static int8_t rounding_mode = 0x000; // 浮動小数点演算の丸め方
@@ -35,18 +39,50 @@ static std::pair<int32_t, int32_t> get_address_reg_imm(const std::string &input,
 
 static int8_t register_to_binary(std::string reg_name, const int &line);
 static int8_t fregister_to_binary(std::string reg_name, const int &line);
-static std::int32_t assemble_op(const std::string &op, const int &line, const int addr);
 static void assemble_error(const std::string &message, const int & line);
 static int32_t get_relative_address_with_check(const std::string &label,
-                                const int & now_addr, const int & max_bit, const int &line);
-static void check_labels(std::istream& ifs);
+                                const int & now_addr, const int & max_bit, const int &line, 
+                                const std::map<std::string, int> &label_dict);
+static int check_labels(std::istream& ifs, const int &start_addr, std::map<std::string, int> &label_dict);
 static std::string delete_comment(std::string line);
+void output_file(std::ofstream& ofs, int binary_op ,struct output_flags_t output_flags);
 
-void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log) {
+// エントリポイントがあれば追加
+// 見つかればtrueを返す
+void addEntryPoint(std::ofstream& ofs, struct output_flags_t output_flags){
+    int32_t binary_op;
+    if(label_map.find(ENTRY_POINT_LABEL) != label_map.end()){
+        binary_op  = assemble_op("j " + ENTRY_POINT_LABEL, -1, 0, label_map);
+    }else{
+        binary_op  = assemble_op("nop", -1, 0, label_map);
+    }
+    // 通常の命令の時
+    output_file(ofs, binary_op, output_flags);
+
+}
+
+
+void output_file(std::ofstream& ofs, int32_t binary_op ,struct output_flags_t output_flags) {
+    for (int i = 0; i < INSTRUCTION_BYTE_N; i++) {
+        unsigned int byte = (binary_op >> (8*(3-i))) & 0xff;
+        if (output_flags.output_as_binary) {
+            ofs << (unsigned char)byte << std::flush;
+        } 
+        else {
+            ofs << std::hex << (unsigned int)byte << std::endl;
+        }
+        if (output_flags.output_log)
+            std::cout << std::hex << (unsigned int)byte << std::endl;
+    }
+}
+
+
+void assembler_main(std::ofstream& ofs, std::istream& ifs, struct output_flags_t output_flags) {
     // 一行ずつアセンブル
-    check_labels(ifs); // labelをmapに格納
+    check_labels(ifs, START_ADDRESS, label_map); // labelをmapに格納
     int line_count = 1;             // 読み込んだファイルの行数
     int addr_count = START_ADDRESS; // 出力する命令のアドレス
+    addEntryPoint(ofs, output_flags); // 見つかればj, 見つからなければnopが挿入される
     while(!ifs.eof()) {
         std::string line, op;
         std::getline(ifs,line);
@@ -54,36 +90,23 @@ void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log) {
         op = delete_comment(line);
         std::regex space_like(R"([\t\s\n\r]+)");
         std::regex label(R"(^.+:[\t\s\n\r]*$)");
-        if (op.size() == 0 || std::regex_match(op, space_like) || std::regex_match(op, label)) {
+        std::regex dotLabel(R"(^\.global\s*.*)");
+        if (op.size() == 0 || std::regex_match(op, space_like) ||
+                 std::regex_match(op, label) || std::regex_match(op, dotLabel) ) {
             // 出力しない場合、行数だけインクリメントし、命令アドレスは動かさない
             // TODO: これあっている？
             line_count ++;
-            if (output_log)
+            if (output_flags.output_log)
                 std::cout << line << "label or comment line" << std::endl;
             continue;
         }
 
-        const int32_t & binary_op  = assemble_op(op, line_count, addr_count);
+        const int32_t & binary_op  = assemble_op(op, line_count, addr_count, label_map);
 
-        int32_t byte;
-        // 通常の命令の時
-        for (int i = 0; i < INSTRUCTION_BYTE_N; i++) {
-            // 1バイトずつ出力
-            byte = (binary_op >> (8*(3-i))) & 0xff;
-            ofs << std::hex << byte << std::endl;
-            if (output_log)
-                std::cout << std::hex << (unsigned int)byte << std::endl;
-        }
-        // }else{
-        //     // 出力しない場合、行数だけインクリメントし、命令アドレスは動かさない
-        //     line_count ++;
-        //     if (output_log)
-        //         std::cout << line << " " << std::hex << binary_op << std::endl;
-        //     continue;
-        // }
+        output_file(ofs, binary_op, output_flags);
         line_count ++;
         addr_count += INSTRUCTION_BYTE_N;
-        if (output_log)
+        if (output_flags.output_log)
             std::cout << line << " " << std::hex << binary_op << std::endl;
 
     }
@@ -91,7 +114,7 @@ void assembler_main(std::ofstream& ofs, std::istream& ifs, bool output_log) {
 }
 
 
-static std::int32_t assemble_op(const std::string & op, const int& line, const int addr) {
+std::int32_t assemble_op(const std::string & op, const int& line, const int addr, const std::map<std::string, int> &label_dict) {
     // 一行をパースし、命令の数値表現を返す
     int32_t output = 0;
     std::istringstream iss(op);
@@ -134,7 +157,36 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
             output |= (rg1 << 7) | (rg2 << 15) | (rg3 << 20);
 
         }
+    } else if (style == RF2){
+        std::string op1, op2;
+        iss >> op1 >> op2;
+        int32_t rg1 = static_cast<int32_t>(fregister_to_binary(op1, line));
+        int32_t rg2 = static_cast<int32_t>(fregister_to_binary(op2, line));
+        output |= rounding_mode <<12;
+        output |= (rg1 << 7) | (rg2 << 15) ;
+    } else if (style == MIX){
+        std::string op1, op2, op3;
+        if(opecode == "ftoi"){
+            iss >> op1 >> op2;
+            int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+            int32_t rg2 = static_cast<int32_t>(fregister_to_binary(op2, line));
+            output |= rounding_mode <<12;
+            output |= (rg1 << 7) | (rg2 << 15) ;
+        }else if(opecode == "itof"){
+            iss >> op1 >> op2;
+            int32_t rg1 = static_cast<int32_t>(fregister_to_binary(op1, line));
+            int32_t rg2 = static_cast<int32_t>(register_to_binary(op2, line));
+            output |= rounding_mode <<12;
+            output |= (rg1 << 7) | (rg2 << 15) ;
+        }else if(opecode == "fle"){
+            iss >> op1 >> op2 >> op3;
+            int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+            int32_t rg2 = static_cast<int32_t>(fregister_to_binary(op2, line));
+            int32_t rg3 = static_cast<int32_t>(fregister_to_binary(op3, line));
+            output |= rounding_mode <<12;
+            output |= (rg1 << 7) | (rg2 << 15) | (rg3 << 20);
 
+        }
     } else if (style == I) {
         if(opecode == "nop") return output;
         std::string op1, op2;
@@ -166,13 +218,13 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
         std::string op1, op2;
         if(opecode == "j"){
             iss >> op1;
-            int32_t label_addr = get_relative_address_with_check(op1, addr, 21, line);
+            int32_t label_addr = get_relative_address_with_check(op1, addr, 21, line, label_dict);
             label_addr = get_J_imm(label_addr);
             output |= label_addr;
         }else if(opecode == "jal"){
             iss >> op1 >> op2;
             int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
-            int32_t label_addr = get_relative_address_with_check(op2, addr, 21, line);
+            int32_t label_addr = get_relative_address_with_check(op2, addr, 21, line, label_dict);
             label_addr = get_J_imm(label_addr);
             output |= label_addr | (rg1 << 7);
         }
@@ -181,7 +233,7 @@ static std::int32_t assemble_op(const std::string & op, const int& line, const i
         iss >> op1 >> op2 >> op3;
         int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
         int32_t rg2 = static_cast<int32_t>(register_to_binary(op2, line));
-        int32_t label_addr = get_relative_address_with_check(op3, addr, 13, line);
+        int32_t label_addr = get_relative_address_with_check(op3, addr, 13, line, label_dict);
         label_addr = get_B_imm(label_addr);
         output |= label_addr | (rg1 << 15) | (rg2 << 20);
 
@@ -246,11 +298,12 @@ static void assemble_error(const std::string &message, const int & line){
     throw std::invalid_argument(std::to_string(line) + "行目:" + message);
 }
 
-static void check_labels(std::istream& ifs){
-    // 初めにファイルを全探索してラベルを探す
-    // そのあと、ファイルポインタをもとにもどす
+// 初めにファイルを全探索してラベルを探す
+// そのあと、ファイルポインタをもとにもどす
+// 返り値が最終アドレス
+static int check_labels(std::istream& ifs,const int &start_addr, std::map<std::string, int> &label_dict){
     int line_count = 1;
-    int addr_count = START_ADDRESS;
+    int addr_count = start_addr;
     while(!ifs.eof()) {
         std::string op;
         std::getline(ifs,op);
@@ -260,16 +313,28 @@ static void check_labels(std::istream& ifs){
         iss >> opecode;
         try{
             // mapからオペコードの情報を取得
-            const auto & opecode_data = opecode_map.at(opecode);
+            opecode_map.at(opecode);
         }catch (const std::out_of_range & e){
             // NOPのとき
             std::smatch m;
             if(std::regex_match(op, m, label_re)){
                 // ラベル
-                auto pib =  label_map.insert({m[1].str(), addr_count});
+                auto pib =  label_dict.insert({m[1].str(), addr_count});
                 if(! pib.second){
                     // ラベルの重複
                     assemble_error(DOUBLE_LABEL, line_count);
+                }
+                line_count ++;
+                continue;
+            }else if(opecode == GLOBAL_TAG){
+                iss >> opecode;
+                if(opecode == ENTRY_POINT){
+                    // エントリポイント
+                    auto pib =  label_dict.insert({ENTRY_POINT_LABEL, addr_count});
+                    if(! pib.second){
+                        // ラベルの重複
+                        assemble_error(DOUBLE_LABEL, line_count);
+                    }
                 }
                 line_count ++;
                 continue;
@@ -285,15 +350,31 @@ static void check_labels(std::istream& ifs){
     }
     ifs.clear();
     ifs.seekg(0, std::ios_base::beg);
+    return addr_count;
 }
 
+// 複数ファイルにまたがってラベル検索をする
+void check_labels_many_files(const std::vector<std::string> &files, std::map<std::string, int> &label_dict){
+    int start_addr = START_ADDRESS;
+    for(auto file: files){
+        std::ifstream ifs(file);
+        if (!ifs) {
+            assemble_error(NOT_FOUND_FILE + file, -1);
+        }
+        start_addr = check_labels(ifs, start_addr, label_dict);
+    }
+
+}
+
+
 static int32_t get_relative_address_with_check(const std::string &label, 
-                        const int & now_addr, const int & max_bit, const int & line){
+                        const int & now_addr, const int & max_bit, const int & line,
+                        const std::map<std::string, int> &label_dict){
     // ラベル名から相対アドレスを手に入れる。(1ビット右シフト済)
     // その際、既定の範囲内かも調べ、そうでなかったらエラーを出す
     int32_t address;
     try{
-        address = label_map.at(label);
+        address = label_dict.at(label);
     }catch(const std::out_of_range &e){
         assemble_error(LABEL_NOT_FOUND, line);
     }
@@ -447,10 +528,25 @@ void init_opcode_map(){
     output |= (0b1000<< 25);
     opecode_map.insert({"fmul", {RF, output}});
     output |= (0b1100<< 25);
-    opecode_map.insert({"finv", {RF, output}});
+    opecode_map.insert({"fdiv", {RF, output}});
     output = 0b1010011;
-    output |= (0b010110<< 25);
-    opecode_map.insert({"fsqrt", {RF, output}});
+    output |= (0b0101100<< 25);
+    opecode_map.insert({"fsqrt", {RF2, output}});
+    output = 0b1010011;
+    output |= (0b1100000<< 25);
+    opecode_map.insert({"floor", {RF2, output}});
+    output = 0b1010011;
+    output |= (0b1110000<< 25);
+    opecode_map.insert({"fmv", {RF2, output}});
+    output = 0b1010011;
+    output |= (0b1101000<< 25);
+    opecode_map.insert({"itof", {MIX, output}});
+    output = 0b1010011;
+    output |= (0b1100100<< 25);
+    opecode_map.insert({"ftoi", {MIX, output}});
+    output = 0b1010011;
+    output |= (0b1010000<< 25);
+    opecode_map.insert({"fle", {MIX, output}});
     // jはjalの書き込みレジスタx0版
     output = 0b1101111;
     opecode_map.insert({"j", {J, output}});
@@ -468,8 +564,10 @@ void init_opcode_map(){
     opecode_map.insert({"blt", {B, output}});
     // output |= (0b1 << 12);
     // opecode_map.insert({"bge", {B, output}});
+    // output = 0b0100011;
+    // output |= (0b100 << 12);
+    // opecode_map.insert({"sb", {S, output}});
     output = 0b0100011;
-    opecode_map.insert({"sb", {S, output}});
     output |= (0b010 << 12);
     opecode_map.insert({"sw", {S, output}});
     output = 0b0100111;

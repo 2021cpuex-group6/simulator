@@ -13,6 +13,7 @@ static const std::string FSQRT_PARAM_A_FILE = "fsqrt_parama.txt";
 static const std::string FSQRT_PARAM_B_FILE = "fsqrt_paramb.txt";
 static const std::string PARAM_FILE_ERROR = "パラメータファイルが存在しません";
 static const int WORD_BIT_N = 32;
+static const uint32_t FLOAT_ONE = 0b00111111100000000000000000000000;
 
 FPUUnit::FPUUnit(){
     initFsqrtParam();
@@ -20,7 +21,7 @@ FPUUnit::FPUUnit(){
 
 // fsqrt のパラメータをロード
 void FPUUnit::initFsqrtParam(){
-    fsqrtParamA, fsqrtParamB = {};
+    fsqrtParamA = {}; fsqrtParamB = {};
     std::ifstream ifs1(PARAM_DIR + FSQRT_PARAM_A_FILE);
     if(ifs1){
         std::string input;
@@ -45,7 +46,7 @@ void FPUUnit::initFsqrtParam(){
 }
 
 
-std::vector<uint32_t> separateFloat(const uint32_t &input){
+inline std::vector<uint32_t> separateFloat(const uint32_t &input){
     // inputに入った32ビットfloatを符号，指数部，仮数部に分離する
     uint32_t sign = input  & (0b1 << (INT_BIT_N-1));
     uint32_t exp = input & (0b11111111 << (INT_BIT_N - 9));
@@ -309,7 +310,84 @@ int32_t FPUUnit::ftoi(const uint32_t & x){
     return static_cast<int32_t>(ans);
 }
 
+int32_t FPUUnit::flt(const uint32_t &x1, const uint32_t &x2){
+    auto x1_ =  separateFloat(x1);
+    auto x2_ =  separateFloat(x2);
+    uint32_t s1 = shiftRightLogical(x1_[0], INT_BIT_N-1);
+    uint32_t e1 = x1_[1] >> (INT_BIT_N - 9u);
+    uint32_t m1 = x1_[2];
+    uint32_t s2 = shiftRightLogical(x2_[0], INT_BIT_N-1);
+    uint32_t e2 = x2_[1] >> (INT_BIT_N - 9u);
+    uint32_t m2 = x2_[2];
 
+    bool nz1 = !(e1 == 0u);
+    bool nz2 = !(e2 == 0u);
+
+    bool elt = e1 < e2;
+    bool eeq = e1 == e2;
+    bool egt = !(elt || eeq);
+
+    bool mlt = m1 < m2;
+    bool mgt = m1 > m2;
+
+    bool sp1 = s1 != 0;
+    bool sp2 = s2 != 0;
+
+    bool flg = (!nz1 &&  nz2 && !sp2) ||
+		      ( nz1 && !nz2 &&  sp1) ||
+		      ( nz1 &&  nz2 && (( sp1 && !sp2) ||
+		                      ( sp1 &&  sp2 && (egt || (eeq && mgt))) ||
+                                (!sp1 && !sp2 && (elt || (eeq && mlt)))));
+    return flg ? 1 : 0;
+
+}
+
+int32_t FPUUnit::fle(const uint32_t &x1, const uint32_t &x2){
+    auto x1_ =  separateFloat(x1);
+    auto x2_ =  separateFloat(x2);
+    uint32_t s1 = shiftRightLogical(x1_[0], INT_BIT_N-1);
+    uint32_t e1 = x1_[1] >> (INT_BIT_N - 9u);
+    uint32_t m1 = x1_[2];
+    uint32_t s2 = shiftRightLogical(x2_[0], INT_BIT_N-1);
+    uint32_t e2 = x2_[1] >> (INT_BIT_N - 9u);
+    uint32_t m2 = x2_[2];
+
+    bool nz1 = !(e1 == 0u);
+    bool nz2 = !(e2 == 0u);
+
+    bool seq = s1 == s2;
+
+    bool elt = e1 < e2;
+    bool eeq = e1 == e2;
+    bool egt = !(elt || eeq);
+
+    bool mlt = m1 < m2;
+    bool meq = m1 == m2;
+    bool mgt = !(meq || mlt);
+
+    bool sp1 = s1 != 0;
+    bool sp2 = s2 != 0;
+
+    bool flg =(!nz1 && !nz2) || (seq & eeq && meq) ||
+              (!nz1 &&  nz2 && !sp2) ||
+		      ( nz1 && !nz2 &&  sp1) ||
+		      ( nz1 &&  nz2 && (( sp1 && !sp2) ||
+		                      ( sp1 &&  sp2 && (egt || (eeq && mgt))) ||
+                                (!sp1 && !sp2 && (elt || (eeq && mlt)))));
+    return flg ? 1 : 0;
+
+}
+
+uint32_t FPUUnit::floor(const uint32_t &x1){
+    bool flg1 = ((x1 >> 23) & 0xff) > 149u;
+
+    uint32_t f1 = itof(ftoi(x1));
+    uint32_t f2 = fsub(f1, FLOAT_ONE);
+    int32_t flg2 = flt(x1, f1);
+
+    return flg1 ? x1 : (flg2 ? f2 : f1);
+
+}
 
 bool isNormalized(const float & input){
     // 入力された値が正規化数か調べる
@@ -439,13 +517,56 @@ bool FPUUnit::sqrtCheck(const uint32_t& input1)const{
     return dif < standard;
 }
 
+bool flteCheck(const uint32_t& input1, const uint32_t& input2, const bool &isFlt){
+    // flt, fleの結果が合うかを調べる
+    // c++の実装の結果で答えが非正規化数になるものは結果によらずtrue
+    Float32 in1, in2;
+    in1.u32 = input1;
+    in2.u32 = input2;
+
+    bool ans, myAns;
+    if(isFlt){
+        myAns = FPUUnit::flt(in1.u32, in2.u32) != 0;
+        ans = in1.f32 < in2.f32;
+    }else{
+        myAns = FPUUnit::fle(in1.u32, in2.u32) != 0;
+        ans = in1.f32 <= in2.f32;
+    }
+    return myAns == ans;
+}
+
+bool floorCheck(const uint32_t& input1){
+    // 平方根の結果が合うかを調べる
+    // // 入力が負なら問答無用でtrue
+    // c++の実装の結果で答えが非正規化数になるものは結果によらずtrue
+    Float32 in1;
+    in1.u32 = input1;
+    float ans = std::floor(in1.f32);
+    Float32 myAns_;
+    myAns_.u32 =  FPUUnit::floor(input1);;
+
+    return ans == myAns_.f32;
+}
+
 CheckResult FPUUnit::printOperationCheck(const Float32 &f1, const Float32 &f2,
                                              const CheckedOperation & op)const{
     // add, subの結果が正しいか調べ、print
     if(isNormalized(f1.f32) && isNormalized(f2.f32)){
         bool res = false;
         Float32 myAns, trueAns;
+        myAns.u32 = 0;
+        trueAns.u32 = 0;
         switch(op){
+            case CheckedOperation::FLT:
+                res = flteCheck(f1.u32, f2.u32, true);
+                myAns.u32 = flt(f1.u32, f2.u32);
+                trueAns.f32 = f1.f32 < f2.f32;
+                break;
+            case CheckedOperation::FLE:
+                res = flteCheck(f1.u32, f2.u32, false);
+                myAns.u32 = fle(f1.u32, f2.u32);
+                trueAns.f32 = f1.f32 <= f2.f32;
+                break;
             case CheckedOperation::ADD:
                 res = addSubCheck(f1.u32, f2.u32, false);
                 myAns.u32 = faddsub(f1.u32, f2.u32, false);
@@ -480,6 +601,11 @@ CheckResult FPUUnit::printOperationCheck(const Float32 &f1, const Float32 &f2,
                 res = itofCheck(f1.u32);
                 myAns.u32 = FPUUnit::itof(f1.u32);
                 trueAns.f32 = static_cast<int32_t>(f1.u32);
+                break;
+            case CheckedOperation::FLOOR:
+                res = floorCheck(f1.u32);
+                myAns.u32 = FPUUnit::floor(f1.u32);
+                trueAns.f32 = std::floor(f1.f32);
                 break;
             default:
                 break;
