@@ -4,7 +4,7 @@
 #include "fpu.hpp"
 #include "parser.hpp"
 #include <array>
-#include <set>
+#include <unordered_set>
 
 constexpr int REGISTERS_N = 32;
 constexpr int PRINT_REGISTERS_COL = 4;
@@ -113,7 +113,7 @@ class AssemblySimulator{
         int instCount; // 実行命令数
         std::map<std::string, int> opCounter; //実行命令の統計
         std::map<uint8_t, int> efficientOpCounter; // uint8_t ver
-        std::set<int> breakPoints; // ブレークポイントの集合　行数で管理（1始まり）
+        std::unordered_set<int> breakPoints; // ブレークポイントの集合　行数で管理（1始まり）
 
         int historyN;   // 現在保持している履歴の数
         int historyPoint; // 次に履歴を保存するインデックス
