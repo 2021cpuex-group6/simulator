@@ -72,6 +72,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/fib/assembler",
+            "args": ["-b"], 
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/fib",
             "environment": [],
@@ -85,6 +86,26 @@
                 }
             ],
             "preLaunchTask": "assem build",
+            "miDebuggerPath": "/usr/bin/gdb"
+        }, 
+        {
+            "name": "deassem debug ",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/fib/deassembler",
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/fib",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "gdb の再フォーマットを有効にする",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "deassem build",
             "miDebuggerPath": "/usr/bin/gdb"
         }
     ]

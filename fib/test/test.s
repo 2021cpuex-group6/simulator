@@ -1,13 +1,15 @@
 # テスト用
+.global	min_caml_start
 start:
-    jal x4 test # x4は4行目
+    jal x4 test # x4は5行目
     addi x1 x1 1000
     nop
-    jr  8(%x2) # 10行目に飛ぶ
-    jalr x2 -16(%x3) # 一つ上に飛ぶ x2は8行目
+    jr  4(%x2) # 12行目に飛ぶ
+    jalr x2 -16(%x3) # 2つ上に飛ぶ x2は8行目
 test:
-    jalr x3 12(%x4) # 7行目に飛ぶ x3は10行目
+    jalr x3 12(%x4) # 8行目に飛ぶ x3は12行目
 test2:
+    jal x1 additional
     addi x1 x0 0 # x1 = 0
     addi x4 x0 4 # x4 = 4
     addi x2 x0 520  # x2 = 512 + 8 10 00001000
@@ -19,16 +21,13 @@ test2:
     lw x1 0(x1) # x1 = -1
     addi x1 x0 10
     addi x2 x0 11
-    mul x3 x1 x2  # x3 = 110
-    addi x6 x0 20 
-    sub x2 x2 x6 # x2 = -9
-    mul x4 x2 x1 # x4 = -90
-    div x3 x3 x1 # x3 = 11
-    div x3 x3 x2 # x3 = -1
-    addi x4 x0 17
-    div x3 x4 x2 # x3 = -1
-.global	min_caml_start
-    jal x1 additional  # これで別ファイルに飛んで戻ってくる
+    addi x10 x0 2
+    addi x1  x0 24
+    addi x2 x0 -8
+    sra %x3 %x2 x10
+    sra %x4 %x1 x10 
+    srl %x5 %x2 x10
+    srl %x6 %x1 x10
     addi x1 x0 21 # シフト数
     addi %x2 x0 1532 # x2 1 0111 1111 00
     addi x3 %x0 516 # x3 0 1000 0001 00
@@ -51,6 +50,7 @@ test2:
     fsub f7 f4 f3 # f7 -11
     fadd f8 f5 f3 # f8 3.125
     fmul f9 f3 f4 # f9 -28
+    fmv f10 f9 # f10 -28
     fmul f10 f5 f4 # f10  6.125 
     floor f11 f10 # f11  6.00
     floor f12 f5 # f12 -1

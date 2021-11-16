@@ -1,9 +1,12 @@
-CFLAGS := -g -Wall -O0 -std=c++17
-SIMSRCS := $(wildcard sims/*.cpp) $(wildcard utils/*.cpp) main.cpp
-ASSEMSRCS := $(wildcard assemble/*.cpp) $(wildcard utils/*.cpp) assembler.cpp
+CFLAGS := -pg -Wall -O2 -std=c++17
+# -O3 -mtune=native -march=native -mfpmath=both
+SIMSRCS := $(wildcard sims/*.cpp) $(wildcard utils/*.cpp) $(wildcard assemble/*.cpp) main.cpp
+DEASSEMSRCS = $(wildcard utils/*.cpp) $(wildcard assemble/*.cpp) deassembler.cpp $(wildcard sims/*.cpp)
+ASSEMSRCS :=assemble/assemble.cpp $(wildcard utils/*.cpp) assembler.cpp
 FPUSRCS := utils/utils.cpp sims/fpu.cpp fpuChecker.cpp
 SIMOBJS :=  $(patsubst %.cpp,%.o,$(SIMSRCS))
 ASSEMOBJS :=  $(patsubst %.cpp,%.o,$(ASSEMSRCS))
+DEASSEMOBJS :=  $(patsubst %.cpp,%.o,$(DEASSEMSRCS))
 FPUOBJS :=  $(patsubst %.cpp,%.o,$(FPUSRCS))
 # $(warning $(OBJS))
 main: $(SIMOBJS)
@@ -12,6 +15,11 @@ main: $(SIMOBJS)
 fpuChecker: $(FPUOBJS)
 	g++ $(CFLAGS) -o $@ $^
 
+tools: tools.cpp
+	g++ $(CFLAGS) -o $@ $^
+
+deassembler: $(DEASSEMOBJS)
+	g++ $(CFLAGS) -lstdc++fs -o $@ $^
 
 assembler: $(ASSEMOBJS)
 	g++ $(CFLAGS) -lstdc++fs -o $@ $^
@@ -20,4 +28,4 @@ assembler: $(ASSEMOBJS)
 	g++ $(CFLAGS) -o $@ -c $<
 
 clean:
-	rm  $(SIMOBJS) $(ASSEMOBJS) $(FPUOBJS) main assembler code fpuChecker
+	rm  $(SIMOBJS) $(ASSEMOBJS) $(DEASSEMOBJS) $(FPUOBJS) main assembler code fpuChecker deassembler tools

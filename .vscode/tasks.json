@@ -80,6 +80,25 @@
             "detail": "デバッガーによって生成されたタスク。"
         }, 
         {
+            "type": "cppbuild",
+            "label": "deassem build",
+            "command": "make",
+            "args": [
+                "deassembler"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/fib"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "detail": "デバッガーによって生成されたタスク。"
+        }, 
+        {
             "label": "clean ",
             "command": "make",
             "options": {

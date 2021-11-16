@@ -49,7 +49,8 @@ typedef union Test{
     uint8_t testu[4];
 };
 int main(int c){
-    int32_t a =  0b1100011010001111111 >> 46;
+    int32_t input = 15712729;
+    int32_t a =  input >> 46u;
     uint32_t b = 0b101101;
     uint32_t d = a-b;
     uint32_t e = d+b;

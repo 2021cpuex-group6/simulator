@@ -55,7 +55,9 @@
         "typeinfo": "cpp",
         "set": "cpp",
         "iomanip": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "codecvt": "cpp",
+        "unordered_set": "cpp"
     },
     "C_Cpp.errorSquiggles": "Enabled"
 }
