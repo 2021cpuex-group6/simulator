@@ -52,5 +52,37 @@ test2:
     fadd f8 f5 f3 # f8 3.125
     fmul f9 f3 f4 # f9 -28
     fmul f10 f5 f4 # f10  6.125 
-    fsw f7 -4(%x6) # 00 00 a8 40
-    fsw f10 0(%x6) # 00 00 30 c1
+    floor f11 f10 # f11  6.00
+    floor f12 f5 # f12 -1
+    ftoi x10 f12 # x10 -1
+    ftoi x11 f5 # x11 -1
+    ftoi x12 f8 # x12 3
+    fle x1 f6 f7 # x1 0
+    fle x2 f6 f8 # x2 1
+    fle x3 f9 f9 # x3 1
+    addi x1 x0 23
+    addi x2 x0 -431
+    addi x3 x0 1023
+    itof f13 x1 
+    itof f14 x2
+    itof f15 x3
+    itof f16 x0
+    fsw f7 -4(%x6) # 00 00 30 c1
+    fsw f10 0(%x6) # 00 00 c4 40
+    addi x1 x0 1
+    addi x2 x0 18
+    sll x1 x1 x2
+    addi x2 x0 0
+loop1: # 2^20 回繰り返す
+    add x3 x2 x0 
+    addi x4 x0 3
+    itof f1 x4
+    itof f2 x3
+    fadd f3 f1 f2
+    fmul f4 f1 f2
+    fsqrt f3 f3
+    sll x3 x3 x2
+    sw x2 0(x0)
+    lw x3 0(x0)
+    addi x2 x2 1
+    blt x2 x1 loop1
