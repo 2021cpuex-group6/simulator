@@ -104,7 +104,6 @@ struct CacheRow{
 
 // 前回の状態に戻すのに必要なデータ
 struct BeforeData{
-    std::string instruction;
     int pc;
     bool isInteger; // 書き込んだレジスタが整数用レジスタか
     int regInd;  //書き込んだレジスタ。書き込みナシなら-1
@@ -169,7 +168,7 @@ class AssemblySimulator{
         static void printInstruction(const int &, const Instruction &);
         void printInstructionInSim(const int &, const Instruction &)const;
         void printBreakList()const;
-        void printDif(const BeforeData &before, const bool &back)const;
+        void printDif(const BeforeData &before, const bool &back, const std::string &opcode)const;
         void setBreakPoint(const int &);
         void deleteBreakPoint(const int &);
         static std::pair<int, bool> getRegInd(const std::string &regName);
@@ -427,7 +426,7 @@ void AssemblySimulator::efficientDoFALU(const uint8_t &opcode, const int &target
 
 // 制御系の命令で，ジャンプするときの処理
 BeforeData AssemblySimulator::efficientDoJump(const uint8_t &opcode, const Instruction &instruction){
-    BeforeData ans = {"", pc,true, -1, -1, false, 0, 0, instruction.opcodeInt};
+    BeforeData ans = {pc,true, -1, -1, false, 0, 0, instruction.opcodeInt};
     if((opcode & 0b10)){
         // レジスタへの書き込み (jal, jalr)
         int writeRegInd = instruction.regInd[0];
@@ -476,7 +475,7 @@ BeforeData AssemblySimulator::efficientDoControl(const uint8_t &opcode, const In
         // j命令と同じ
         return efficientDoJump(0b0000, instruction);
     }else{
-        BeforeData ans = {"", pc,false, -1, -1, false, 0, 0, instruction.opcodeInt};
+        BeforeData ans = {pc,false, -1, -1, false, 0, 0, instruction.opcodeInt};
         incrementPC();
         return ans;
     }
@@ -491,7 +490,7 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
     bool loadInteger = (opcode & 0b100) == 0u;
     int32_t loadRegInd = instruction.regInd[0];
     int32_t beforeValue = loadInteger ? iRegisters[loadRegInd] : fRegisters[loadRegInd].si;
-    BeforeData before = {"", pc, loadInteger, loadRegInd, beforeValue, false, 0u, 0u, instruction.opcodeInt};
+    BeforeData before = { pc, loadInteger, loadRegInd, beforeValue, false, 0u, 0u, instruction.opcodeInt};
     
     if(loadInteger){
         if(opcode & 0b1){
@@ -518,7 +517,7 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
     address += iRegisters[instruction.regInd[1]];
 
     uint32_t beforeAddress = (address/4)*4; // 4バイトアラインする
-    BeforeData before = {"", pc, false, -1, -1, true, beforeAddress, readMem(beforeAddress, MemAccess::WORD), instruction.opcodeInt};
+    BeforeData before = {pc, false, -1, -1, true, beforeAddress, readMem(beforeAddress, MemAccess::WORD), instruction.opcodeInt};
 
     int regInd = instruction.regInd[0];
     uint32_t value = (opcode & 0b1) == 0 ? iRegisters[regInd] : fRegisters[regInd].i;
@@ -535,7 +534,7 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
 // 書き込み，読み込みをするレジスタの種類が違う命令
 BeforeData AssemblySimulator::efficientDoMix(const uint8_t &opcode, const Instruction &instruction){
     int targetReg = instruction.regInd[0];
-    BeforeData ans = {"", pc, false, targetReg, 0u, false, 0u, 0u, instruction.opcodeInt};
+    BeforeData ans = {pc, false, targetReg, 0u, false, 0u, 0u, instruction.opcodeInt};
 
     if(opcode & 0b1){
         // 書き込み先は整数レジスタ
@@ -565,7 +564,7 @@ BeforeData AssemblySimulator::efficientDoMix(const uint8_t &opcode, const Instru
 BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
     uint8_t opcode = instruction.opcodeInt;
     ++instCount;
-    efficientOpCounter[opcode] = efficientOpCounter[opcode] + 1;
+    // efficientOpCounter[opcode] = efficientOpCounter[opcode] + 1;
 
     uint8_t opKind = opcode & OPKIND_MASK;
     uint8_t opFunct = opcode >> OPKIND_BIT_N;
@@ -615,7 +614,6 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             // 浮動R
             targetR = instruction.regInd[0];
             // ここで前のデータを保存
-            ans.instruction = opcode;
             ans.pc = pc;
             ans.isInteger = false;
             ans.writeMem = false;

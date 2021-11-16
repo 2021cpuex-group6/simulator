@@ -319,27 +319,27 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
             return;
         }
 
-        BeforeData beforeData = {};
 
         int instInd = pc/INST_BYTE_N;
         Instruction inst = parser.instructionVector[instInd];
         nowLine = inst.lineN;
         jumpComment = false;
-        beforeData = efficientDoInst(inst);
+        BeforeData beforeData = efficientDoInst(inst);
         // if(useEfficient){
         // }else{
         //     beforeData = doInst(inst);
         // }
         if(printInst){
+            std::string opcode;
             try{
-                beforeData.instruction = inverseOpMap.at(beforeData.opcodeInt);
+                opcode = inverseOpMap.at(beforeData.opcodeInt);
             }catch(const std::out_of_range &e){
                 launchError(ILEGAL_INNER_OPCODE);
             }
             if(!forGUI){
                 printInstructionInSim(inst.lineN, inst);
             }
-            printDif(beforeData, false);
+            printDif(beforeData, false, opcode);
         }
 
         addHistory(beforeData);
@@ -368,12 +368,13 @@ BeforeData AssemblySimulator::popHistory(){
 // pcとそのほかのレジスタは別々に戻しているのでjalrなどにも対応
 void AssemblySimulator::back(){
     BeforeData before;
+    std::string opcode;
     try{
         before = popHistory();
         if(USE_EFFICIENT){
             // before.instruction を入力する
             try{
-                before.instruction = inverseOpMap.at(before.opcodeInt);
+                opcode = inverseOpMap.at(before.opcodeInt);
             }catch(const std::out_of_range &e){
                 launchError(ILEGAL_INNER_OPCODE);
             }
@@ -386,12 +387,12 @@ void AssemblySimulator::back(){
         }
         return;        
     }
-    if(before.instruction != "" &&  forGUI){
-        printDif(before, true);
+    if(opcode != "" &&  forGUI){
+        printDif(before, true, opcode);
     }
     end = false;
     pc = before.pc;
-    if(before.instruction != ""){
+    if(opcode != ""){
         instCount--;
         efficientOpCounter[before.opcodeInt] = efficientOpCounter[before.opcodeInt] -1;
         if(before.regInd >= 0){
@@ -541,12 +542,12 @@ void AssemblySimulator::printBreakList()const{
 
 }
 
-void AssemblySimulator::printDif(const BeforeData & before, const bool &back)const{
+void AssemblySimulator::printDif(const BeforeData & before, const bool &back, const std::string &opcode)const{
     // 差分を表示 GUI用にbackのときも実装
     
     if(forGUI){
         // 変化のあったレジスタ名とその変化後の値を表示
-        if(before.instruction != "nop"){
+        if(opcode != "nop"){
             if(before.pc != pc -4){
                 if(back){
                     std::cout << "pc " << before.pc << std::endl;
@@ -607,7 +608,7 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back)con
     }else{
         std::cout << "  " << std::setfill(' ') ;
         bool isChanged = false;
-        if(before.instruction != "nop"){
+        if(opcode != "nop"){
             if(before.pc != pc -4){
                 // pcと同時にレジスタが変わることもあるので，returnはしない
                 std::cout << "pc:" <<  std::setw(11) << std::internal <<before.pc << " -> " 
