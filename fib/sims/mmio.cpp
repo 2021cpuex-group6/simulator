@@ -51,9 +51,10 @@ void MMIO::initRecvData(){
 
 // MMIOでデータを受け取る
 // 返り値は結果と，まだデータが残っているか
-std::pair<char, bool> MMIO::recv(){
-    uint32_t ans = recvData[nowInd];
-    return {ans, (++nowInd) < recvData.size()};
+char MMIO::recv(){
+    uint32_t ans = recvData[nowInd++];
+    valid = nowInd < recvData.size();
+    return ans;
 }
 
 // MMIOでデータを送る
@@ -69,4 +70,21 @@ void MMIO::outputPPM(){
         ofs.write(&(sendData[0]), sendData.size());
         ofs.close();
     }
+}
+
+// 状態を一つ巻き戻す
+// isSend == trueなら，send命令をひとつ前に戻す
+void MMIO::back(bool isSend){
+    if(isSend){
+        --nowInd;
+    }else{
+        sendData.pop_back();
+    }
+}
+
+// 状態を初期化
+void MMIO::reset(){
+    nowInd = 0;
+    valid = true;
+    sendData.clear();
 }

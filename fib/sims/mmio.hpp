@@ -6,8 +6,11 @@
 class MMIO{
     public:
         MMIO();
-        std::pair<char, bool> recv();
+        bool valid = true; // 読みだせるか
+        char recv();
         void send(const char&);
+        void back(bool);
+        void reset();
         void outputPPM();
 
     private:
