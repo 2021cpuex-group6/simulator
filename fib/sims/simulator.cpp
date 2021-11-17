@@ -410,35 +410,33 @@ void AssemblySimulator::back(){
         }
         // メモリ，キャッシュ系を戻す
         if(before.useMem){
-            if(before.isMMIO){
-                // MMIO
-                if(!before.MMIOvalid){
-                    mmio.back(before.MMIOsend);
-                }
-            }else{
-                if(before.changeCash){
-                    //キャッシュミスしてた
-                    cache[before.cashAddress] = before.cacheRow;
-                    if(before.writeMem){
-                        // メモリをもとに戻す
-                        writeMem(before.memAddress, MemAccess::WORD, before.memValue);
-                        --cacheWMissN;
-                    }else{
-                        --cacheRMissN;
-                    }
-
+            if(before.changeCash){
+                //キャッシュミスしてた
+                cache[before.cashAddress] = before.cacheRow;
+                if(before.writeMem){
+                    // メモリをもとに戻す
+                    writeMem(before.memAddress, MemAccess::WORD, before.memValue);
+                    --cacheWMissN;
                 }else{
-                    // キャッシュヒット
-                    if(before.writeMem){
-                        // メモリをもとに戻す
-                        writeMem(before.memAddress, MemAccess::WORD, before.memValue);
-                        --cacheWHitN;
-                    }else{
-                        --cacheRHitN;
-                    }
-
+                    --cacheRMissN;
                 }
 
+            }else{
+                // キャッシュヒット
+                if(before.writeMem){
+                    // メモリをもとに戻す
+                    writeMem(before.memAddress, MemAccess::WORD, before.memValue);
+                    --cacheWHitN;
+                }else{
+                    --cacheRHitN;
+                }
+
+            }
+
+        }else if(before.isMMIO){
+            // MMIO
+            if(!before.MMIOvalid){
+                mmio.back(before.MMIOsend);
             }
         }
 
@@ -599,23 +597,22 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back, co
                     << " " << change <<  std::endl;
                 return;
             }else if(before.writeMem){
-                if(before.MMIOsend){
+                
+                // メモリの変更があったことを示すため，GUI_MEM_CHANGEをまず表示
+                std::cout << GUI_MEM_CHANGE << std::endl;
+                //アドレス
+                std::cout  << before.memAddress << " ";
+                uint32_t value;
+                if(back){
+                    value = before.memValue;
+                }else{
+                    value = readMem(before.memAddress, MemAccess::WORD);
+                }
+                std::cout << getSeparatedWordString(value) << std::endl;
+
+            } else if(before.MMIOsend){
                     // サーバに送った
                     std::cout << GUI_SEND << " " << static_cast<int32_t>(mmio.getLast()) << std::endl;
-                }else{
-                    // メモリの変更があったことを示すため，GUI_MEM_CHANGEをまず表示
-                    std::cout << GUI_MEM_CHANGE << std::endl;
-                    //アドレス
-                    std::cout  << before.memAddress << " ";
-                    uint32_t value;
-                    if(back){
-                        value = before.memValue;
-                    }else{
-                        value = readMem(before.memAddress, MemAccess::WORD);
-                    }
-                    std::cout << getSeparatedWordString(value) << std::endl;
-
-                }
             }else{
                 std::cout << GUI_NO_CHANGE << std::endl;
                 
@@ -634,20 +631,19 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back, co
                 isChanged = true;
 
             }else if(before.writeMem){
-                if(before.MMIOsend){
+            
+                uint32_t nowValue = readMem(before.memAddress, MemAccess::WORD);
+                //アドレス
+                std::cout <<  "0x" << std::setw(MEM_ADDRESS_HEX_LEN) << std::setfill('0') << std::hex << before.memAddress;
+                // 旧値
+                std::cout <<  ": 0x" << std::setw(WORD_BYTE_N) << std::setfill('0') << std::hex << before.memValue;
+                std::cout << " -> ";
+                std::cout <<  "0x" << std::setw(WORD_BYTE_N) << std::setfill('0') << std::hex << nowValue << std::endl;
+                return;
+            }else if(before.MMIOsend){
                     // サーバに送った
                     std::cout << GUI_SEND << " " << static_cast<int32_t>(mmio.getLast()) << std::endl;
-                
-                }else{
-                    uint32_t nowValue = readMem(before.memAddress, MemAccess::WORD);
-                    //アドレス
-                    std::cout <<  "0x" << std::setw(MEM_ADDRESS_HEX_LEN) << std::setfill('0') << std::hex << before.memAddress;
-                    // 旧値
-                    std::cout <<  ": 0x" << std::setw(WORD_BYTE_N) << std::setfill('0') << std::hex << before.memValue;
-                    std::cout << " -> ";
-                    std::cout <<  "0x" << std::setw(WORD_BYTE_N) << std::setfill('0') << std::hex << nowValue << std::endl;
-                    return;
-                }
+                    return ;
             }
             if(before.regInd >= 0){
                 if(before.isInteger){

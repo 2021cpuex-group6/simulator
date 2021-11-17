@@ -500,7 +500,7 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
                 before.MMIOvalid = false;
                 before.MMIOsend = false;
                 int32_t val = 0;
-                if(mmio.valid) val = static_cast<int32_t>(mmio.recv());
+                if(mmio.valid) val = 0xff & static_cast<int32_t>(mmio.recv());
                 writeReg(loadRegInd, ((~0xff) &iRegisters[loadRegInd]) |val, true);
             }else if(address == MMIO_VALID){
                 before.isMMIO = true;
@@ -539,6 +539,7 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
         before.changeCash = false;
         if(address == MMIO_SEND){
             // MMIOとして扱う
+            before.writeMem = false;
             before.isMMIO = true;
             before.MMIOvalid = false;
             before.MMIOsend = true;

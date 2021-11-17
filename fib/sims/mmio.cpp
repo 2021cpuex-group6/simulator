@@ -38,7 +38,7 @@ void MMIO::initRecvData(){
                 // intで処理
                 mu.si = std::stoi(s);
             }
-            for(int i = 0; i < sizeof(int32_t); --i){
+            for(int i = 0; i < sizeof(int32_t); ++i){
                 // とりあえずリトルエンディアンで受け取って構成すればもとに戻るように
                 recvData.emplace_back(mu.sb[i]);
             }
@@ -75,7 +75,7 @@ void MMIO::outputPPM()const{
 // 状態を一つ巻き戻す
 // isSend == trueなら，send命令をひとつ前に戻す
 void MMIO::back(bool isSend){
-    if(isSend){
+    if(!isSend){
         --nowInd;
     }else{
         sendData.pop_back();
