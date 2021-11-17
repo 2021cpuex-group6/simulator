@@ -8,18 +8,19 @@
 
 const std::string NO_INPUT_FILE = "ファイルが存在しません";
 const std::string RECV_DATA_FILE = "data/contest.sld";
-constexpr int ALMOST_INPUT_SIZE = 100; // 大体のサイズ
+const std::string OUTPUT_FILE = "data/output.ppm";
+constexpr int ABOUT_INPUT_SIZE = 100 * sizeof(int32_t); // 大体のサイズ
+constexpr int ABOUT_OUTPUT_SIZE = 3 + 128 * 128 * (3*3 + 3);
 
 MMIO::MMIO(){
-    initRecvData();
-    std::cout << "test" << std::endl;
-    
+    initRecvData();    
+    sendData.reserve(ABOUT_OUTPUT_SIZE);
 }
 
 // recvDataの初期化
 // RECV_DATA_FILEを読み込んで，vectorに格納する
 void MMIO::initRecvData(){
-    recvData.reserve(ALMOST_INPUT_SIZE);
+    recvData.reserve(ABOUT_INPUT_SIZE);
     std::ifstream ifs(RECV_DATA_FILE);
     if(!ifs){
         throw std::invalid_argument(NO_INPUT_FILE);
@@ -37,9 +38,35 @@ void MMIO::initRecvData(){
                 // intで処理
                 mu.si = std::stoi(s);
             }
-            recvData.emplace_back(mu.i);
+            for(int i = 0; i < sizeof(int32_t); --i){
+                // とりあえずリトルエンディアンで受け取って構成すればもとに戻るように
+                recvData.emplace_back(mu.sb[i]);
+            }
         }
     }
+    ifs.close();
     recvData.shrink_to_fit();
 
+}
+
+// MMIOでデータを受け取る
+// 返り値は結果と，まだデータが残っているか
+std::pair<char, bool> MMIO::recv(){
+    uint32_t ans = recvData[nowInd];
+    return {ans, (++nowInd) < recvData.size()};
+}
+
+// MMIOでデータを送る
+void MMIO::send(const char &value){
+    sendData.emplace_back(value);
+
+}
+
+// PPMファイルとして出力
+void MMIO::outputPPM(){
+    if(sendData.size() > 0){
+        std::ofstream ofs(OUTPUT_FILE);
+        ofs.write(&(sendData[0]), sendData.size());
+        ofs.close();
+    }
 }
