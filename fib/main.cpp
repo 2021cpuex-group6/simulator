@@ -1,6 +1,7 @@
 #include "sims/parser.hpp"
 #include "sims/simulator.hpp"
 #include "sims/interactive.hpp"
+#include "sims/mmio.hpp"
 #include <iostream>
 #include <cmath>
 #include <regex>
@@ -44,8 +45,9 @@ int main(int argc, char* argv[]){
     }
 
     try{
+        MMIO mmio;
         AssemblyParser parser(fileNames, useBin, forGUI);
-        AssemblySimulator simulator(parser, useBin, forGUI, cacheWay);
+        AssemblySimulator simulator(parser, useBin, forGUI, cacheWay, mmio);
 
         InteractiveShell shell(simulator, parser, forGUI);
         shell.start();

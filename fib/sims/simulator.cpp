@@ -1,4 +1,5 @@
 #include "simulator.hpp"
+#include "mmio.hpp"
 #include "../utils/utils.hpp"
 #include "fpu.hpp"
 #include <iostream>
@@ -17,12 +18,12 @@ static const std::string CACHE_PRINT_RATE = "  ヒット率: ";
 static const std::string CACHE_PRINT_READ = "";
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
-                                     const bool &forGUI, const int & cacheWay):
+                                     const bool &forGUI, const int & cacheWay, const MMIO &mmio):
         useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
         parser(parser), iRegisters({0}), fRegisters({MemoryUnit(0)}),
         instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0),
         historyPoint(0), beforeHistory(), cache(), cacheWay(cacheWay), cacheIndexN(CASH_SIZE / cacheWay), 
-        cacheRHitN(0), cacheWHitN(0), cacheRMissN(0), cacheWMissN(0){
+        cacheRHitN(0), cacheWHitN(0), cacheRMissN(0), cacheWMissN(0), mmio(mmio){
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
     MemoryUnit mu;
     mu.i = 0;

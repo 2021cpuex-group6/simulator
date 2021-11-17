@@ -11,5 +11,7 @@ class MMIO{
     private:
         std::vector<uint32_t> recvData;
 
+        void initRecvData();
+
 };
 #endif

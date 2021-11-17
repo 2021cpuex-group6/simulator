@@ -3,7 +3,9 @@
 
 #include "fpu.hpp"
 #include "parser.hpp"
+#include "mmio.hpp"
 #include "../utils/utils.hpp"
+
 #include <iostream>
 #include <array>
 #include <unordered_set>
@@ -17,8 +19,7 @@
 constexpr int REGISTERS_N = 32;
 constexpr int PRINT_REGISTERS_COL = 4;
 constexpr size_t REGISTER_BIT_N = 32;
-constexpr int INST_BYTE_N = 4;
-constexpr int WORD_BYTE_N = 4;
+
 constexpr int PRINT_INST_COL = 2;
 constexpr int PRINT_INST_NUM_SIZE = 6;
 constexpr int PRINT_INFO_NUM_SIZE = 10;
@@ -73,24 +74,7 @@ enum class NumberBase{
     FLOAT = -1
 };
 
-union MemoryUnit{ // メモリの1ワードに対応するユニット
-    float f;
-    uint32_t i;
-    int32_t si;
-    uint8_t b[WORD_BYTE_N];
-    int8_t sb[WORD_BYTE_N];
-    MemoryUnit(){}
 
-    MemoryUnit(const float & value){
-        f = value;
-    }
-    MemoryUnit(const uint32_t & value){
-        i = value;
-    }
-    MemoryUnit(const int32_t & value){
-        si = value;
-    }
-};
 
 enum class MemAccess{
     WORD = 4, 
@@ -159,9 +143,11 @@ class AssemblySimulator{
         uint64_t cacheWHitN; // 書き込み時キャッシュヒット数
         uint64_t cacheRMissN; //　読み出し時キャッシュミス数
         uint64_t cacheWMissN; //　書き込み時キャッシュミス数
+
+        MMIO mmio;
         
         AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
-             const bool &forGUI, const int &cacheWay);
+             const bool &forGUI, const int &cacheWay, const MMIO &mmio);
         ~AssemblySimulator();
         void printRegisters(const NumberBase&, const bool &sign, const bool& useFnotation) const;
         void printOpCounter()const;
