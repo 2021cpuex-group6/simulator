@@ -54,6 +54,7 @@ const std::string ILEGAL_BASE_REGISTER = "浮動小数点レジスタ，pcはベ
 const std::string ILEGAL_LOADSTORE_INSTRUCTION = "適切なロード・ストア命令を使ってください.";
 const std::string ILEGAL_CONTROL_REGISTER = "制御命令に浮動小数点レジスタはは使えません";
 const std::string ILEGAL_REGISTER_KIND = "適切なレジスタを使ってください";
+const std::string ILEGAL_MEM_WRITE = "このアドレスに書き込みはできません．";
 const std::string IMPLEMENT_ERROR = "バグです。報告してください";
 
 const std::string IREG_PREFIX = "%x";
@@ -545,7 +546,11 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
             before.MMIOsend = true;
             mmio.send(static_cast<char>(value));
             return before;
+        }else if(address >= MMIO_RECV && address <= MMIO_SEND ){
+            launchError(ILEGAL_MEM_WRITE);
         }
+    }else if(address >= MMIO_VALID - WORD_BYTE_N&& address < DATA_START){
+        launchError(ILEGAL_MEM_WRITE);
     }
     writeMemWithCacheCheck(address, memAccess, value, before);
     return before;
