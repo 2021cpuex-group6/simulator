@@ -64,7 +64,7 @@ void MMIO::send(const char &value){
 }
 
 // PPMファイルとして出力
-void MMIO::outputPPM(){
+void MMIO::outputPPM()const{
     if(sendData.size() > 0){
         std::ofstream ofs(OUTPUT_FILE);
         ofs.write(&(sendData[0]), sendData.size());
@@ -87,4 +87,8 @@ void MMIO::reset(){
     nowInd = 0;
     valid = true;
     sendData.clear();
+}
+
+char MMIO::getLast()const{
+    return sendData[sendData.size()-1];
 }

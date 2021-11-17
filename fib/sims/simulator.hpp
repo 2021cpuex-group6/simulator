@@ -66,6 +66,7 @@ const std::string GUI_WARNING = "Warning";
 const std::string GUI_NO_CHANGE = "No";
 const std::string GUI_MEM_CHANGE = "mem";
 const std::string GUI_ERROR = "Error";
+const std::string GUI_SEND = "send";
 enum class NumberBase{
     BIN = 2, 
     OCT = 8, 
@@ -104,6 +105,9 @@ struct BeforeData{
     bool changeCash; // キャッシュが変更されたか == ミスしたか
     uint32_t cashAddress; // 書き換えたキャッシュのアドレス
     CacheRow cacheRow; // 前のキャッシュデータ
+    bool isMMIO; //MMIOを使ったか
+    bool MMIOvalid; //valid bitを見ただけか
+    bool MMIOsend; // sendか
 };
 
 
@@ -490,8 +494,23 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
             writeReg(loadRegInd, value, true);
         }else{
             // lbu
-            uint32_t value = readMemWithCacheCheck(address, MemAccess::BYTE, before);
-            writeReg(loadRegInd, ((~0xff) &iRegisters[loadRegInd]) | value, true);
+            if(address == MMIO_RECV){
+                // MMIOとして扱う
+                before.isMMIO = true;
+                before.MMIOvalid = false;
+                before.MMIOsend = false;
+                int32_t val = 0;
+                if(mmio.valid) val = static_cast<int32_t>(mmio.recv());
+                writeReg(loadRegInd, ((~0xff) &iRegisters[loadRegInd]) |val, true);
+            }else if(address == MMIO_VALID){
+                before.isMMIO = true;
+                before.MMIOvalid = true;
+                int32_t val = mmio.valid ? 1 : 0;
+                writeReg(loadRegInd, ((~0xff) & iRegisters[loadRegInd]) |val, true);
+            }else{
+                uint32_t value = readMemWithCacheCheck(address, MemAccess::BYTE, before);
+                writeReg(loadRegInd, ((~0xff) &iRegisters[loadRegInd]) | value, true);
+            }
         }
     }else{
         uint32_t value = readMemWithCacheCheck(address, MemAccess::WORD, before);
@@ -517,6 +536,15 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
         // sbの時
         value &= 0xff;
         memAccess = MemAccess::BYTE;        
+        before.changeCash = false;
+        if(address == MMIO_SEND){
+            // MMIOとして扱う
+            before.isMMIO = true;
+            before.MMIOvalid = false;
+            before.MMIOsend = true;
+            mmio.send(static_cast<char>(value));
+            return before;
+        }
     }
     writeMemWithCacheCheck(address, memAccess, value, before);
     return before;

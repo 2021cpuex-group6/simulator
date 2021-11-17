@@ -11,7 +11,8 @@ class MMIO{
         void send(const char&);
         void back(bool);
         void reset();
-        void outputPPM();
+        void outputPPM()const;
+        char getLast()const;
 
     private:
         int nowInd = 0;

@@ -10,6 +10,21 @@ test:
     jalr x3 12(%x4) # 8行目に飛ぶ x3は12行目
 test2:
     jal x1 additional
+# MMIOのテスト
+    addi x1 x0 1
+    addi x2 x0 20
+    sll  x1 x1 x2 # 0x10000
+    addi x2 x0 0
+    lbu  x2 -3(x1) # valid
+    lbu  x2 -2(x1) # データ受け取り
+    lbu  x2 -2(x1)
+    lbu  x2 -2(x1)
+    lbu  x2 -2(x1)
+    lbu  x2 -2(x1)
+    addi x2 x0 97
+    addi x3 x0 98
+    sb   x2 -1(x1) # 送信
+    sb   x3 -1(x1)
     addi x1 x0 0 # x1 = 0
     addi x4 x0 4 # x4 = 4
     addi x2 x0 520  # x2 = 512 + 8 10 00001000
