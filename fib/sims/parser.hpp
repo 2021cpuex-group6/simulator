@@ -56,6 +56,7 @@ class AssemblyParser{
     public:
         std::vector<std::string> filePaths;
         std::vector<Instruction> instructionVector;
+        // std::vector<uint32_t> lineIndMap; // ファイルの行数をinstructionVectorのインデックスに変更
         std::map<std::string, int> labelMap; //値は次の命令のinstructionVectorでのインデックス
         AssemblyParser(const std::vector<std::string> &filePaths, const bool &useBin, const bool &forGUI);
         std::pair<std::string, int> getFileNameAndLine(const int &lineN)const;

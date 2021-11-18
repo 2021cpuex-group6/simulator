@@ -9,7 +9,6 @@ start:
 test:
     jalr x3 12(%x4) # 8行目に飛ぶ x3は12行目
 test2:
-    jal x1 additional
 # MMIOのテスト
     addi x1 x0 1
     addi x2 x0 20

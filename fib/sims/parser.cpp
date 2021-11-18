@@ -10,9 +10,11 @@
 
 
 static const std::string SOME_BINARY_FILES = "バイナリファイルは複数入力できません.";
+static const std::string INVALID_BINARY = "バイナリファイルは4バイトの倍数のサイズである必要があります.";
 static const std::string IMPLEMENT_ERROR = "実装エラー：バグ報告してください．";
 static constexpr int START_LINE = 1;// すでに1行追加された状態で命令を追加していく
 static constexpr int INST_BYTE_N = 4;
+static constexpr bool USE_REAL_BINARY = true; // 本当のバイナリファイルを使う
 
 std::map<std::string, std::vector<int>>opcodeInfoMap = {
     // 命令の情報を持つ
@@ -137,11 +139,22 @@ AssemblyParser::AssemblyParser(const std::vector<std::string> &filePaths, const 
          const bool& forGUI): filePaths(filePaths), forGUI(forGUI), useBin(useBinary){
 
     int allLen = 0;
-    for(const std::string path: filePaths){
-        int fileLen = getFileLen(path);
-        if(allLen == 0) fileLen += START_LINE; // 最初のファイル（に対応する行）にはnop文(or j文)が追加で入っている
-        allLen += fileLen;
-        startLines.emplace_back(fileLen);
+    if(useBin && USE_REAL_BINARY){
+        // ファイルは1つだけ
+        std::ifstream ifs(filePaths[0], std::ios::binary);
+        if(!ifs) parseError(-1, FILE_NOTFOUND);
+        ifs.seekg(0, std::ios_base::end);
+        size_t size = ifs.tellg();
+        ifs.seekg(0, std::ios_base::beg);
+        allLen = size;
+        startLines.emplace_back(allLen / INST_BYTE_N);
+    }else{
+        for(const std::string path: filePaths){
+            int fileLen = getFileLen(path);
+            if(allLen == 0) fileLen += START_LINE; // 最初のファイル（に対応する行）にはnop文(or j文)が追加で入っている
+            allLen += fileLen;
+            startLines.emplace_back(fileLen);
+        }
     }
     if(useBin){
         instructionVector.resize(allLen / INST_BYTE_N);
@@ -245,26 +258,51 @@ std::pair<int, int> AssemblyParser::parseFile(const std::string& filePath, const
 
 // ファイルをデアセンブル
 void AssemblyParser::deassembleFile(const std::string &filePath){
-    std::ifstream ifs(filePath);
     int lineN = 1;
-    if(ifs){
-        std::string line;
-        while(!ifs.eof()){
-            uint32_t res = 0;
-            for (int i = 0; i < INST_BYTE_N; i++)
+    if(USE_REAL_BINARY){
+        // ビッグエンディアンで書き出されたデータを読み込む
+        std::ifstream ifs(filePath, std::ios::binary);
+        if(!ifs) parseError(0, FILE_NOTFOUND);
+        ifs.seekg(0, std::ios_base::end);
+        size_t size = ifs.tellg();
+        ifs.seekg(0, std::ios_base::beg);
+        if(size % INST_BYTE_N != 0) parseError(0, INVALID_BINARY);
+        size /= INST_BYTE_N;
+        uint32_t res = 0;
+        char byte = 0;
+        for (size_t i = 0; i < size; i++)
+        {
+            res = 0;
+            for (size_t j = 0; j < INST_BYTE_N; j++)
             {
-                std::getline(ifs, line);
-                if(line == "") break;
-                res |= (std::stoi(line, nullptr, 16)) << (INST_BYTE_N -1-i)*8;
+                ifs.read(&byte, 1);
+                res |= (0xff &  static_cast<u_int32_t>(byte)) << 8*(INST_BYTE_N -1-j);
             }
-            if(res == 0) break;
             Instruction inst = deassemble(lineN, res);
             instructionVector[lineN-1] = inst;
             lineN++;
         }
-        instructionVector.resize(lineN-1);
     }else{
-        parseError(0, FILE_NOTFOUND);
+        std::ifstream ifs(filePath);
+        if(ifs){
+            std::string line;
+            while(!ifs.eof()){
+                uint32_t res = 0;
+                for (int i = 0; i < INST_BYTE_N; i++)
+                {
+                    std::getline(ifs, line);
+                    if(line == "") break;
+                    res |= (std::stoi(line, nullptr, 16)) << (INST_BYTE_N -1-i)*8;
+                }
+                if(res == 0) break;
+                Instruction inst = deassemble(lineN, res);
+                instructionVector[lineN-1] = inst;
+                lineN++;
+            }
+            instructionVector.resize(lineN-1);
+        }else{
+            parseError(0, FILE_NOTFOUND);
+        }
     }
 }
 
