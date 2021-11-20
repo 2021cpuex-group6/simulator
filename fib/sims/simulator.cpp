@@ -294,7 +294,10 @@ void AssemblySimulator::doNextBreak(){
         int instInd = pc / INST_BYTE_N;
         if(breakPoints.find(instInd) != breakPoints.end()){
             if(forGUI){
-                std::cout << GUI_STOP << std::endl;
+                // std::cout << GUI_STOP << std::endl;
+                // ちょうど止まった命令のファイル内での行数を表示(先頭に差し込まれたjalrが0indになる)
+                std::cout << parser.instructionVector[instInd].lineN << std::endl;
+                
             }else{
                 std::cout << "Stopped: " << std::endl;
                 Instruction inst = parser.instructionVector[instInd];
@@ -654,7 +657,9 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back, co
 
             } else if(before.MMIOsend){
                     // サーバに送った
-                    std::cout << GUI_SEND << " " << static_cast<int32_t>(mmio.getLast()) << std::endl;
+                    // mmioの情報はioコマンドで受け取るのでOK?
+                    std::cout << GUI_NO_CHANGE << std::endl;
+                    // std::cout << GUI_SEND << " " << static_cast<int32_t>(mmio.getLast()) << std::endl;
             }else{
                 std::cout << GUI_NO_CHANGE << std::endl;
                 
