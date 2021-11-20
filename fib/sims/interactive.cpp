@@ -14,6 +14,8 @@ static const std::string NOT_IMPLEMENTED_UNSIGNED = "unsignedでの書き込み�
 static const std::string NOT_SPECIFIED_LINE_N = "行数を指定してください";
 static const std::string OUT_OF_RANGE_INT = "入力がintの範囲外です";
 static const std::string OUT_OF_RANGE = "値が範囲外です";
+static const std::string IO_CONTINUE = "何か入力すると送信内容全体を表示します． >>> ";
+
 
 InteractiveShell::InteractiveShell(AssemblySimulator & sim, AssemblyParser& parse, const bool &  forGUI):  forGUI(forGUI), simulator(sim), parser(parse){}
 
@@ -111,6 +113,17 @@ void InteractiveShell::start(){
             case Command::Quit:
                 continueFlag = false;
                 break;
+            case Command::IOPrint:
+                simulator.mmio.printInfo();
+                if(!forGUI){
+                    // GUI用でなければ表示するか選べる
+                    std::cout << IO_CONTINUE;
+                    std::string ret;
+                    std::getline(std::cin, ret);
+                    if(ret == "") break;
+                }
+                simulator.mmio.printSended();
+                break;
             default:
                 break;
 
@@ -149,6 +162,8 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
         return {Command::DoNext, {0}};
     }else if(inputString == COMMAND_QUIT){
         return {Command::Quit, {}};
+    }else if(inputString == COMMAND_IOPRINT){
+        return {Command::IOPrint, {}};
     }else{
         if(startsWith(inputString, COMMAND_NEXT)){
             std::istringstream stream(inputString.substr(2));

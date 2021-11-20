@@ -22,6 +22,8 @@ const std::string COMMAND_RESET = "re";
 const std::string COMMAND_INFO = "i";
 const std::string COMMAND_QUIT = "quit";
 const std::string COMMAND_MEM_READ = "mr";
+const std::string COMMAND_IOPRINT = "io";
+
 // const std::string GUI_ERROR = "Error";
 
 enum class Command{
@@ -39,6 +41,7 @@ enum class Command{
     Info, //統計データを見る
     MemRead,
     Quit,
+    IOPrint,
     Invalid
 };
 
