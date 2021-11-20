@@ -148,10 +148,18 @@ AssemblyParser::AssemblyParser(const std::vector<std::string> &filePaths, const 
         ifs.seekg(0, std::ios_base::beg);
         allLen = size;
         startLines.emplace_back(allLen / INST_BYTE_N);
+        lineIndMap.emplace_back(NOT_INST_LINE_IND); // とりあえず一つ要素を入れておく(デストラクタでのエラー予防)
     }else{
         for(const std::string path: filePaths){
             int fileLen = getFileLen(path);
-            if(allLen == 0) fileLen += START_LINE; // 最初のファイル（に対応する行）にはnop文(or j文)が追加で入っている
+            if(allLen == 0){
+                if(useBin){
+                    lineIndMap.emplace_back(NOT_INST_LINE_IND);
+                }else{
+                    fileLen += START_LINE; // 最初のファイル（に対応する行）にはnop文(or j文)が追加で入っている
+                }
+            } 
+                
             allLen += fileLen;
             startLines.emplace_back(fileLen);
         }
@@ -175,6 +183,7 @@ AssemblyParser::AssemblyParser(const std::vector<std::string> &filePaths, const 
         check_labels_many_files(filePaths, labelMap);
 
         instructionVector.resize(allLen);
+        lineIndMap.resize(allLen);
         parseFiles(filePaths);
     }
 
@@ -191,6 +200,7 @@ void AssemblyParser::parseFiles(const std::vector<std::string> &filePaths){
         binary_op  = assemble_op("nop", -1, 0, labelMap);
     }
     instructionVector[0] = deassemble(1, binary_op);
+    lineIndMap[0] = 0; // 勝手に挿入される一行は0行目とする
 
     for(const std::string path: filePaths){
         auto parseRes = parseFile(path, startLine, nowInstN);
@@ -241,12 +251,10 @@ std::pair<int, int> AssemblyParser::parseFile(const std::string& filePath, const
                     throw e;
                 }
             }
+            lineIndMap[lineN-1] = nowInstN;
             ++nowInstN;
-        }else if(std::regex_match(line, m, labelRe)){
-        }else if(std::regex_match(line, m, spaceRe)){
-        }else if(std::regex_match(line, m, metaCommandRe)){
-            // metaCommandParse(lineN, nowInstN, m[1].str());
-            
+        }else if(std::regex_match(line, m, labelRe) || std::regex_match(line, m, spaceRe) || std::regex_match(line, m, metaCommandRe)){
+            lineIndMap[lineN-1] = NOT_INST_LINE_IND;
         }else{
             // 不正な行
             parseError(lineN, INVALID_LINE_MESSAGE);

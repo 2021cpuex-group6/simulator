@@ -10,7 +10,7 @@
 #include <set>
 #include <chrono>
 
-
+static const std::string NOT_IMPLEMENTED_FOR_MULTI_FILES = "この機能は複数ファイル実行時に使えません";
 static const std::string TIME_FORMAT = "Time: %.10lfms\n";
 static const std::string CACHE_PRINT_USE_RATE = "キャッシュ使用率: ";
 static const std::string CACHE_PRINT_ACCESS = "  アクセス回数: ";
@@ -518,8 +518,38 @@ void AssemblySimulator::printInstructionInSim(const int & lineN, const Instructi
     // }
 }
 
+
+// ブレークポイントの登録，削除用のインデックスに変換する
+// 機械語ファイルを使うとき→ 命令ベクトルのインデックス+1で指定(最初の命令を1行目にする)
+// アセンブラを使うとき　→　ファイルの行数で指定
+// bool ... 適切な範囲内か
+// int32_t ... breakPoint用のインデックス
+std::pair<bool, int32_t> AssemblySimulator::translateBreakInd(const int & instInd)const{
+    bool valid = false;
+    int32_t ind = 0;
+    if(!useBinary){
+        // ファイルの行数以内か
+        valid = instInd >= 0 && instInd < parser.lineIndMap.size();
+        if(valid){
+            // この時点でvalidじゃなかったら設置不可
+            ind = parser.lineIndMap[instInd];
+            valid = ind != NOT_INST_LINE_IND;
+        }
+    }else{
+        ind = instInd;
+        valid = ind >= 0 && ind < static_cast<int>(parser.instructionVector.size());
+    }
+
+    return {valid, ind};
+}
+
 void AssemblySimulator::deleteBreakPoint(const int &instInd){
-    int i = breakPoints.erase(instInd);
+    int32_t ind = 0;
+    auto ans = translateBreakInd(instInd);
+    int i = 0;
+    if(ans.first){
+        i = breakPoints.erase(ans.second);
+    }
     if(i == 0){
         if(forGUI){
             std::cout << GUI_WARNING << std::endl;
@@ -530,9 +560,17 @@ void AssemblySimulator::deleteBreakPoint(const int &instInd){
 }
 
 // ブレークポイントを設置 instructionVectorのインデックス
+// 　…　複数ファイルでのこの機能は工事中
 void AssemblySimulator::setBreakPoint(const int &instInd){
-    if(instInd >= 0 && instInd < static_cast<int>(parser.instructionVector.size())){
-        breakPoints.insert(instInd);
+    if(parser.filePaths.size() > 1){
+        // 複数ファイルでは使えない
+        std::cout << NOT_IMPLEMENTED_FOR_MULTI_FILES << std::endl;
+        return;
+    }
+    auto ans = translateBreakInd(instInd);
+
+    if(ans.first){
+        breakPoints.insert(ans.second);
     }else{
         // 範囲外のため設置不可
         if(forGUI){
@@ -546,8 +584,9 @@ void AssemblySimulator::setBreakPoint(const int &instInd){
 
 void AssemblySimulator::printBreakList()const{
     // ブレークポイントの命令を表示
+
     for(auto &e: breakPoints){
-        printInstructionInSim(e, parser.instructionVector[e]);
+        printInstByRegInd(parser.instructionVector[e].lineN-1, parser.instructionVector[e]);
     }
 
 }

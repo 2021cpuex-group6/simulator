@@ -165,6 +165,7 @@ class AssemblySimulator{
         void printInstructionInSim(const int &, const Instruction &)const;
         void printBreakList()const;
         void printDif(const BeforeData &before, const bool &back, const std::string &opcode)const;
+        std::pair<bool, int32_t> translateBreakInd(const int &)const;
         void setBreakPoint(const int &);
         void deleteBreakPoint(const int &);
         static std::pair<int, bool> getRegInd(const std::string &regName);

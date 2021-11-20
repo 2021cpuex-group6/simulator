@@ -19,6 +19,7 @@ const std::string TOP_NOT_COMMENT = "エントリポイントを用いる際，�
 const std::string ENTRY_POINT = "min_caml_start";
 const std::string GUI_ERROR_TOP = "Error";
 const std::string ENTRY_POINT_LABEL = "+ENTRY";
+constexpr uint32_t NOT_INST_LINE_IND = 0xffffffff; //lineIndMapで命令行以外の行に挿入される
 
 static const std::regex offsetRe(R"(\s*([\-0-9]+)\(\s*([a-z0-9%]+)\s*\)\s*)");
 
@@ -56,7 +57,7 @@ class AssemblyParser{
     public:
         std::vector<std::string> filePaths;
         std::vector<Instruction> instructionVector;
-        // std::vector<uint32_t> lineIndMap; // ファイルの行数をinstructionVectorのインデックスに変更
+        std::vector<uint32_t> lineIndMap; // ファイルの行数をinstructionVectorのインデックスに変更 バイナリファイルを使わない時のみ使う
         std::map<std::string, int> labelMap; //値は次の命令のinstructionVectorでのインデックス
         AssemblyParser(const std::vector<std::string> &filePaths, const bool &useBin, const bool &forGUI);
         std::pair<std::string, int> getFileNameAndLine(const int &lineN)const;
