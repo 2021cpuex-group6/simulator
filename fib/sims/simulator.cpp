@@ -9,6 +9,7 @@
 #include <cmath>
 #include <set>
 #include <chrono>
+#include <algorithm>
 
 static const std::string NOT_IMPLEMENTED_FOR_MULTI_FILES = "この機能は複数ファイル実行時に使えません";
 static const std::string TIME_FORMAT = "Time: %.10lfms\n";
@@ -584,8 +585,10 @@ void AssemblySimulator::setBreakPoint(const int &instInd){
 
 void AssemblySimulator::printBreakList()const{
     // ブレークポイントの命令を表示
-
-    for(auto &e: breakPoints){
+    // breakPointsはcontainsを高速にするためunorderedにしているため，ここでソートする
+    std::vector<int32_t> breakVector(breakPoints.begin(), breakPoints.end());
+    sort(breakVector.begin(), breakVector.end());
+    for(auto &e: breakVector){
         printInstByRegInd(parser.instructionVector[e].lineN-1, parser.instructionVector[e]);
     }
 
