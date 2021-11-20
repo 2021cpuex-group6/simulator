@@ -5,10 +5,13 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <iomanip>
 
 const std::string NO_INPUT_FILE = "ファイルが存在しません";
 const std::string RECV_DATA_FILE = "data/contest.sld";
 const std::string OUTPUT_FILE = "data/output.ppm";
+const std::string SEND_PRINT = "送信数: ";
+const std::string RECEIVE_PRINT = "受信数: ";
 constexpr int ABOUT_INPUT_SIZE = 100 * sizeof(int32_t); // 大体のサイズ
 constexpr int ABOUT_OUTPUT_SIZE = 3 + 128 * 128 * (3*3 + 3);
 
@@ -92,3 +95,19 @@ void MMIO::reset(){
 char MMIO::getLast()const{
     return sendData[sendData.size()-1];
 }
+
+// mmioでどれだけ送受信したかを表示
+void MMIO::printInfo()const{
+    std::cout << RECEIVE_PRINT << std::setw(4) << nowInd << " / " << std::setw(3) << recvData.size() << std::endl;
+    std::cout << SEND_PRINT << std::setw(4) << sendData.size() << std::endl;
+
+};
+
+// 現在の送信済みデータを表示
+void MMIO::printSended()const{
+    for(const char &c: sendData){
+        std::cout.put(c);
+    }
+    std::cout  << std::endl;
+    
+};

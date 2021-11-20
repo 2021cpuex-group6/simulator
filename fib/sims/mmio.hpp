@@ -13,6 +13,8 @@ class MMIO{
         void reset();
         void outputPPM()const;
         char getLast()const;
+        void printInfo()const;
+        void printSended()const;
 
     private:
         int nowInd = 0;
