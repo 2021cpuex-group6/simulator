@@ -284,7 +284,7 @@ void AssemblyParser::deassembleFile(const std::string &filePath){
             for (size_t j = 0; j < INST_BYTE_N; j++)
             {
                 ifs.read(&byte, 1);
-                res |= (0xff &  static_cast<u_int32_t>(byte)) << 8*(INST_BYTE_N -1-j);
+                res |= (0xff &  static_cast<uint32_t>(byte)) << 8*(INST_BYTE_N -1-j);
             }
             Instruction inst = deassemble(lineN, res);
             instructionVector[lineN-1] = inst;
