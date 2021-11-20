@@ -7,7 +7,7 @@
 #include <iostream>
 #include <iomanip>
 
-const std::string NO_INPUT_FILE = "ファイルが存在しません";
+const std::string NO_INPUT_FILE = "data/contest.sldファイルが存在しません．";
 const std::string RECV_DATA_FILE = "data/contest.sld";
 const std::string OUTPUT_FILE = "data/output.ppm";
 const std::string SEND_PRINT = "送信数: ";
