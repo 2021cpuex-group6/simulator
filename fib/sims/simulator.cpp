@@ -296,7 +296,8 @@ void AssemblySimulator::doNextBreak(){
             if(forGUI){
                 // std::cout << GUI_STOP << std::endl;
                 // ちょうど止まった命令のファイル内での行数を表示(先頭に差し込まれたjalrが0indになる)
-                std::cout << parser.instructionVector[instInd].lineN << std::endl;
+                auto ans =  parser.getFileNameAndLine( parser.instructionVector[instInd].lineN);
+                std::cout << ans.second << std::endl;
                 
             }else{
                 std::cout << "Stopped: " << std::endl;
