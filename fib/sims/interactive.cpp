@@ -124,6 +124,9 @@ void InteractiveShell::start(){
                 }
                 simulator.mmio.printSended(forGUI);
                 break;
+            case Command::Output:
+                simulator.mmio.outputPPM();
+                std::cout << OUTPUT_FINISH << std::endl;
             default:
                 break;
 
@@ -164,6 +167,8 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
         return {Command::Quit, {}};
     }else if(inputString == COMMAND_IOPRINT){
         return {Command::IOPrint, {}};
+    }else if(inputString == COMMAND_OUTPUT){
+        return {Command::Output, {}};
     }else{
         if(startsWith(inputString, COMMAND_NEXT)){
             std::istringstream stream(inputString.substr(2));

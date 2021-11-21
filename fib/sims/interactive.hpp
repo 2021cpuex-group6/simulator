@@ -8,6 +8,7 @@ constexpr int MEM_PRINT_LINE_CLI = 4;
 constexpr int MEM_PRINT_LINE_GUI = 8;
 
 
+const std::string OUTPUT_FINISH = "Finished.";
 const std::string COMMAND_DO_ALL = "a";
 const std::string COMMAND_NEXT_BLOCK = "nb";
 const std::string COMMAND_NEXT = "n";
@@ -23,6 +24,7 @@ const std::string COMMAND_INFO = "i";
 const std::string COMMAND_QUIT = "quit";
 const std::string COMMAND_MEM_READ = "mr";
 const std::string COMMAND_IOPRINT = "io";
+const std::string COMMAND_OUTPUT = "out";
 
 // const std::string GUI_ERROR = "Error";
 
@@ -42,6 +44,7 @@ enum class Command{
     MemRead,
     Quit,
     IOPrint,
+    Output,
     Invalid
 };
 

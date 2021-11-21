@@ -52,6 +52,7 @@ int main(int argc, char* argv[]){
         InteractiveShell shell(simulator, parser, forGUI);
         shell.start();
         simulator.mmio.outputPPM();
+        if(forGUI) std::cout << "Exited" << std::endl;
     }catch(const std::exception &e){
         if(forGUI){
             std::cout << GUI_ERROR << std::endl;
