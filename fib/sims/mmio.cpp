@@ -104,7 +104,15 @@ void MMIO::printInfo()const{
 };
 
 // 現在の送信済みデータを表示
-void MMIO::printSended()const{
+void MMIO::printSended(const bool &forGUI)const{
+    if(forGUI){
+        // 何行送るかを先に表示
+        int count = 1;
+        for(const char &c: sendData){
+            if(c == '\n') ++count;
+        }
+        std::cout << count << std::endl;
+    }
     for(const char &c: sendData){
         std::cout.put(c);
     }

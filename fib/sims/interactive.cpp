@@ -122,7 +122,7 @@ void InteractiveShell::start(){
                     std::getline(std::cin, ret);
                     if(ret == "") break;
                 }
-                simulator.mmio.printSended();
+                simulator.mmio.printSended(forGUI);
                 break;
             default:
                 break;

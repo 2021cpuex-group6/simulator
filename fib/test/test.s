@@ -87,7 +87,7 @@ test2:
     addi x2 x0 22
     sll x1 x1 x2
     addi x2 x0 0
-loop1: # 2^20 回繰り返す
+loop1: # 2^22 回繰り返す
     add x3 x2 x0 
     addi x4 x0 3
     itof f1 x4

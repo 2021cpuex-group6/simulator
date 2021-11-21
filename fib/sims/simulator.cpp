@@ -46,8 +46,9 @@ AssemblySimulator::~AssemblySimulator(){
     
 }
 
+// 内部状態をリセットし、命令を実行前の状態にする
+// ブレークポイントはそのまま
 void AssemblySimulator::reset(){
-    // 内部状態をリセットし、起動時と同じ状態にする
     pc = 0;
     end = false;
     instCount = 0;
@@ -65,7 +66,7 @@ void AssemblySimulator::reset(){
     }
     MemoryUnit mu;
     mu.i = 0;
-    breakPoints.clear();
+    // breakPoints.clear();
     historyN = 0;
     historyPoint = 0;
     beforeHistory.fill({});
