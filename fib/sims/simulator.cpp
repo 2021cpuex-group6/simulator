@@ -536,25 +536,25 @@ void AssemblySimulator::printInstructionInSim(const int & lineN, const Instructi
 // int32_t ... breakPoint用のインデックス
 std::pair<bool, int32_t> AssemblySimulator::translateBreakInd(const int & instInd)const{
     bool valid = false;
-    int32_t ind = 0;
+    uint32_t ind = 0;
+    if(instInd < 0) return {false, 0};
     if(!useBinary){
         // ファイルの行数以内か
-        valid = instInd >= 0 && instInd < parser.lineIndMap.size();
+        valid = instInd >= 0 && instInd < static_cast<int>(parser.lineIndMap.size());
         if(valid){
             // この時点でvalidじゃなかったら設置不可
             ind = parser.lineIndMap[instInd];
             valid = ind != NOT_INST_LINE_IND;
         }
     }else{
-        ind = instInd;
-        valid = ind >= 0 && ind < static_cast<int>(parser.instructionVector.size());
+        ind = static_cast<uint32_t>(instInd);
+        valid = ind >= 0 && ind < static_cast<uint32_t>(parser.instructionVector.size());
     }
 
     return {valid, ind};
 }
 
 void AssemblySimulator::deleteBreakPoint(const int &instInd){
-    int32_t ind = 0;
     auto ans = translateBreakInd(instInd);
     int i = 0;
     if(ans.first){

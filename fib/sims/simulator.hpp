@@ -396,7 +396,6 @@ void AssemblySimulator::efficientDoALU(const uint8_t &opcode, const int &targetR
 
 void AssemblySimulator::efficientDoFALU(const uint8_t &opcode, const int &targetR, const uint32_t &source0, const uint32_t &source1){
     uint32_t ans = 0;
-    float ansF;
     MemoryUnit mu;
     switch(opcode){
         case 0b00:

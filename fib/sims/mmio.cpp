@@ -41,7 +41,7 @@ void MMIO::initRecvData(){
                 // intで処理
                 mu.si = std::stoi(s);
             }
-            for(int i = 0; i < sizeof(int32_t); ++i){
+            for(int i = 0; i <  static_cast<int>(sizeof(int32_t)); ++i){
                 // とりあえずリトルエンディアンで受け取って構成すればもとに戻るように
                 recvData.emplace_back(mu.sb[i]);
             }
@@ -56,7 +56,7 @@ void MMIO::initRecvData(){
 // 返り値は結果と，まだデータが残っているか
 char MMIO::recv(){
     uint32_t ans = recvData[nowInd++];
-    valid = nowInd < recvData.size();
+    valid = nowInd < static_cast<int>(recvData.size());
     return ans;
 }
 
