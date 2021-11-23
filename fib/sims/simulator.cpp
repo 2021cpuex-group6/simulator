@@ -21,7 +21,7 @@ static const std::string CACHE_PRINT_READ = "";
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
                                      const bool &forGUI, const int & cacheWay, const MMIO &mmio):
         useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
-        parser(parser), iRegisters({0}), fRegisters({MemoryUnit(0)}),
+        parser(parser), iRegisters(), fRegisters(),
         instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0),
         historyPoint(0), beforeHistory(), cache(), cacheWay(cacheWay), cacheIndexN(CASH_SIZE / cacheWay), 
         cacheRHitN(0), cacheWHitN(0), cacheRMissN(0), cacheWMissN(0), mmio(mmio){
@@ -30,6 +30,10 @@ AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &u
     
     mu.i = 0;
     (*dram).fill(mu);
+    for(int i = 0; i < REGISTERS_N; i++){
+        iRegisters[i] = 0;
+        fRegisters[i] = MemoryUnit(0);
+    }
     // opcounterをすべて0に
     for(const auto & item : opcodeInfoMap){
         opCounter.insert({item.first, 0});
