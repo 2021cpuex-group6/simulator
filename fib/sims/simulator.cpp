@@ -343,6 +343,8 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
         // }else{
         //     beforeData = doInst(inst);
         // }
+
+        efficientOpCounter[beforeData.opcodeInt] = efficientOpCounter[beforeData.opcodeInt] +1;
         if(printInst){
             std::string opcode;
             try{
@@ -800,7 +802,7 @@ void AssemblySimulator::launchError(const std::string &message)const{
     }else{
         printRegisters(NumberBase::HEX, false, true);
     }
-    throw std::invalid_argument(linePair.first + ": " + std::to_string(linePair.second) + "行目:" + message);
+    throw SimException(linePair.first + ": " + std::to_string(linePair.second) + "行目:" + message);
 }
 void AssemblySimulator::launchWarning(const std::string &message)const{
     if(onWarning && (!forGUI)){

@@ -15,6 +15,7 @@ static const std::string NOT_SPECIFIED_LINE_N = "行数を指定してくださ�
 static const std::string OUT_OF_RANGE_INT = "入力がintの範囲外です";
 static const std::string OUT_OF_RANGE = "値が範囲外です";
 static const std::string IO_CONTINUE = "何か入力すると送信内容全体を表示します． >>> ";
+static const std::string UNEXPECTED_ERROR = "想定外のエラーのため，内部状態が不正な値になっている可能性があります．";
 
 
 InteractiveShell::InteractiveShell(AssemblySimulator & sim, AssemblyParser& parse, const bool &  forGUI):  forGUI(forGUI), simulator(sim), parser(parse){}
@@ -32,8 +33,8 @@ void InteractiveShell::start(){
             }
             interactiveErrorWithGUI(INVALID_COMMAND);
         }
-
-        switch(input.first){
+        try{
+            switch(input.first){
             case Command::DoAll:
                 simulator.launch(!forGUI);
                 if(!forGUI){
@@ -129,9 +130,23 @@ void InteractiveShell::start(){
                 std::cout << OUTPUT_FINISH << std::endl;
             default:
                 break;
-
-
+            }
+        }catch(const SimException &e){
+            if(forGUI){
+                throw e;
+            }else{
+                std::cout << e.what() << std::endl;
+            }
+        }catch(const std::exception &e){
+            if(forGUI){
+                throw e;
+            }else{
+                std::cout << e.what() << std::endl;
+                std::cout << UNEXPECTED_ERROR << std::endl;
+            }
+            
         }
+        
 
     }
 

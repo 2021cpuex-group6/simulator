@@ -112,7 +112,12 @@ struct BeforeData{
 };
 
 
-
+// launchErrorで吐くエラー
+class SimException : public std::runtime_error
+{
+    public:
+    SimException(const std::string _Message): runtime_error(_Message){}
+};
 
 class AssemblySimulator{
     public:
@@ -549,7 +554,7 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
         }else if(address >= MMIO_RECV && address <= MMIO_SEND ){
             launchError(ILEGAL_MEM_WRITE);
         }
-    }else if(address >= MMIO_VALID - WORD_BYTE_N&& address < DATA_START){
+    }else if((address > (MMIO_VALID - WORD_BYTE_N))&& address < DATA_START){
         launchError(ILEGAL_MEM_WRITE);
     }
     writeMemWithCacheCheck(address, memAccess, value, before);
@@ -588,7 +593,6 @@ BeforeData AssemblySimulator::efficientDoMix(const uint8_t &opcode, const Instru
 // 高速化した命令処理
 BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
     uint8_t opcode = instruction.opcodeInt;
-    ++instCount;
     // efficientOpCounter[opcode] = efficientOpCounter[opcode] + 1;
 
     const uint8_t opKind = opcode & OPKIND_MASK;
@@ -625,10 +629,14 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             break;
         case 0b010:
             // 制御B
-            return efficientDoControl(opFunct, instruction);
+            ans =  efficientDoControl(opFunct, instruction);
+            ++instCount;
+            return ans;
         case 0b011:
             // 制御J, I
-            return efficientDoJump(opFunct, instruction);
+            ans =  efficientDoJump(opFunct, instruction);
+            ++instCount;
+            return ans;
         case 0b100:
             // メモリI
             ans = efficientDoLoad(opFunct, instruction); break;
@@ -661,6 +669,7 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             launchError(ILEGAL_INNER_OPCODE);
     }
 
+    ++instCount;
     incrementPC();
     return ans;
 }
