@@ -41,8 +41,8 @@ void MMIO::initRecvData(){
                 // intで処理
                 mu.si = std::stoi(s);
             }
-            for(int i = 0; i < sizeof(int32_t); ++i){
-                // とりあえずリトルエンディアンで受け取って構成すればもとに戻るように
+            for(int i = sizeof(int32_t)-1; i >= 0; --i){
+                // とりあえずビッグエンディアンで受け取って構成すればもとに戻るように
                 recvData.emplace_back(mu.sb[i]);
             }
         }
