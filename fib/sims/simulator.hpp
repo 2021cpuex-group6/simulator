@@ -25,7 +25,7 @@ constexpr int PRINT_INST_NUM_SIZE = 6;
 constexpr int PRINT_INFO_NUM_SIZE = 10;
 constexpr int HISTORY_RESERVE_N = 1024;
 constexpr int SHIFT_MASK5 = 0b11111;
-constexpr int MEM_BYTE_N = 0x1000000; //メモリのバイト数 2^24
+constexpr long MEM_BYTE_N = 0x100000000; //メモリのバイト数 2^24
 constexpr int MEM_ADDRESS_HEX_LEN = 8;
 constexpr int OPKIND_MASK = 0x7;
 constexpr int OPKIND_BIT_N = 3;
@@ -130,7 +130,7 @@ class AssemblySimulator{
 
         uint64_t instCount; // 実行命令数
         std::map<std::string, int> opCounter; //実行命令の統計
-        std::map<uint8_t, int> efficientOpCounter; // uint8_t ver
+        std::map<uint8_t, uint64_t> efficientOpCounter; // uint8_t ver
         std::unordered_set<int32_t> breakPoints; // ブレークポイントの集合　行数で管理（1始まり）
 
         int historyN;   // 現在保持している履歴の数

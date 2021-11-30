@@ -797,6 +797,8 @@ void AssemblySimulator::launchError(const std::string &message)const{
         std::cout << linePair.first << ": " << linePair.second << std::endl;
         std::cout << message << std::endl;
         
+    }else{
+        printRegisters(NumberBase::HEX, false, true);
     }
     throw std::invalid_argument(linePair.first + ": " + std::to_string(linePair.second) + "行目:" + message);
 }
