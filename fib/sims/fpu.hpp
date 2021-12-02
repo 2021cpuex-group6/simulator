@@ -37,7 +37,7 @@ class FPUUnit{
         static uint32_t fsub(const uint32_t & x1, const uint32_t& x2);
         static uint32_t fmul(const uint32_t & x1, const uint32_t& x2);
         static uint32_t fdivOld(const uint32_t & x1, const uint32_t& x2);
-        static uint32_t fdiv(const uint32_t & x1, const uint32_t& x2);
+        uint32_t fdiv(const uint32_t & x1, const uint32_t& x2)const;
         static std::pair<uint32_t, bool> itofDebug(const uint32_t & x, const bool &);
         static uint32_t itof(const uint32_t & x);
         static int32_t ftoi(const uint32_t & x);
@@ -46,6 +46,7 @@ class FPUUnit{
         static uint32_t floor(const uint32_t &x1);
         uint32_t fsqrt(const uint32_t &x)const;
         
+        bool divCheck(const uint32_t &, const uint32_t &)const;
         bool sqrtCheck(const uint32_t &)const;
         CheckResult printOperationCheck(const Float32 &f1, const Float32 &f2, const CheckedOperation & op)const;
         void randomOperationCheck(const int iterN, const CheckedOperation &op)const;

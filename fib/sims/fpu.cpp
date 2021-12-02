@@ -263,8 +263,52 @@ uint32_t FPUUnit::fdivOld(const uint32_t & x1, const uint32_t& x2){
 }
 
 // 改良版のfdiv
-uint32_t FPUUnit::fdiv(const uint32_t & x1, const uint32_t& x2){
-    
+uint32_t FPUUnit::fdiv(const uint32_t & x1, const uint32_t& x2)const{
+
+
+    uint32_t a, b;
+    uint32_t tag = 0x3ff &  shiftRightLogical(x2, 13);
+    a = fdivParamA[tag];
+    b = fdivParamB[tag];
+
+    // finvのように勾配をかける
+    uint32_t bx2 = (0x1fff & x2) * b;
+
+    // finv的なものの仮数部生成
+    uint32_t sbx2 = shiftRightLogical(bx2, 12);
+    uint32_t ix2 = 0x7fffff & (a - sbx2);
+
+		// 指数部を2通り計算、x1が0でないかも判定
+    uint32_t e1 = shiftRightLogical(x1, 23) & 0xff;
+    uint32_t ey1 = 0x1ff & (e1 + 383u - (shiftRightLogical(x2, 23) & 0xff));
+    uint32_t ey2 = 0x1ff & (ey1 - 1);
+    bool flg = e1 != 0u;
+
+	// fmulのようにかける
+    uint32_t x1u1 = (0xfff & (shiftRightLogical(x1, 11))) | 0x1000;
+    uint32_t ix2u1 = (0xfff & shiftRightLogical(ix2, 11)) | 0x1000;
+    uint32_t hh = 0x3ffffff & (x1u1 * ix2u1);
+    uint32_t hl = 0xffffff & (x1u1 * (0x7ff & ix2));
+    uint32_t lh = 0xffffff & ((0x7ff & x1) * ix2u1);
+
+    // fmulのように足して仮数部生成
+    uint32_t shl = shiftRightLogical(hl, 11);
+    uint32_t slh = shiftRightLogical(lh, 11);
+    uint32_t am = 0x3ffffff & (hh + shl + slh + 2);
+
+    // x1が0かアンダーフローの時に指数部は0
+    // そうでなければ仮数部の積(=am)の大きさを見て指数部選択
+    bool am25 = (am & 0x2000000) != 0;
+    uint32_t ey = ((ey1 & 0x100) != 0) && flg ? ( am25 ? (0xff & ey1) : (0xff & ey2))
+                                             : 0u; 
+    ey =  ey << 23;
+
+	// 仮数部の積の大きさを見て真の仮数部選択
+    uint32_t my = am25 ? shiftRightLogical(am, 2) : shiftRightLogical(am, 1);
+    my &= 0x7fffff;
+    uint32_t sy = 0x80000000 & (x1 ^ x2);
+
+	return sy | ey | my;
 }
 
 // 平方根
@@ -510,7 +554,7 @@ bool mulCheck(const uint32_t& input1, const uint32_t& input2){
     return dif < standard;
 }
 
-bool divCheck(const uint32_t& input1, const uint32_t& input2){
+bool FPUUnit::divCheck(const uint32_t& input1, const uint32_t& input2)const{
     // 商の結果が合うかを調べる
     // c++の実装の結果で答えが非正規化数になるものは結果によらずtrue
     Float32 in1, in2;
@@ -521,7 +565,7 @@ bool divCheck(const uint32_t& input1, const uint32_t& input2){
     if(!isNormalized(ans)){
         return true;
     }
-    uint32_t myAns = FPUUnit::fdiv(in1.u32, in2.u32);
+    uint32_t myAns = fdiv(in1.u32, in2.u32);
     Float32 myAns_;
     myAns_.u32 = myAns;
     float dif = fabs(myAns_.f32 - ans);
@@ -643,7 +687,7 @@ CheckResult FPUUnit::printOperationCheck(const Float32 &f1, const Float32 &f2,
                 break;
             case CheckedOperation::DIV:
                 res = divCheck(f1.u32, f2.u32);
-                myAns.u32 = FPUUnit::fdiv(f1.u32, f2.u32);
+                myAns.u32 = fdiv(f1.u32, f2.u32);
                 trueAns.f32 = f1.f32 / f2.f32;
                 break;
             case CheckedOperation::SQRT:
