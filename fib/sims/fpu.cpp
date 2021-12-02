@@ -11,12 +11,15 @@
 static const std::string PARAM_DIR = "params/";
 static const std::string FSQRT_PARAM_A_FILE = "fsqrt_parama.txt";
 static const std::string FSQRT_PARAM_B_FILE = "fsqrt_paramb.txt";
+static const std::string FDIV_PARAM_A_FILE = "fdiv_parama.txt";
+static const std::string FDIV_PARAM_B_FILE = "fdiv_paramb.txt";
 static const std::string PARAM_FILE_ERROR = "パラメータファイルが存在しません";
 static const int WORD_BIT_N = 32;
 static const uint32_t FLOAT_ONE = 0b00111111100000000000000000000000;
 
 FPUUnit::FPUUnit(){
     initFsqrtParam();
+    initFdivParam();
 }
 
 // fsqrt のパラメータをロード
@@ -44,6 +47,33 @@ void FPUUnit::initFsqrtParam(){
     }
 
 }
+
+// fdiv のパラメータをロード
+void FPUUnit::initFdivParam(){
+    fdivParamA = {}; fdivParamB = {};
+    std::ifstream ifs1(PARAM_DIR + FDIV_PARAM_A_FILE);
+    if(ifs1){
+        std::string input;
+        for(int i = 0; i < FDIV_PARAM_LINE_N; i++){
+            std::getline(ifs1, input);
+            fdivParamA[i] = static_cast<uint32_t>(std::stoi(input, nullptr, 16));
+        }
+    }else{
+        throw std::invalid_argument(PARAM_FILE_ERROR);
+    }
+    std::ifstream ifs2(PARAM_DIR + FDIV_PARAM_B_FILE);
+    if(ifs2){
+        std::string input;
+        for(int i = 0; i < FDIV_PARAM_LINE_N; i++){
+            std::getline(ifs2, input);
+            fdivParamB[i] = static_cast<uint32_t>(std::stoi(input, nullptr, 16));
+        }
+    }else{
+        throw std::invalid_argument(PARAM_FILE_ERROR);
+    }
+
+}
+
 
 
 inline std::vector<uint32_t> separateFloat(const uint32_t &input){
@@ -186,7 +216,8 @@ uint32_t FPUUnit::fmul(const uint32_t & x1, const uint32_t& x2){
     return (sy << (INT_BIT_N-1)) | (ey << (INT_BIT_N-9)) | my;
 }
 
-uint32_t FPUUnit::fdiv(const uint32_t & x1, const uint32_t& x2){
+// 旧バージョンのfdiv
+uint32_t FPUUnit::fdivOld(const uint32_t & x1, const uint32_t& x2){
     auto x1_ =  separateFloat(x1);
     auto x2_ =  separateFloat(x2);
 
@@ -229,6 +260,11 @@ uint32_t FPUUnit::fdiv(const uint32_t & x1, const uint32_t& x2){
 
     return (sy << (INT_BIT_N-1)) | (ey << (INT_BIT_N - 9)) | (mya & 0x7fffff);
 
+}
+
+// 改良版のfdiv
+uint32_t FPUUnit::fdiv(const uint32_t & x1, const uint32_t& x2){
+    
 }
 
 // 平方根

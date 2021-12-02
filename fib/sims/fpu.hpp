@@ -4,6 +4,7 @@
 #include <array>
 
 static constexpr int FSQRT_PARAM_LINE_N = 1024;
+static constexpr int FDIV_PARAM_LINE_N = 1024;
 
 typedef union
 {
@@ -35,6 +36,7 @@ class FPUUnit{
         static uint32_t fadd(const uint32_t & x1, const uint32_t& x2);
         static uint32_t fsub(const uint32_t & x1, const uint32_t& x2);
         static uint32_t fmul(const uint32_t & x1, const uint32_t& x2);
+        static uint32_t fdivOld(const uint32_t & x1, const uint32_t& x2);
         static uint32_t fdiv(const uint32_t & x1, const uint32_t& x2);
         static std::pair<uint32_t, bool> itofDebug(const uint32_t & x, const bool &);
         static uint32_t itof(const uint32_t & x);
@@ -50,7 +52,11 @@ class FPUUnit{
     private:
         std::array<uint32_t, FSQRT_PARAM_LINE_N> fsqrtParamA;
         std::array<uint32_t, FSQRT_PARAM_LINE_N> fsqrtParamB;
+        std::array<uint32_t, FDIV_PARAM_LINE_N> fdivParamA;
+        std::array<uint32_t, FDIV_PARAM_LINE_N> fdivParamB;
+        
         void initFsqrtParam();
+        void initFdivParam();
 
 };
 bool isNormalized(const float & input);
