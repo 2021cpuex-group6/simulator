@@ -14,6 +14,7 @@ static constexpr int START_ADDRESS = 4; //ファイルのはじめの命令が�
 static constexpr int INSTRUCTION_BYTE_N = 4;
 static constexpr int32_t NOP = 0x13;
 static constexpr int32_t MASK_BITS = ~(1 << 31); // 右シフトが不定にならないように最上位以外1
+static constexpr int32_t MAX_SHIFT_N = 31;
 static const std::string INVALID_REGISTER = "不正なレジスタ名です";
 static const std::string INVALID_ADDRESSING = "不正なアドレッシングです";
 static const std::string DOUBLE_LABEL = "ラベルが重複しています";
@@ -21,6 +22,7 @@ static const std::string LABEL_NOT_FOUND = "ラベルが見つかりませんで
 static const std::string LABEL_TOO_FAR = "遷移先のラベルが遠すぎます。実装を見直してください。";
 static const std::string OUT_OF_RANGE_IMM = "範囲外の即値です";
 static const std::string NOT_FOUND_FILE = "以下のファイルが見つかりません: ";
+static const std::string INVALID_SHIFT_N = "シフト数が範囲外です．";
 static const std::string GLOBAL_TAG = ".global";
 static const std::string ENTRY_POINT = "min_caml_start";
 static const std::string ENTRY_POINT_LABEL = "+ENTRY";
@@ -128,81 +130,51 @@ std::int32_t assemble_op(const std::string & op, const int& line, const int addr
         output = std::get<int32_t>(opecode_data);
     }catch (const std::out_of_range & e){
         // 登録外
-        output = 0x00000013;
+        output = 0x0000004;
         std::cout << "no match opecode : \""+opecode+"\"" << std::endl;
         return output;
     }
 
-    if (style == R) {
-        std::string op1, op2, op3;
-        iss >> op1 >> op2 >> op3;
-        int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
-        int32_t rg2 = static_cast<int32_t>(register_to_binary(op2, line));
-        int32_t rg3 = static_cast<int32_t>(register_to_binary(op3, line));
-        output |= (rg1 << 7) | (rg2 << 15) | (rg3 << 20);
-    } else if (style == RF){
-        std::string op1, op2, op3;
-        if(opecode == "fsqrt"){
-            iss >> op1 >> op2;
-            int32_t rg1 = static_cast<int32_t>(fregister_to_binary(op1, line));
-            int32_t rg2 = static_cast<int32_t>(fregister_to_binary(op2, line));
-            output |= rounding_mode <<12;
-            output |= (rg1 << 7) | (rg2 << 15) ;
-        }else{
+    std::string op1, op2, op3;
+    int32_t rg1, rg2, rg3, label_addr;
+    std::pair<int32_t, int32_t> address;
+    switch(style){
+        case R:
             iss >> op1 >> op2 >> op3;
-            int32_t rg1 = static_cast<int32_t>(fregister_to_binary(op1, line));
-            int32_t rg2 = static_cast<int32_t>(fregister_to_binary(op2, line));
-            int32_t rg3 = static_cast<int32_t>(fregister_to_binary(op3, line));
-            output |= rounding_mode <<12;
-            output |= (rg1 << 7) | (rg2 << 15) | (rg3 << 20);
-
-        }
-    } else if (style == RF2){
-        std::string op1, op2;
-        iss >> op1 >> op2;
-        int32_t rg1 = static_cast<int32_t>(fregister_to_binary(op1, line));
-        int32_t rg2 = static_cast<int32_t>(fregister_to_binary(op2, line));
-        output |= rounding_mode <<12;
-        output |= (rg1 << 7) | (rg2 << 15) ;
-    } else if (style == MIX){
-        std::string op1, op2, op3;
-        if(opecode == "ftoi"){
+            rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+            rg2 = static_cast<int32_t>(register_to_binary(op2, line));
+            rg3 = static_cast<int32_t>(register_to_binary(op3, line));
+            output |= (rg1 << 5) | (rg2 << 14) | (rg3 << 20);
+            break;
+        case R2:
             iss >> op1 >> op2;
-            int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
-            int32_t rg2 = static_cast<int32_t>(fregister_to_binary(op2, line));
+            rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+            rg2 = static_cast<int32_t>(register_to_binary(op2, line));
             output |= rounding_mode <<12;
-            output |= (rg1 << 7) | (rg2 << 15) ;
-        }else if(opecode == "itof"){
-            iss >> op1 >> op2;
-            int32_t rg1 = static_cast<int32_t>(fregister_to_binary(op1, line));
-            int32_t rg2 = static_cast<int32_t>(register_to_binary(op2, line));
-            output |= rounding_mode <<12;
-            output |= (rg1 << 7) | (rg2 << 15) ;
-        }else if(opecode == "fle"){
+            output |= (rg1 << 5) | (rg2 << 14) ;
+            break;
+        case I:
+            if(opecode == "nop") return output;
+            int32_t imm;
+            iss >> op1 >> op2 >> imm;
+            rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+            rg2 = static_cast<int32_t>(register_to_binary(op2, line));
+            imm = get_I_imm(imm, line);
+            output |= (rg1 << 5) | (rg2 << 14) | imm;
+            break;
+        case IS:
             iss >> op1 >> op2 >> op3;
-            int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
-            int32_t rg2 = static_cast<int32_t>(fregister_to_binary(op2, line));
-            int32_t rg3 = static_cast<int32_t>(fregister_to_binary(op3, line));
-            output |= rounding_mode <<12;
-            output |= (rg1 << 7) | (rg2 << 15) | (rg3 << 20);
-
-        }
-    } else if (style == I) {
-        if(opecode == "nop") return output;
-        std::string op1, op2;
-        int32_t imm;
-        iss >> op1 >> op2 >> imm;
-        int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
-        int32_t rg2 = static_cast<int32_t>(register_to_binary(op2, line));
-        imm = get_I_imm(imm, line);
-        output |= (rg1 << 7) | (rg2 << 15) | imm;
-    } else if(style == IL){
-        std::string op1, op2;
-        iss >> op1 >> op2 ;
-        int32_t rg1;
-        if(opecode == "flw"){
-            rg1 = static_cast<int32_t>(fregister_to_binary(op1, line));
-        }else{
+            rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+            rg2 = static_cast<int32_t>(register_to_binary(op2, line));
+            int32_t shift_n = std::stoi(op3);
+            if(shift_n < 0 || shift_n > MAX_SHIFT_N){
+                // シフト数が不適切
+                assemble_error(INVALID_SHIFT_N, line);
+            }
+            output |= (rg1 << 5) | (rg2 << 14) ;
+            break;
+        case IL:
+            iss >> op1 >> op2 ;
             if(opecode == "jr"){
                 // jr のときは jr -1(x1)のように，オフセット表記がop1に来るので注意
                 rg1 = 0;
@@ -210,52 +182,48 @@ std::int32_t assemble_op(const std::string & op, const int& line, const int addr
             }else{
                 rg1 = static_cast<int32_t>(register_to_binary(op1, line));
             }
-        }
-        auto address = get_address_reg_imm(op2, line, true);
-        output |= (rg1 << 7) | (address.second << 15 ) | (address.first);
-
-    } else if(style == J){
-        std::string op1, op2;
-        if(opecode == "j"){
-            iss >> op1;
-            int32_t label_addr = get_relative_address_with_check(op1, addr, 21, line, label_dict);
-            label_addr = get_J_imm(label_addr);
-            output |= label_addr;
-        }else if(opecode == "jal"){
-            iss >> op1 >> op2;
-            int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
-            int32_t label_addr = get_relative_address_with_check(op2, addr, 21, line, label_dict);
-            label_addr = get_J_imm(label_addr);
-            output |= label_addr | (rg1 << 7);
-        }
-    } else if(style == B){
-        std::string op1, op2, op3;
-        iss >> op1 >> op2 >> op3;
-        int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
-        int32_t rg2 = static_cast<int32_t>(register_to_binary(op2, line));
-        int32_t label_addr = get_relative_address_with_check(op3, addr, 13, line, label_dict);
-        label_addr = get_B_imm(label_addr);
-        output |= label_addr | (rg1 << 15) | (rg2 << 20);
-
-    } else if(style == S){
-        // x1 0(x1)のような書式
-        std::string op1, op2;
-        iss >> op1 >> op2 ;
-        int32_t rg1;
-        if(opecode == "fsw"){
-            rg1 = static_cast<int32_t>(fregister_to_binary(op1, line));
-        }else{
+            address = get_address_reg_imm(op2, line, true);
+            output |= (rg1 << 5) | (address.second << 14 ) | (address.first);
+            break;
+        case J:
+            if(opecode == "j"){
+                iss >> op1;
+                label_addr = get_relative_address_with_check(op1, addr, 21, line, label_dict);
+                label_addr = get_J_imm(label_addr);
+                output |= label_addr;
+            }else if(opecode == "jal"){
+                iss >> op1 >> op2;
+                rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+                label_addr = get_relative_address_with_check(op2, addr, 21, line, label_dict);
+                label_addr = get_J_imm(label_addr);
+                output |= label_addr | (rg1 << 7);
+            }
+            break;
+        
+        case B:
+            iss >> op1 >> op2 >> op3;
             rg1 = static_cast<int32_t>(register_to_binary(op1, line));
-        }
-        auto address = get_address_reg_imm(op2, line, false);
-        output |= (rg1 << 20) | (address.second << 15) | (address.first);
+            rg2 = static_cast<int32_t>(register_to_binary(op2, line));
+            label_addr = get_relative_address_with_check(op3, addr, 13, line, label_dict);
+            label_addr = get_B_imm(label_addr);
+            output |= label_addr | (rg1 << 15) | (rg2 << 20);
+            break;
+        case S:
+            // x1 0(x1)のような書式
+            iss >> op1 >> op2 ;
+            rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+            address = get_address_reg_imm(op2, line, false);
+            output |= (rg1 << 20) | (address.second << 15) | (address.first);
+            break;
+        case U:
+            break;
 
-    }else {
-        output = NOP;
-        std::cout << "nop" << std::endl;
+        default:
+            output = NOP;
+            std::cout << "nop" << std::endl;
+            return output;
         return output;
     }
-    return output;
     
 }
 
