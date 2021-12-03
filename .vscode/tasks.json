@@ -30,7 +30,7 @@
                 ""
             ],
             "options": {
-                "cwd": "${workspaceFolder}/fib"
+                "cwd": "${workspaceFolder}/sim"
             },
             "problemMatcher": [
                 "$gcc"
@@ -49,7 +49,7 @@
                 "fpuChecker"
             ],
             "options": {
-                "cwd": "${workspaceFolder}/fib"
+                "cwd": "${workspaceFolder}/sim"
             },
             "problemMatcher": [
                 "$gcc"
@@ -68,7 +68,7 @@
                 "assembler"
             ],
             "options": {
-                "cwd": "${workspaceFolder}/fib"
+                "cwd": "${workspaceFolder}/sim"
             },
             "problemMatcher": [
                 "$gcc"
@@ -87,7 +87,7 @@
                 "deassembler"
             ],
             "options": {
-                "cwd": "${workspaceFolder}/fib"
+                "cwd": "${workspaceFolder}/sim"
             },
             "problemMatcher": [
                 "$gcc"
