@@ -40,7 +40,6 @@ static std::pair<int32_t, int32_t> get_address_reg_imm(const std::string &input,
 
 
 static int8_t register_to_binary(std::string reg_name, const int &line);
-static int8_t fregister_to_binary(std::string reg_name, const int &line);
 static void assemble_error(const std::string &message, const int & line);
 static int32_t get_relative_address_with_check(const std::string &label,
                                 const int & now_addr, const int & max_bit, const int &line, 
@@ -216,6 +215,10 @@ std::int32_t assemble_op(const std::string & op, const int& line, const int addr
             output |= (rg1 << 20) | (address.second << 15) | (address.first);
             break;
         case U:
+            iss >> op1 >> op2 ;
+            rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+            uint32_t uimm = static_cast<uint32_t>(std::stoi(op2)) & (~(0x7ffu));
+            output |= rg1 << 5 | uimm;
             break;
 
         default:
@@ -227,21 +230,7 @@ std::int32_t assemble_op(const std::string & op, const int& line, const int addr
     
 }
 
-static int8_t fregister_to_binary(std::string reg_name, const int &line) {
-    //　浮動小数点レジスタ名をデコード
-    //  とりあえずf0~f31の名前にする
-    int8_t output = 0;
-    if(startsWith(reg_name, "f")){
-        output = std::stoi(reg_name.substr(1));
-    }else if(startsWith(reg_name, "%f")){
-        output = std::stoi(reg_name.substr(2));
-    }else{
-        // レジスタ名が不正
-        assemble_error(INVALID_REGISTER, line);
-    }
 
-    return output;
-}
 
 static int8_t register_to_binary(std::string reg_name, const int &line) {
     //　レジスタ名をデコード
@@ -253,6 +242,10 @@ static int8_t register_to_binary(std::string reg_name, const int &line) {
         output = std::stoi(reg_name.substr(2));
     }else if(reg_name == "zero"){
         output = 0;
+    }else if(startsWith(reg_name, "f")){
+        output = std::stoi(reg_name.substr(1)) + 0x20;
+    }else if(startsWith(reg_name, "%f")){
+        output = std::stoi(reg_name.substr(2)) + 0x20;
     }else{
         // レジスタ名が不正
         assemble_error(INVALID_REGISTER, line);
@@ -386,6 +379,8 @@ static int32_t get_I_imm(int32_t input, const int &line){
     input &= 0xfff;
     return input << 20;
 }
+
+
 
 static int32_t get_S_imm(int32_t input, const int &line){
     // S形式の即値をチェック、シフトする
