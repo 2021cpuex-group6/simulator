@@ -4,13 +4,16 @@
 #include <iostream>
 static constexpr uint32_t OPCODE_MASK = 0x7f;
 static constexpr uint32_t REG_MASK = 0x3f;
+static constexpr uint32_t SHAMT_MASK = 0x1f;
 static constexpr uint32_t RD_SHIFT_N = 5;
 static constexpr uint32_t RS1_SHIFT_N = 14;
 static constexpr uint32_t RS2_SHIFT_N = 20;
 static constexpr uint32_t IMM_SHIFT_N = 20;
-static constexpr uint32_t FUNCT_3_SHIFT_N = 12;
+static constexpr uint32_t SHAMT_SHIFT_N = 20;
+static constexpr uint32_t FUNCT_3_SHIFT_N = 11;
 static constexpr uint32_t FUNCT_3_MASK = 0x7;
-static constexpr uint32_t FUNCT_7_MASK = 0xfe000000;
+static constexpr uint32_t FUNCT_7_MASK = 0xfc000000;
+static constexpr uint32_t UI_MASK = 0xfffff800;
 static std::string  ERROR_TOP = "Error: ";
 static std::string  BUG_ERROR = "バグです．報告してください";
 static std::string  NOT_IMPLEMENTED = "未実装";
@@ -84,6 +87,17 @@ Instruction IRegParse(const uint32_t &code ){
     return inst;
 }
 
+Instruction ISRegParse(const uint32_t &code ){
+    Instruction inst = {};
+    inst.operandN = 2;
+    inst.regInd[0] = (code >> RD_SHIFT_N) & REG_MASK;
+    inst.regInd[1] = (code >> RS1_SHIFT_N) & REG_MASK;
+    inst.immediate = (code >> SHAMT_SHIFT_N) & SHAMT_MASK;
+
+    return inst;
+}
+
+
 Instruction BRegParse(const uint32_t &code ){
     Instruction inst = {};
     inst.operandN = 2;
@@ -116,7 +130,7 @@ Instruction intRParse(const uint32_t &code){
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
     uint32_t funct7 = code & FUNCT_7_MASK;
     switch(funct7){
-        case 0x40000000:
+        case 0x04000000:
             // sra, sub
             switch(funct3){
                 case 0:
@@ -127,24 +141,10 @@ Instruction intRParse(const uint32_t &code){
                     printError("intRparse: " + INVALID_CODE);
             }
             break;
-        // case 0x02000000:
-        //     switch(funct3){
-        //         case 0:
-        //             inst.opcode = "mul"; break;
-        //         case 0b100:
-        //             inst.opcode = "div"; break;
-        //         default:
-        //             printError("intRparse: " + INVALID_CODE);
-        //     }
-        //     break;
         case 0x0:
             switch(funct3){
                 case 0:
-                    if(inst.regInd[0] == 0){
-                        inst.opcode = "nop";
-                    }else{
-                        inst.opcode = "add";
-                    }
+                    inst.opcode = "add";
                     break;
                 case 0b111:
                     inst.opcode = "and"; break;
@@ -171,25 +171,45 @@ Instruction intRParse(const uint32_t &code){
 }
 
 // 整数の即値演算系I形式をパース
+// シフトもここに含む
 Instruction intIParse(const uint32_t & code){
-    Instruction inst = IRegParse(code);
+    Instruction inst;
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
-    switch(funct3){
-        case 0b0:
-            if(inst.regInd[0] == 0){
-                inst.opcode = "nop";
-            }else{
-                inst.opcode = "addi";
-            }
-            break;
-        case 0b111:
-            inst.opcode = "andi"; break;
-        case 0b110:
-            inst.opcode = "ori"; break;
-        case 0b100:
-            inst.opcode = "xori"; break;
-        default:
-            printError("intIParse: " + INVALID_CODE);
+    // まず，シフト系かどうかを調べる
+    if((funct3 & 0b11) == 0b01){
+        // シフト系
+        inst = ISRegParse(code);
+        switch(funct3){
+            case 0b001:
+                inst.opcode = "slli"; break;
+            case 0b101:
+                if(code & 0x04000000){
+                    inst.opcode = "srai"; break;
+                }else{
+                    inst.opcode = "srli"; break;
+                }
+            default:
+                printError("intIParse: " + INVALID_CODE);
+        }
+    }else{
+        inst = IRegParse(code);
+        switch(funct3){
+            case 0b0:
+                if(inst.regInd[0] == 0){
+                    inst.opcode = "nop";
+                }else{
+                    inst.opcode = "addi";
+                }
+                break;
+            case 0b111:
+                inst.opcode = "andi"; break;
+            case 0b110:
+                inst.opcode = "ori"; break;
+            case 0b100:
+                inst.opcode = "xori"; break;
+            default:
+                printError("intIParse: " + INVALID_CODE);
+        }
     }
     return inst;
 }
@@ -238,6 +258,8 @@ Instruction BParse(const uint32_t &code){
             inst.opcode = "beq"; break;
         case 0b001:
             inst.opcode = "bne"; break;
+        case 0b110:
+            inst.opcode = "bge"; break;
         default:
             printError("BParse: " + INVALID_CODE);
     }
@@ -275,20 +297,24 @@ Instruction SParse(const uint32_t &code){
 Instruction FRParse(const uint32_t &code){
     Instruction inst = RRegParse(code);
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
-    if(funct3 != 0u){
-        printError("FRParse: " + INVALID_CODE);
-    }
     uint32_t funct7 = shiftRightLogical(code & FUNCT_7_MASK, 25);
+    if(funct3 != 0u){
+        if(funct3 == 0b1 && funct7 == 0x28){
+            inst.opcode = "feq";
+        }else{
+            printError("FRParse: " + INVALID_CODE);
+        }
+    }
     switch(funct7){
         case 0u:
             inst.opcode = "fadd"; break;
-        case 0x04:
+        case 0x02:
             inst.opcode = "fsub"; break;
-        case 0x08:
+        case 0x04:
             inst.opcode = "fmul"; break;
-        case 0x0c:
+        case 0x06:
             inst.opcode = "fdiv"; break;
-        case 0x50:
+        case 0x28:
             inst.opcode = "fle"; break;
         default:
             inst.operandN = 2;
@@ -296,15 +322,13 @@ Instruction FRParse(const uint32_t &code){
                 printError("FRParse: " + INVALID_CODE);
             }
             switch(funct7){
-                case 0x2c:
+                case 0x16:
                     inst.opcode = "fsqrt"; break;
-                case 0x70:
-                    inst.opcode = "fmv"; break;
-                case 0x68:
-                    inst.opcode = "itof"; break;
-                case 0x60:
+                case 0xa:
                     inst.opcode = "floor"; break;
-                case 0x64:
+                case 0x34:
+                    inst.opcode = "itof"; break;
+                case 0x3c:
                     inst.opcode = "ftoi"; break;
                 default:
                     printError("FRParse: " + INVALID_CODE);
@@ -321,44 +345,37 @@ Instruction deassemble(const uint32_t &lineN, uint32_t code){
     Instruction inst;
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
     switch(opcode){
-        case 0b0110011:
+        case 0b01100:
             inst =  intRParse(code);
             break;
-        case 0b0010011:
+        case 0b00100:
             inst =  intIParse(code);
             break;
-        case 0b1100011:
+        case 0b11000:
             inst = BParse(code);
             break;
-        case 0b1101111:
+        case 0b11011:
             inst = JParse(code);
             break;
-        case 0b1100111:
+        case 0b11001:
             inst = JIParse(code);
             break;
-        case 0b0000011:
+        case 0b00000:
             inst = LIParse(code);
             break;
-        case 0b0100011:
+        case 0b01000:
             inst = SParse(code);
             break;
-        case 0b1010011:
+        case 0b10100:
             inst = FRParse(code);
             break;
-        case 0b0000111:
-            inst = IRegParse(code);
-            if(funct3 != 0b010){
-                printError("FLIParse: " + INVALID_CODE);
-            }
-            inst.opcode = "flw";
+        case 0b01101:
+            inst = {};
+            inst.operandN = 1;
+            inst.regInd[0] = (code >> RD_SHIFT_N) & REG_MASK;
+            inst.immediate = code & UI_MASK;
+            inst.opcode = "lui";
             break;
-        case 0b0100111:
-            inst = SRegParse(code);
-            if(funct3 != 0b010){
-                printError("FLIParse: " + INVALID_CODE);
-            }
-            inst.opcode = "fsw";
-            break;  
         default:
             printError(NOT_IMPLEMENTED);
     }

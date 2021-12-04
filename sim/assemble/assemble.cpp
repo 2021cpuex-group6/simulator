@@ -450,10 +450,10 @@ void init_opcode_map(){
     output |= (0b100 << 11);
     opecode_map.insert({"lbu", {IL, output}});
 
-    output = 0b00100;
+    output = 0b01000;
     output |= (0b100 << 11);
     opecode_map.insert({"sb", {S, output}});
-    output = 0b00100;
+    output = 0b01000;
     output |= (0b010 << 11);
     opecode_map.insert({"sw", {S, output}});
 
