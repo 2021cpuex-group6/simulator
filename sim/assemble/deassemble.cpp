@@ -3,9 +3,9 @@
 
 #include <iostream>
 static constexpr uint32_t OPCODE_MASK = 0x7f;
-static constexpr uint32_t REG_MASK = 0x1f;
-static constexpr uint32_t RD_SHIFT_N = 7;
-static constexpr uint32_t RS1_SHIFT_N = 15;
+static constexpr uint32_t REG_MASK = 0x3f;
+static constexpr uint32_t RD_SHIFT_N = 5;
+static constexpr uint32_t RS1_SHIFT_N = 14;
 static constexpr uint32_t RS2_SHIFT_N = 20;
 static constexpr uint32_t IMM_SHIFT_N = 20;
 static constexpr uint32_t FUNCT_3_SHIFT_N = 12;
@@ -54,8 +54,8 @@ int32_t JImmParse(const uint32_t &code){
 }
 
 int32_t SImmParse(const uint32_t &code){
-    uint32_t part1 = (code & 0xfe000000) >> 20;
-    uint32_t part2 = (code & 0xf80) >> 7;
+    uint32_t part1 = (code & 0xfc000000) >> 20;
+    uint32_t part2 = (code & 0x7e0) >> 5;
     uint32_t res = part1 | part2;
     if((code & 0x80000000) != 0u){
         res |= 0xfffff000;
@@ -96,9 +96,9 @@ Instruction BRegParse(const uint32_t &code ){
 
 
 
+// S命令はrs1がメモリアドレスを指すレジスタ，rs2が出力元となり，命令列と逆のため，
+// わかりやすくするためにここで交換する
 Instruction SRegParse(const uint32_t &code ){
-    // S命令はrs1がメモリアドレスを指すレジスタ，rs2が出力元となり，命令列と逆のため，
-    // わかりやすくするためにここで交換する
     Instruction inst = {};
     inst.operandN = 2;
     inst.regInd[0] = (code >> RS2_SHIFT_N) & REG_MASK;
