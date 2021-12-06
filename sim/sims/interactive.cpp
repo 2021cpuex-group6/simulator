@@ -77,8 +77,12 @@ void InteractiveShell::start(){
                                                                             input.second[3] == 1, true);
                 }else{
                     std::cout << simulator.getRegisterInfoUnit(input.second[0],
-                                                                 static_cast<NumberBase>(input.second[2]), 
-                                                                            input.second[3] == 1, input.second[1] == 1) << std::endl;
+                                                    static_cast<NumberBase>(input.second[2]), 
+                                                    input.second[3] == 1,
+                                                    static_cast<NumberBase>(input.second[2]) == NumberBase::FLOAT || 
+                                                        (input.second[0] >= REGISTERS_N / 2 && 
+                                                            static_cast<NumberBase>(input.second[2]) != NumberBase::FLOAT ))
+                                                    << std::endl;
                 }
                 break;
             case Command::MemRead:
@@ -94,7 +98,7 @@ void InteractiveShell::start(){
                 }
                 break;
             case Command::RegWrite:
-                simulator.writeReg(input.second[0], input.second[2], input.second[1] == 1);
+                simulator.writeReg(input.second[0], input.second[2]);
                 break;
             case Command::BreakDelete:
                 simulator.deleteBreakPoint(input.second[0]);
