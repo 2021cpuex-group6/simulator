@@ -72,13 +72,20 @@ void MMIO::readSldEnv(const std::vector<std::string>& rawSld, int &count){
 
 void MMIO::readSldObjects(const std::vector<std::string>& rawSld, int &count){
     while(readInt(rawSld, count).si != SLD_OBJ_END){
+        int isRot; // readIntの最後の数
         for (size_t i = 0; i < SLD_OBJ_INT_N-1; i++)
         {
-            readInt(rawSld, count);
+            isRot = readInt(rawSld, count).si;
         }
-        for (size_t i = 0; i < SLD_OBJ_FLOAT_N; i++)
+        for (size_t i = 0; i < SLD_OBJ_FLOAT_N ; i++)
         {
             readFloat(rawSld, count);
+        }
+        if(isRot != 0){
+            for (size_t i = 0; i < 3 ; i++)
+            {
+                readFloat(rawSld, count);
+            }
         }
     }
 }
