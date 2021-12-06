@@ -418,13 +418,13 @@ void AssemblySimulator::efficientDoFALU(const uint8_t &opcode, const int &target
             launchError(ILEGAL_INNER_OPCODE);
     }
 
-    fRegisters[targetR] = MemoryUnit(ans);
+    registers[targetR] = MemoryUnit(ans);
 }
 
 
 // 制御系の命令で，ジャンプするときの処理
 BeforeData AssemblySimulator::efficientDoJump(const uint8_t &opcode, const Instruction &instruction){
-    BeforeData ans = {pc,true, -1, -1, false, 0, 0, instruction.opcodeInt};
+    BeforeData ans = {pc, -1, -1, false, 0, 0, instruction.opcodeInt};
     if((opcode & 0b10)){
         // レジスタへの書き込み (jal, jalr)
         int writeRegInd = instruction.regInd[0];
@@ -475,7 +475,7 @@ BeforeData AssemblySimulator::efficientDoControl(const uint8_t &opcode, const In
         // j命令と同じ
         return efficientDoJump(0b0000, instruction);
     }else{
-        BeforeData ans = {pc,false, -1, -1, false, 0, 0, instruction.opcodeInt};
+        BeforeData ans = {pc, -1, -1, false, 0, 0, instruction.opcodeInt};
         incrementPC();
         return ans;
     }
@@ -488,40 +488,35 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
     address +=registers[instruction.regInd[1]].i;
 
 
-    bool loadInteger = (opcode & 0b100) == 0u;
     int32_t loadRegInd = instruction.regInd[0];
-    int32_t beforeValue = loadInteger ? iRegisters[loadRegInd] : fRegisters[loadRegInd].si;
-    BeforeData before = { pc, loadInteger, loadRegInd, beforeValue, false, 0u, 0u, instruction.opcodeInt};
-    
-    if(loadInteger){
-        if(opcode & 0b1){
-            // lw
-            uint32_t value = readMemWithCacheCheck(address, MemAccess::WORD, before);
-            writeReg(loadRegInd, value, true);
-        }else{
-            // lbu
-            if(address == MMIO_RECV){
-                // MMIOとして扱う
-                before.isMMIO = true;
-                before.MMIOvalid = false;
-                before.MMIOsend = false;
-                int32_t val = 0;
-                if(mmio.valid) val = 0xff & static_cast<int32_t>(mmio.recv());
-                writeReg(loadRegInd, ((~0xff) &iRegisters[loadRegInd]) |val, true);
-            }else if(address == MMIO_VALID){
-                before.isMMIO = true;
-                before.MMIOvalid = true;
-                int32_t val = mmio.valid ? 1 : 0;
-                writeReg(loadRegInd, ((~0xff) & iRegisters[loadRegInd]) |val, true);
-            }else{
-                uint32_t value = readMemWithCacheCheck(address, MemAccess::BYTE, before);
-                writeReg(loadRegInd, ((~0xff) &iRegisters[loadRegInd]) | value, true);
-            }
-        }
-    }else{
+    int32_t beforeValue = registers[loadRegInd].si;
+    BeforeData before = { pc, loadRegInd, beforeValue, false, 0u, 0u, instruction.opcodeInt};
+
+    if(opcode & 0b1){
+        // lw
         uint32_t value = readMemWithCacheCheck(address, MemAccess::WORD, before);
-        fRegisters[loadRegInd] = MemoryUnit(value);
+        writeReg(loadRegInd, value);
+    }else{
+        // lbu
+        if(address == MMIO_RECV){
+            // MMIOとして扱う
+            before.isMMIO = true;
+            before.MMIOvalid = false;
+            before.MMIOsend = false;
+            int32_t val = 0;
+            if(mmio.valid) val = 0xff & static_cast<int32_t>(mmio.recv());
+            writeReg(loadRegInd, ((~0xff) &registers[loadRegInd].i) |val);
+        }else if(address == MMIO_VALID){
+            before.isMMIO = true;
+            before.MMIOvalid = true;
+            int32_t val = mmio.valid ? 1 : 0;
+            writeReg(loadRegInd, ((~0xff) & registers[loadRegInd].i) |val);
+        }else{
+            uint32_t value = readMemWithCacheCheck(address, MemAccess::BYTE, before);
+            writeReg(loadRegInd, ((~0xff) & registers[loadRegInd].i) | value);
+        }
     }
+    
 
     return before;
 }
@@ -530,13 +525,13 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
 
 BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Instruction &instruction){
     uint32_t address = instruction.immediate;
-    address += static_cast<uint32_t>(iRegisters[instruction.regInd[1]]);
+    address += registers[instruction.regInd[1]].i;
 
     uint32_t beforeAddress = (address/4)*4; // 4バイトアラインする
-    BeforeData before = {pc, false, -1, -1, true, beforeAddress, readMem(beforeAddress, MemAccess::WORD), instruction.opcodeInt};
+    BeforeData before = {pc, -1, -1, true, beforeAddress, readMem(beforeAddress, MemAccess::WORD), instruction.opcodeInt};
 
     int regInd = instruction.regInd[0];
-    uint32_t value = (opcode & 0b1) == 0 ? iRegisters[regInd] : fRegisters[regInd].i;
+    uint32_t value = registers[regInd].i;
     MemAccess memAccess = MemAccess::WORD;
     if(opcode & 0b10){
         // sbの時
@@ -581,22 +576,20 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             // 演算命令
             // ここで前のデータを保存
             targetR = instruction.regInd[0];
-            ans.isInteger = true;
             ans.writeMem = false;
             ans.regInd = targetR;
-            ans.regValue = iRegisters[targetR];
-            source0 = iRegisters[instruction.regInd[1]];
-            source1 = iRegisters[instruction.regInd[2]];
+            ans.regValue = registers[targetR].i;
+            source0 = registers[instruction.regInd[1]].si;
+            source1 = registers[instruction.regInd[2]].si;
             efficientDoALU(opFunct, targetR, source0, source1);
             break;
         case 0b001:
             // 整数I
             targetR = instruction.regInd[0];
-            ans.isInteger = true;
             ans.writeMem = false;
             ans.regInd = targetR;
-            ans.regValue = iRegisters[targetR];
-            source0 = iRegisters[instruction.regInd[1]];
+            ans.regValue = registers[targetR].si;
+            source0 = registers[instruction.regInd[1]].si;
             source1 = instruction.immediate;
             efficientDoALU(opFunct, targetR, source0, source1);
             break;
@@ -635,9 +628,12 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             break;
         case 0b111:
             // U
+            targetR = instruction.regInd[0];
             ans.pc = pc;
             ans.writeMem = false;
-            ans.regInd = instruction.regInd[0];
+            ans.regInd = targetR;
+            ans.regValue = registers[targetR].si;
+            registers[targetR].i = instruction.immediate & (~0xfff);
             break;
         default:
             launchError(ILEGAL_INNER_OPCODE);
