@@ -156,7 +156,6 @@ std::string AssemblySimulator::getFRegisterInfoUnit(const int &regN, const Numbe
         ss << regName <<  prefix << std::setw(numSize) << std::setfill('0') << sin.str();
     }
 
-
     return ss.str();
 }
 
@@ -625,20 +624,15 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back, co
             }else if(before.regInd >= 0){
                 int32_t change = 0;
                 std::string pref = "";
-                if(before.isInteger){
+                if(before.regInd < REGISTERS_N / 2){
                     pref = "x";
-                    if(back){
-                        change = before.regValue;
-                    }else{
-                        change = iRegisters[before.regInd];
-                    }
                 }else{
                     pref = "f";
-                    if(back){
-                        change = before.regValue;
-                    }else{
-                        change = fRegisters[before.regInd].si;
-                    }
+                }
+                if(back){
+                    change = before.regValue;
+                }else{
+                    change = registers[before.regInd].si;
                 }
                 std::cout <<pref<< std::setw(2) << std::setfill('0') <<  std::internal << before.regInd 
                     << " " << change <<  std::endl;
