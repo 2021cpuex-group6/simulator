@@ -1,5 +1,6 @@
 #ifndef MMIO_H
 #define MMIO_H
+#include "../utils/utils.hpp"
 #include <vector>
 #include <string>
 
@@ -15,6 +16,15 @@ class MMIO{
         char getLast()const;
         void printInfo()const;
         void printSended(const bool &)const;
+        std::vector<std::string> makeSldRaw(std::ifstream &);
+        MemoryUnit readFloat(const std::vector<std::string>&, int &);
+        MemoryUnit readInt(const std::vector<std::string>&, int &);
+        void readSldEnv(const std::vector<std::string>&, int &);
+        void readSldObjects(const std::vector<std::string>&, int &);
+        void readSldAndNetwork(const std::vector<std::string>&, int &);
+        void readSldOrNetwork(const std::vector<std::string>&, int &);
+        void readSld(std::ifstream &);
+
 
     private:
         int nowInd = 0;
