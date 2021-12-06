@@ -486,7 +486,7 @@ BeforeData AssemblySimulator::efficientDoControl(const uint8_t &opcode, const In
 BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instruction &instruction){
     // ロード命令を実行
     uint32_t address = instruction.immediate;
-    address += iRegisters[instruction.regInd[1]];
+    address += static_cast<uint32_t>(iRegisters[instruction.regInd[1]]);
 
     bool loadInteger = (opcode & 0b100) == 0u;
     int32_t loadRegInd = instruction.regInd[0];
@@ -530,7 +530,7 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
 
 BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Instruction &instruction){
     uint32_t address = instruction.immediate;
-    address += iRegisters[instruction.regInd[1]];
+    address += static_cast<uint32_t>(iRegisters[instruction.regInd[1]]);
 
     uint32_t beforeAddress = (address/4)*4; // 4バイトアラインする
     BeforeData before = {pc, false, -1, -1, true, beforeAddress, readMem(beforeAddress, MemAccess::WORD), instruction.opcodeInt};
