@@ -21,7 +21,7 @@ static const std::string CACHE_PRINT_READ = "";
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
                                      const bool &forGUI, const int & cacheWay, const MMIO &mmio):
         useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
-        parser(parser), iRegisters(), fRegisters(),
+        parser(parser), registers(),
         instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0),
         historyPoint(0), beforeHistory(), cache(), cacheWay(cacheWay), cacheIndexN(CASH_SIZE / cacheWay), 
         cacheRHitN(0), cacheWHitN(0), cacheRMissN(0), cacheWMissN(0), mmio(mmio){
@@ -31,8 +31,7 @@ AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &u
     mu.i = 0;
     (*dram).fill(mu);
     for(int i = 0; i < REGISTERS_N; i++){
-        iRegisters[i] = 0;
-        fRegisters[i] = MemoryUnit(0);
+        registers[i] = MemoryUnit(0);
     }
     // opcounterをすべて0に
     for(const auto & item : opcodeInfoMap){
@@ -64,9 +63,8 @@ void AssemblySimulator::reset(){
         efficientOpCounter[e.first] = 0;
     }
     for(int i = 0; i < REGISTERS_N; i++){
-        iRegisters[i] = 0;
         MemoryUnit mu_(0u);
-        fRegisters[i] = mu_;
+        registers[i] = mu_;
     }
     MemoryUnit mu;
     mu.i = 0;
@@ -412,13 +410,9 @@ void AssemblySimulator::back(){
         instCount--;
         efficientOpCounter[before.opcodeInt] = efficientOpCounter[before.opcodeInt] -1;
         if(before.regInd >= 0){
-            if(before.isInteger){
-                iRegisters[before.regInd] = before.regValue;
-            }else{
-                MemoryUnit mu;
-                mu.si = before.regValue;
-                fRegisters[before.regInd] = mu;
-            }
+            MemoryUnit mu;
+            mu.si = before.regValue;
+            registers[before.regInd] = mu;
         }
         // メモリ，キャッシュ系を戻す
         if(before.useMem){
@@ -622,7 +616,7 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back, co
                     if(back){
                         change = before.regValue;
                     }else{
-                        change = iRegisters[before.regInd];
+                        change = registers[before.regInd].si;
                     }
                     std::cout <<"x"<< std::setw(2) << std::setfill('0') <<   std::internal << before.regInd 
                         << " " << change <<  std::endl;

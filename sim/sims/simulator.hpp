@@ -16,7 +16,7 @@
 #include <iomanip>
 #include <cmath>
 
-constexpr int REGISTERS_N = 32;
+constexpr int REGISTERS_N = 64;
 constexpr int PRINT_REGISTERS_COL = 4;
 constexpr size_t REGISTER_BIT_N = 32;
 
@@ -95,7 +95,6 @@ struct CacheRow{
 // 前回の状態に戻すのに必要なデータ
 struct BeforeData{
     int pc;
-    bool isInteger; // 書き込んだレジスタが整数用レジスタか
     int regInd;  //書き込んだレジスタ。書き込みナシなら-1
     int32_t regValue;
     bool writeMem; //メモリに書き込んだか
@@ -130,8 +129,7 @@ class AssemblySimulator{
         bool end; //終了フラグ
         const AssemblyParser &parser;
         long lastPC = 0;
-        int iRegisters[REGISTERS_N];
-        MemoryUnit fRegisters[REGISTERS_N];
+        MemoryUnit registers[REGISTERS_N];
 
         uint64_t instCount; // 実行命令数
         std::map<std::string, int> opCounter; //実行命令の統計
@@ -662,8 +660,10 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             efficientDoFALU(opFunct, targetR, sourceU0, sourceU1);
             break;
         case 0b111:
-            // 混合
-            ans = efficientDoMix(opFunct, instruction);
+            // U
+            ans.pc = pc;
+            ans.writeMem = false;
+            ans.regInd = instruction.regInd[0];
             break;
         default:
             launchError(ILEGAL_INNER_OPCODE);
