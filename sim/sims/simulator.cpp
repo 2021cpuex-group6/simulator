@@ -20,7 +20,7 @@ static const std::string CACHE_PRINT_READ = "";
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
                                      const bool &forGUI, const int & cacheWay, const MMIO &mmio):
-        useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
+        useBinary(useBin), forGUI(forGUI), pc(0), end(false),
         parser(parser), registers(),
         instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0),
         historyPoint(0), beforeHistory(), cache(), cacheWay(cacheWay), cacheIndexN(CASH_SIZE / cacheWay), 
@@ -84,17 +84,9 @@ void AssemblySimulator::reset(){
     mmio.reset();
 }
 
-// レジスタ番号を受け取り，その情報を文字列で返す
-std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const NumberBase &base, const bool &sign, const bool&isInteger) const {
-    if(isInteger){
-        return getIRegisterInfoUnit(regN, base, sign);
-    }else{
-        return getFRegisterInfoUnit(regN, base, sign, true);
-    }
-}
 
-// 浮動小数点レジスタの番号を受け取り，その情報を文字列で返す
-std::string AssemblySimulator::getFRegisterInfoUnit(const int &regN, const NumberBase &base, const bool &sign, const bool &useFNotation) const {
+// レジスタの番号を受け取り，その情報を文字列で返す
+std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const NumberBase &base, const bool &sign, const bool &useFNotation) const {
     std::stringstream ss;
     std::stringstream sin;
     std::stringstream ssreg;
@@ -102,28 +94,33 @@ std::string AssemblySimulator::getFRegisterInfoUnit(const int &regN, const Numbe
     std::string prefix;
     if(!forGUI){
         // GUI用でなければレジスタ名も表示
-        if(regN < REGISTERS_N){
+        if(regN < REGISTERS_N / 2){
+            ssreg << "x" << std::setw(2) << std::setfill('0') << std::dec << regN;
+            regName = ssreg.str();
+        }else if(regN < REGISTERS_N ){
             ssreg << "f" << std::setw(2) << std::setfill('0') << std::dec << regN;
             regName = ssreg.str();
-        }else{
-            regName = "fcsr ";
+        }else {
+            regName = "pc ";
         }
         regName += " ";
     }else{
         // GUI用にはレジスタをint32_tで表記
         if(regN < REGISTERS_N){
-            return std::to_string(fRegisters[regN].si);
+            return std::to_string(registers[regN].si);
         }else{
-            return std::to_string(static_cast<int32_t>(fcsr));
+            return std::to_string(pc);
         }
 
     }
 
-    uint32_t value = regN < REGISTERS_N ? fRegisters[regN].i : fcsr;
+
+
+    uint32_t value = regN < REGISTERS_N ? registers[regN].i : pc;
 
 
     if(useFNotation){
-        ss << regName << std::setw(12) << std::to_string(fRegisters[regN].f);
+        ss << regName << std::setw(12) << std::to_string(registers[regN].f);
     }else{
         unsigned int  numSize = 0;
         switch (base){
@@ -159,85 +156,23 @@ std::string AssemblySimulator::getFRegisterInfoUnit(const int &regN, const Numbe
     return ss.str();
 }
 
-// 整数レジスタ番号を受け取り、その情報を文字列で返す
-std::string AssemblySimulator::getIRegisterInfoUnit(const int &regN, const NumberBase &base, const bool &sign) const {
-    std::stringstream ss;
-    std::stringstream sin;
-    std::stringstream ssreg;
-    std::string regName;
-    std::string prefix;
-    if(!forGUI){
-        // GUI用でなければレジスタ名も表示
-        if(regN < REGISTERS_N){
-            ssreg << "x" << std::setw(2) << std::setfill('0') << std::dec << regN;
-            regName = ssreg.str();
-        }else{
-            regName = "pc ";
-        }
-        regName += " ";
-    }else{
-        if(regN < REGISTERS_N){
-            return std::to_string(iRegisters[regN]);
-        }else{
-            return std::to_string(pc);
-        }
-
-    }
-
-    int value = regN < REGISTERS_N ? iRegisters[regN] : pc;
-
-
-    unsigned int  numSize = 0;
-    switch (base){
-        case NumberBase::BIN :
-            prefix = "0b";
-            numSize = 32;
-            sin << std::bitset<REGISTER_BIT_N>(value);
-            break;
-        case NumberBase::OCT :
-            prefix = "0o";
-            numSize = 11;
-            sin << std::oct << value;
-            break;
-        case NumberBase::HEX :
-            prefix = "0x";
-            numSize = 8;
-            sin << std::hex << value;
-            break;
-        default :
-            prefix = "";
-            numSize = 12;
-            if (sign){
-                ss << regName  << std::setw(numSize) << std::internal << value;
-            }else{
-                ss << regName  << std::setw(numSize) << std::internal << value;
-            }
-            return ss.str();
-            break;
-    }
-
-    ss << regName <<  prefix << std::setw(numSize) << std::setfill('0') << sin.str();
-
-    return ss.str();
-
-}
 
 void AssemblySimulator::printRegisters(const NumberBase &base, const bool &sign, const bool& useFNotation) const {
     // レジスタの内容をすべて表示
     // GUI用には 1行目 pcのみ　2行目 x0~x31レジスタを空白文字による分割 3行目 f0~f31をhex表記で
     // pc
-    std::cout << getIRegisterInfoUnit(REGISTERS_N, base, sign) << std::endl;
+    std::cout << getRegisterInfoUnit(REGISTERS_N, base, sign, false) << std::endl;
 
     if(forGUI){
         std::stringstream ss;
-        for(int i = 0; i < REGISTERS_N; i++){
-            ss << getIRegisterInfoUnit(i, NumberBase::DEC, true) << " ";
+        for(int i = 0; i < REGISTERS_N / 2; i++){
+            ss << getRegisterInfoUnit(i, NumberBase::DEC, true, false) << " ";
         }
         std::cout << ss.str() << std::endl;
         ss.str(" ");
         ss.clear(std::stringstream::goodbit);
-        for(int i = 0; i < REGISTERS_N; i++){
-            ss << getFRegisterInfoUnit(i, NumberBase::HEX, false, false) << " ";
+        for(int i = REGISTERS_N / 2; i < REGISTERS_N; i++){
+            ss << getRegisterInfoUnit(i, NumberBase::HEX, false, false) << " ";
         }
         std::cout << ss.str() << std::endl;
 
@@ -245,17 +180,17 @@ void AssemblySimulator::printRegisters(const NumberBase &base, const bool &sign,
         
 
     }else{
-        for(int i = 0; i < REGISTERS_N / PRINT_REGISTERS_COL; i++){
+        for(int i = 0; i < REGISTERS_N / PRINT_REGISTERS_COL / 2; i++){
             std::string res;
             for(int j = 0; j < PRINT_REGISTERS_COL; j++){
-                res += getIRegisterInfoUnit(i*PRINT_REGISTERS_COL + j, base, sign) + ", ";
+                res += getRegisterInfoUnit(i*PRINT_REGISTERS_COL + j, base, sign, false) + ", ";
             }
             std::cout << res << std::endl;    
         }
-        for(int i = 0; i < REGISTERS_N / PRINT_REGISTERS_COL; i++){
+        for(int i = 0; i < REGISTERS_N / PRINT_REGISTERS_COL / 2; i++){
             std::string res;
             for(int j = 0; j < PRINT_REGISTERS_COL; j++){
-                res += getFRegisterInfoUnit(i*PRINT_REGISTERS_COL + j, base, sign, useFNotation) + ", ";
+                res += getRegisterInfoUnit(i*PRINT_REGISTERS_COL + j + REGISTERS_N / 2, base, sign, useFNotation) + ", ";
             }
             std::cout << res << std::endl;   
         }
@@ -689,19 +624,13 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back, co
                     return ;
             }
             if(before.regInd >= 0){
-                if(before.isInteger){
-                    std::string regInfo = getIRegisterInfoUnit(before.regInd, NumberBase::DEC, true);
-                    std::cout << " " <<  regInfo.substr(0, 3) << " " << std::setw(11) <<   std::internal << std::dec<<
-                    before.regValue << " -> " << regInfo.substr(3) << std::endl;
-                    return;
-                }else{
-                    std::string regInfo = getFRegisterInfoUnit(before.regInd, NumberBase::DEC, true, true);
-                    MemoryUnit mu;
-                    mu.si = before.regValue;
-                    std::cout << regInfo.substr(0, 3) << " " << std::setw(11) <<   std::internal << std::dec<<
-                    mu.f << " -> " << regInfo.substr(3) << std::endl;
-                    return;
-                }
+                bool useFNotation = before.regInd < REGISTERS_N / 2;
+                std::string regInfo = getRegisterInfoUnit(before.regInd, NumberBase::DEC, true, useFNotation);
+                MemoryUnit mu;
+                mu.si = before.regValue;
+                std::cout << regInfo.substr(0, 3) << " " << std::setw(11) <<   std::internal << std::dec<<
+                mu.f << " -> " << regInfo.substr(3) << std::endl;
+                return;
             }
         }
         if(!isChanged){
