@@ -19,11 +19,11 @@ fpuChecker: $(FPUOBJS)
 tools: tools.cpp
 	g++ $(CFLAGS) -o $@ $^
 
-deassembler: $(DEASSEMOBJS)
-	g++ $(CFLAGS) -lstdc++fs -o $@ $^
+deassembler: $(ASSEMSRCS)
+	g++ $(CFLAGS) -std=c++17 -lstdc++fs -o $@ $^
 
-assembler: $(ASSEMOBJS)
-	g++ $(CFLAGS) -lstdc++fs -o $@ $^
+assembler: $(ASSEMSRCS)
+	g++ $(CFLAGS) -std=c++17 -lstdc++fs -o $@ $^
 
 %.o: %.cpp
 	g++ $(CFLAGS) -o $@ -c $<
