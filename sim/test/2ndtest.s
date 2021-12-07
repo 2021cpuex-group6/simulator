@@ -64,7 +64,6 @@ test2:
     fsub f7 x4 f3 # f7 -11
     fadd f8 f5 f3 # f8 3.125
     fmul f9 f3 f4 # f9 -28
-    fmv f10 f9 # f10 -28
     fmul f10 f5 f4 # f10  6.125 
     floor f11 f10 # f11  6.00
     floor f12 f5 # f12 -1
@@ -74,9 +73,8 @@ test2:
     fle x1 f6 f7 # x1 0
     fle x2 f6 f8 # x2 1
     fle x3 f9 f9 # x3 1
-    fge f20 f9 f9 # f20 1
-    fge x20 f6 f8 # x20 0
-
+    feq f20 f9 f9 # f20 1
+    feq x20 f6 f8 # x20 0
     addi x1 x0 23
     addi x2 x0 -431
     addi x3 x0 1023

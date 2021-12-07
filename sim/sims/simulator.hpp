@@ -388,6 +388,7 @@ void AssemblySimulator::efficientDoALU(const uint8_t &opcode, const int &targetR
 void AssemblySimulator::efficientDoFALU(const uint8_t &opcode, const int &targetR, const uint32_t &source0, const uint32_t &source1){
     uint32_t ans = 0;
     MemoryUnit mu;
+    MemoryUnit mu0, mu1;
     switch(opcode){
         case 0b00:
             ans = fpu.fadd(source0, source1); break;
@@ -400,10 +401,10 @@ void AssemblySimulator::efficientDoFALU(const uint8_t &opcode, const int &target
         case 0b01000:
             ans = fpu.fle(source0, source1); break;
         case 0b01001:
-            // fge 仮実装
-            MemoryUnit mu0(source0);
-            MemoryUnit mu1(source1);
-            ans = mu0.f >= mu1.f ? 1 : 0;
+            // feq 仮実装
+            mu0.i =  source0;
+            mu1.i =  source1;
+            ans = mu0.f == mu1.f ? 1 : 0;
             break;
         case 0b10000:
             ans = fpu.fsqrt(source0); break;

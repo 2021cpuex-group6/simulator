@@ -2,7 +2,7 @@
 #include "../utils/utils.hpp"
 
 #include <iostream>
-static constexpr uint32_t OPCODE_MASK = 0x7f;
+static constexpr uint32_t OPCODE_MASK = 0x1f;
 static constexpr uint32_t REG_MASK = 0x3f;
 static constexpr uint32_t SHAMT_MASK = 0x1f;
 static constexpr uint32_t RD_SHIFT_N = 5;
@@ -297,7 +297,7 @@ Instruction SParse(const uint32_t &code){
 Instruction FRParse(const uint32_t &code){
     Instruction inst = RRegParse(code);
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
-    uint32_t funct7 = shiftRightLogical(code & FUNCT_7_MASK, 25);
+    uint32_t funct7 = shiftRightLogical(code & FUNCT_7_MASK, 26);
     if(funct3 != 0u){
         if(funct3 == 0b1 && funct7 == 0x28){
             inst.opcode = "feq";

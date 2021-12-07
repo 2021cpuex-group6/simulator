@@ -15,6 +15,7 @@ static constexpr int INSTRUCTION_BYTE_N = 4;
 static constexpr int32_t NOP = 0x13;
 static constexpr int32_t MASK_BITS = ~(1 << 31); // 右シフトが不定にならないように最上位以外1
 static constexpr int32_t MAX_SHIFT_N = 31;
+static constexpr int SHAMT_SHIFT_N = 20;
 static const std::string INVALID_REGISTER = "不正なレジスタ名です";
 static const std::string INVALID_ADDRESSING = "不正なアドレッシングです";
 static const std::string DOUBLE_LABEL = "ラベルが重複しています";
@@ -102,7 +103,7 @@ void assembler_main(std::ofstream& ofs, std::istream& ifs, struct output_flags_t
             continue;
         }
 
-        const int32_t & binary_op  = assemble_op(op, line_count, addr_count, label_map);
+        int32_t binary_op  = assemble_op(op, line_count, addr_count, label_map);
 
         output_file(ofs, binary_op, output_flags);
         line_count ++;
@@ -171,7 +172,7 @@ std::int32_t assemble_op(const std::string & op, const int& line, const int addr
                 // シフト数が不適切
                 assemble_error(INVALID_SHIFT_N, line);
             }
-            output |= (rg1 << 5) | (rg2 << 14) ;
+            output |= (rg1 << 5) | (rg2 << 14)  | (shift_n << SHAMT_SHIFT_N);
             }
             break;
         case IL:
@@ -214,7 +215,7 @@ std::int32_t assemble_op(const std::string & op, const int& line, const int addr
             iss >> op1 >> op2 ;
             rg1 = static_cast<int32_t>(register_to_binary(op1, line));
             address = get_address_reg_imm(op2, line, false);
-            output |= (rg1 << 20) | (address.second << 15) | (address.first);
+            output |= (rg1 << 20) | (address.second << 14) | (address.first);
             break;
         case U:
             {
@@ -229,8 +230,8 @@ std::int32_t assemble_op(const std::string & op, const int& line, const int addr
             output = NOP;
             std::cout << "nop" << std::endl;
             return output;
-        return output;
     }
+    return output;
     
 }
 
