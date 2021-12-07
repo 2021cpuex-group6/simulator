@@ -162,6 +162,7 @@ std::int32_t assemble_op(const std::string & op, const int& line, const int addr
             output |= (rg1 << 5) | (rg2 << 14) | imm;
             break;
         case IS:
+            {
             iss >> op1 >> op2 >> op3;
             rg1 = static_cast<int32_t>(register_to_binary(op1, line));
             rg2 = static_cast<int32_t>(register_to_binary(op2, line));
@@ -171,6 +172,7 @@ std::int32_t assemble_op(const std::string & op, const int& line, const int addr
                 assemble_error(INVALID_SHIFT_N, line);
             }
             output |= (rg1 << 5) | (rg2 << 14) ;
+            }
             break;
         case IL:
             iss >> op1 >> op2 ;
@@ -215,10 +217,12 @@ std::int32_t assemble_op(const std::string & op, const int& line, const int addr
             output |= (rg1 << 20) | (address.second << 15) | (address.first);
             break;
         case U:
+            {
             iss >> op1 >> op2 ;
             rg1 = static_cast<int32_t>(register_to_binary(op1, line));
             uint32_t uimm = static_cast<uint32_t>(std::stoi(op2)) & (~(0x7ffu));
             output |= rg1 << 5 | uimm;
+            }
             break;
 
         default:
