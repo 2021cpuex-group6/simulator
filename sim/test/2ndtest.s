@@ -9,6 +9,11 @@ start:
 test:
     jalr x3 12(%x4) # 8行目に飛ぶ x3は12行目
 test2:
+    blt x2 x3 test2
+    bge x1 f3 test
+    blt f23 x1 test3
+    bne x3 x1 start
+test3:
 # MMIOのテスト
     addi x1 x0 1
     addi x2 x0 20

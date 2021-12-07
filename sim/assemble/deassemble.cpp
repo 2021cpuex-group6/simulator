@@ -31,14 +31,10 @@ int32_t IImmParse(const uint32_t &code ){
 }
 
 int32_t BImmParse(const uint32_t &code){
-    uint32_t part1 = code & 0x80000000;
-    uint32_t part2 = (code & 0x7e000000) >> 20;
-    uint32_t part3 = (code & 0xf00) >> 7;
-    uint32_t part4 = (code & 0x80) << 4;
-    uint32_t res = part2 | part3 | part4;
-    if(part1 != 0){
-        res |= 0xfffff000;
-    }
+    uint32_t part1 = shiftRightArithmatic(code & 0xfc000000, 20);
+    uint32_t part2 = (code & 0x7e0) >> 5;
+    uint32_t res = part1 | part2;
+
     int32_t ans = static_cast<int32_t>(res);
     return ans;
 }

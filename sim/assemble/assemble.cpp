@@ -208,7 +208,7 @@ std::int32_t assemble_op(const std::string & op, const int& line, const int addr
             rg2 = static_cast<int32_t>(register_to_binary(op2, line));
             label_addr = get_relative_address_with_check(op3, addr, 13, line, label_dict);
             label_addr = get_B_imm(label_addr);
-            output |= label_addr | (rg1 << 15) | (rg2 << 20);
+            output |= label_addr | (rg1 << 14) | (rg2 << 20);
             break;
         case S:
             // x1 0(x1)のような書式
@@ -368,11 +368,9 @@ static int32_t get_J_imm(int32_t  input){
 
 static int32_t get_B_imm(int32_t  input){
     // B形式の即値を並び変える
-    // すでに1ビット省略しているので、12ビットの入力
-    int32_t ans = (input << 20 ) & (~MASK_BITS); //12
-    ans |= (input & 0x3f0) << 21; //10-5
-    ans |= (input & 0xf) << 8; //4-1
-    ans |= (input & 0x400) >> 3; // 11
+    input = input << 1;
+    int32_t ans = (input & 0xfc0) << 20; //12
+    ans |= (input & 0x3f) << 5; //10-5
     return ans;
 }
 
