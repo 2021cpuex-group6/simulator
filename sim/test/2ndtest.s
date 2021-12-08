@@ -9,10 +9,10 @@ start:
 test:
     jalr x3 12(%x4) # 8行目に飛ぶ x3は12行目
 test2:
-    blt x2 x3 test2
-    bge x1 f3 test
+    blt x3 x2 test2
+    bge x2 x3 test
     blt f23 x1 test3
-    bne x3 x1 start
+    bne x1 x1 start
 test3:
 # MMIOのテスト
     addi x1 x0 1
@@ -51,10 +51,10 @@ test3:
     srl %x6 %x1 x10
     lui x2 -1082130432 # x2 1 0111 1111 00 ...
     lui x3  1082130432 # x3 0 1000 0001 00
-    lui x4 -1059061760 x4 1 1000 0001 11
-    addi x5 x0 1531 # x5 1 0111 1110 11
+    lui x4 -1059061760 # x4 1 1000 0001 11
+    lui x5 -1084227584  # x5 1 0111 1110 11
     lui x7 -1071467672 
-    addi x7 x0 872 # x7 2.5422
+    addi x7 x7 872 # x7 2.5422
     addi x6 x0 20 # ベースレジスタ
     sw x2 -4(x6)
     sw x3 0(%x6)

@@ -297,6 +297,7 @@ Instruction FRParse(const uint32_t &code){
     if(funct3 != 0u){
         if(funct3 == 0b1 && funct7 == 0x28){
             inst.opcode = "feq";
+            return inst;
         }else{
             printError("FRParse: " + INVALID_CODE);
         }

@@ -198,7 +198,7 @@ std::int32_t assemble_op(const std::string & op, const int& line, const int addr
                 rg1 = static_cast<int32_t>(register_to_binary(op1, line));
                 label_addr = get_relative_address_with_check(op2, addr, 21, line, label_dict);
                 label_addr = get_J_imm(label_addr);
-                output |= label_addr | (rg1 << 7);
+                output |= label_addr | (rg1 << 5);
             }
             break;
         

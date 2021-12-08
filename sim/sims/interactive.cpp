@@ -76,12 +76,10 @@ void InteractiveShell::start(){
                     simulator.printRegisters(static_cast<NumberBase>(input.second[2]), 
                                                                             input.second[3] == 1, true);
                 }else{
-                    std::cout << simulator.getRegisterInfoUnit(input.second[0],
+                    std::cout << simulator.getRegisterInfoUnit(input.second[0] + (input.second[1] == 1 ? 0 : REGISTERS_N / 2),
                                                     static_cast<NumberBase>(input.second[2]), 
                                                     input.second[3] == 1,
-                                                    static_cast<NumberBase>(input.second[2]) == NumberBase::FLOAT || 
-                                                        (input.second[0] >= REGISTERS_N / 2 && 
-                                                            static_cast<NumberBase>(input.second[2]) != NumberBase::FLOAT ))
+                                                    static_cast<NumberBase>(input.second[2]) == NumberBase::FLOAT )
                                                     << std::endl;
                 }
                 break;
@@ -98,7 +96,7 @@ void InteractiveShell::start(){
                 }
                 break;
             case Command::RegWrite:
-                simulator.writeReg(input.second[0], input.second[2]);
+                simulator.writeReg(input.second[0] + (input.second[1] == 1 ? 0 : REGISTERS_N / 2), input.second[2]);
                 break;
             case Command::BreakDelete:
                 simulator.deleteBreakPoint(input.second[0]);
@@ -231,11 +229,11 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
 }
 
 
-std::pair<int, int> InteractiveShell::getRROptionInput(std::string input)const{
+std::pair<int, int> InteractiveShell::getRROptionInput(std::string input, const bool &isFloat)const{
     // レジスタ系のコマンドのオプション部分を読み取る
     const std::regex optionRe(R"(-[bodhuf])");
     std::smatch m;
-    int optionB = static_cast<int>(NumberBase::DEC);
+    int optionB = isFloat ? static_cast<int>(NumberBase::FLOAT): static_cast<int>(NumberBase::DEC);
     int optionS = 1;
 
     while(std::regex_search(input, m, optionRe)){
@@ -287,7 +285,7 @@ std::pair<Command, std::vector<int>> InteractiveShell::getRWInput(const std::str
     int writeValue = 0;
     int regInd = -1;
 
-    auto optionPair = getRROptionInput(inputString);
+    auto optionPair = getRROptionInput(inputString, false);
     if(optionPair.second == 0){
         // unsignedは未対応
         interactiveErrorWithGUI(NOT_IMPLEMENTED_UNSIGNED);
@@ -343,9 +341,9 @@ std::pair<Command, std::vector<int>> InteractiveShell::getRRInput(const std::str
 
 
     auto indPair = getRRRegisterInput(inputString);
-    auto optionPair = getRROptionInput(inputString);
-    
+    auto optionPair = getRROptionInput(inputString, !indPair.second);
     int whichReg = indPair.second ? 1 : 0;
+    
     return{Command::RegRead, {indPair.first, whichReg, optionPair.first, optionPair.second}};
 
 }

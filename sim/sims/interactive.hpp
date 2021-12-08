@@ -56,7 +56,7 @@ class InteractiveShell
 private:
     /* data */
     bool forGUI;
-    std::pair<int, int> getRROptionInput(std::string)const;
+    std::pair<int, int> getRROptionInput(std::string, const bool &)const;
     std::pair<int, bool> getRRRegisterInput(std::string)const;
     std::pair<Command, std::vector<int>> getRRInput(const std::string &) const;
     std::pair<Command, std::vector<int>> getRWInput(const std::string &) const;

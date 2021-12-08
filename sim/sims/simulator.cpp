@@ -98,7 +98,7 @@ std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const Number
             ssreg << "x" << std::setw(2) << std::setfill('0') << std::dec << regN;
             regName = ssreg.str();
         }else if(regN < REGISTERS_N ){
-            ssreg << "f" << std::setw(2) << std::setfill('0') << std::dec << regN;
+            ssreg << "f" << std::setw(2) << std::setfill('0') << std::dec << regN - REGISTERS_N / 2;
             regName = ssreg.str();
         }else {
             regName = "pc ";
@@ -143,9 +143,9 @@ std::string AssemblySimulator::getRegisterInfoUnit(const int &regN, const Number
                 prefix = "";
                 numSize = 12;
                 if (sign){
-                    ss << regName  << std::setw(numSize) << std::internal << value;
+                    ss << regName  << std::setw(numSize) << std::internal <<  static_cast<int32_t>(value);
                 }else{
-                    ss << regName  << std::setw(numSize) << std::internal << value;
+                    ss << regName  << std::setw(numSize) << std::internal <<   value;
                 }
                 return ss.str();
                 break;
@@ -624,12 +624,12 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back, co
                     return ;
             }
             if(before.regInd >= 0){
-                bool useFNotation = before.regInd < REGISTERS_N / 2;
+                bool useFNotation = before.regInd >=  REGISTERS_N / 2;
                 std::string regInfo = getRegisterInfoUnit(before.regInd, NumberBase::DEC, true, useFNotation);
                 MemoryUnit mu;
                 mu.si = before.regValue;
                 std::cout << regInfo.substr(0, 3) << " " << std::setw(11) <<   std::internal << std::dec<<
-                mu.f << " -> " << regInfo.substr(3) << std::endl;
+                (useFNotation ? mu.f : mu.si) << " -> " << regInfo.substr(3) << std::endl;
                 return;
             }
         }
@@ -664,8 +664,6 @@ std::pair<int, bool> AssemblySimulator::getRegInd(const std::string &regName){
     if(regName == "pc" || regName == "%pc"){
         return {REGISTERS_N, true};
     }else if(regName == "zero" || regName == "%zero"){
-        return {0, true};
-    }else if(regName == "fcsr"){
         return {0, true};
     }else{
         try{
