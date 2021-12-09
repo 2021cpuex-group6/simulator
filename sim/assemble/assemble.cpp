@@ -249,7 +249,13 @@ std::int32_t assemble_op(const std::string & op, const int& line, const int addr
         }
         auto address = get_address_reg_imm(op2, line, false);
         output |= (rg1 << 20) | (address.second << 15) | (address.first);
-
+    } else if(style == U){
+        // lui
+        std::string op1, op2; 
+        iss >> op1 >> op2;
+        int32_t rg1 = static_cast<int32_t>(register_to_binary(op1, line));
+        uint32_t uimm = static_cast<uint32_t>(std::stoi(op2)) & (~(0xfffu));
+        output |= rg1 << 7 | uimm;
     }else {
         output = NOP;
         std::cout << "nop" << std::endl;
@@ -573,4 +579,6 @@ void init_opcode_map(){
     output = 0b0100111;
     output |= (0b010 << 12);
     opecode_map.insert({"fsw", {S, output}});
+    output = 0b0110111;
+    opecode_map.insert({"lui", {U, output}});
 }

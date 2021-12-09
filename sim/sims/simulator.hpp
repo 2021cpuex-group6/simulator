@@ -574,9 +574,16 @@ BeforeData AssemblySimulator::efficientDoMix(const uint8_t &opcode, const Instru
             // fle
             writeReg(targetReg, fpu.fle(fRegisters[instruction.regInd[1]].i, fRegisters[instruction.regInd[2]].i), true);
         }else{
-            // ftoi
-            int32_t value = fpu.ftoi(fRegisters[instruction.regInd[1]].i);
-            writeReg(targetReg, value, true);
+            if(opcode & 0b10){
+                //lui
+
+                iRegisters[targetReg] = instruction.immediate & (~0xfff);
+
+            }else{
+                // ftoi
+                int32_t value = fpu.ftoi(fRegisters[instruction.regInd[1]].i);
+                writeReg(targetReg, value, true);
+            }
         }
         return ans;
     }else{

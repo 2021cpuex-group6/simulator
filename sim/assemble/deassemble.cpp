@@ -11,6 +11,7 @@ static constexpr uint32_t IMM_SHIFT_N = 20;
 static constexpr uint32_t FUNCT_3_SHIFT_N = 12;
 static constexpr uint32_t FUNCT_3_MASK = 0x7;
 static constexpr uint32_t FUNCT_7_MASK = 0xfe000000;
+static constexpr uint32_t UI_MASK = 0xfffff000;
 static std::string  ERROR_TOP = "Error: ";
 static std::string  BUG_ERROR = "バグです．報告してください";
 static std::string  NOT_IMPLEMENTED = "未実装";
@@ -359,6 +360,14 @@ Instruction deassemble(const uint32_t &lineN, uint32_t code){
             }
             inst.opcode = "fsw";
             break;  
+        case 0b0110111:
+            inst = {};
+            inst.operandN = 1;
+            inst.regInd[0] = (code >> RD_SHIFT_N) & REG_MASK;
+            inst.immediate = code & UI_MASK;
+            inst.opcode = "lui";
+            break;
+
         default:
             printError(NOT_IMPLEMENTED);
     }
