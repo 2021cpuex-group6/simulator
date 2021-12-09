@@ -10,10 +10,10 @@ ASSEMOBJS :=  $(patsubst %.cpp,%.o,$(ASSEMSRCS))
 DEASSEMOBJS :=  $(patsubst %.cpp,%.o,$(DEASSEMSRCS))
 FPUOBJS :=  $(patsubst %.cpp,%.o,$(FPUSRCS))
 # $(warning $(OBJS))
-main: $(SIMOBJS)
+main: $(SIMSRCS)
 	g++ $(CFLAGS) -o $@ $^
 
-fpuChecker: $(FPUOBJS)
+fpuChecker: $(FPUSRCS)
 	g++ $(CFLAGS) -o $@ $^
 
 tools: tools.cpp
