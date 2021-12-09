@@ -634,7 +634,7 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             ans.writeMem = false;
             ans.regInd = targetR;
             ans.regValue = registers[targetR].si;
-            registers[targetR].i = instruction.immediate & (~0xfff);
+            registers[targetR].i = instruction.immediate & (~0x7ff);
             break;
         default:
             launchError(ILEGAL_INNER_OPCODE);
