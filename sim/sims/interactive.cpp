@@ -35,6 +35,13 @@ void InteractiveShell::start(){
         }
         try{
             switch(input.first){
+            case Command::DoAllFast:
+                simulator.launchFast(!forGUI);
+                if(!forGUI){
+                    simulator.printRegisters(NumberBase::DEC, true, true);
+                    simulator.printOpCounter();
+                }
+                break; 
             case Command::DoAll:
                 simulator.launch(!forGUI);
                 if(!forGUI){
@@ -161,8 +168,9 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
     if(!(std::getline(std::cin, inputString))){
             return {Command::Invalid, {}};
     }
-
-    if(inputString == COMMAND_DO_ALL){
+    if(inputString == COMMAND_DO_ALL_FAST){
+        return {Command::DoAllFast, {}};
+    }else if(inputString == COMMAND_DO_ALL){
         return {Command::DoAll, {}};
     }else if(inputString == COMMAND_CACHE){
         return {Command::CacheInfo, {}};

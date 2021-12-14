@@ -298,6 +298,34 @@ void AssemblySimulator::launch(const bool &printTime){
     if(!forGUI) printCalculatedTime();
 }
 
+// 終了まで実行する(高速版だが back, 統計が使えない)
+void AssemblySimulator::launchFast(const bool &printTime){
+    if(end){
+        // すでに終わっている
+        if(forGUI){
+            std::cout << GUI_ALREADY_END << std::endl;
+            
+        }else{
+            std::cout << ALREADY_ENDED << std::endl;
+        }
+        return;
+    }
+    std::chrono::system_clock::time_point  startT, endT;
+    startT = std::chrono::system_clock::now();
+    while(!end){
+        int instInd = pc/INST_BYTE_N;
+        const Instruction &inst = parser.instructionVector[instInd];
+        nowLine = inst.lineN;
+        efficientDoInst(inst);
+    }
+    endT = std::chrono::system_clock::now(); 
+    double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(endT-startT).count();
+    if(printTime && !forGUI){
+        printf(TIME_FORMAT.c_str(), elapsed);
+    }
+    if(!forGUI) printCalculatedTime();
+}
+
 void AssemblySimulator::doNextBreak(){
     // 次のブレークポイントまで実行
     next(false, false); //最初は実行できる
@@ -808,7 +836,7 @@ void AssemblySimulator::launchError(const std::string &message)const{
     }else{
         printRegisters(NumberBase::HEX, false, true);
     }
-    throw SimException(linePair.first + ": " + std::to_string(linePair.second) + "行目:" + message);
+    // throw SimException(linePair.first + ": " + std::to_string(linePair.second) + "行目:" + message);
 }
 void AssemblySimulator::launchWarning(const std::string &message)const{
     if(onWarning && (!forGUI)){
