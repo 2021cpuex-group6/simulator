@@ -231,6 +231,8 @@ class AssemblySimulator{
         std::string getMemWordString(const uint32_t &address)const;
         void printMem(const uint32_t &address, const uint32_t &wordN, const int &lineN)const;
         std::string getSeparatedWordString(const uint32_t &value)const;
+        double calculateTime();
+        void printCalculatedTime();
 };
 
 // 以下，inline関数

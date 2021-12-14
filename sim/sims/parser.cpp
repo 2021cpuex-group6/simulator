@@ -25,6 +25,7 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     //  3 ...即値のビット数（なければ-1）
     //  4 ...命令種別
     //  5 ...opcodeInt
+    //  6 ...命令の後にストールがいくつ入るか (0~)
 
     {"nop",     {0, -1, -1, -1, INST_OTHERS, 0b0000000}}, 
     {"add",     {3, -1, -1, -1, INST_REGONLY, 0b0000000}}, 
