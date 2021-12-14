@@ -165,6 +165,7 @@ class AssemblySimulator{
         void next(bool, const bool&);
         void doNextBreak();
         void launch(const bool &);
+        void launchFast(const bool &);
         static void printInstByRegInd(const int & lineN, const Instruction &instruction);
         static void printInstruction(const int &, const Instruction &);
         void printInstructionInSim(const int &, const Instruction &)const;
@@ -231,6 +232,8 @@ class AssemblySimulator{
         std::string getMemWordString(const uint32_t &address)const;
         void printMem(const uint32_t &address, const uint32_t &wordN, const int &lineN)const;
         std::string getSeparatedWordString(const uint32_t &value)const;
+        double calculateTime();
+        void printCalculatedTime();
 };
 
 // 以下，inline関数

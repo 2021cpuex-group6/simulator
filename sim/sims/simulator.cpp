@@ -14,9 +14,14 @@
 static const std::string NOT_IMPLEMENTED_FOR_MULTI_FILES = "この機能は複数ファイル実行時に使えません";
 static const std::string TIME_FORMAT = "Time: %.10lfms\n";
 static const std::string CACHE_PRINT_USE_RATE = "キャッシュ使用率: ";
-static const std::string CACHE_PRINT_ACCESS = "  アクセス回数: ";
-static const std::string CACHE_PRINT_RATE = "  ヒット率: ";
+static const std::string CACHE_PRINT_ACCESS =   "  アクセス回数: ";
+static const std::string CACHE_PRINT_RATE =     "  ヒット率: ";
 static const std::string CACHE_PRINT_READ = "";
+
+// 時間予測のパラメータ
+static const double  WRITE_MISS_TIME = 0.002; 
+static const double  READ_MISS_TIME = 0.002;
+static const double  HZ = 50000000;
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
                                      const bool &forGUI, const int & cacheWay, const MMIO &mmio):
@@ -290,6 +295,35 @@ void AssemblySimulator::launch(const bool &printTime){
     if(printTime && !forGUI){
         printf(TIME_FORMAT.c_str(), elapsed);
     }
+    if(!forGUI) printCalculatedTime();
+}
+
+// 終了まで実行する(高速版だが back, 統計が使えない)
+void AssemblySimulator::launchFast(const bool &printTime){
+    if(end){
+        // すでに終わっている
+        if(forGUI){
+            std::cout << GUI_ALREADY_END << std::endl;
+            
+        }else{
+            std::cout << ALREADY_ENDED << std::endl;
+        }
+        return;
+    }
+    std::chrono::system_clock::time_point  startT, endT;
+    startT = std::chrono::system_clock::now();
+    while(!end){
+        int instInd = pc/INST_BYTE_N;
+        const Instruction &inst = parser.instructionVector[instInd];
+        nowLine = inst.lineN;
+        efficientDoInst(inst);
+    }
+    endT = std::chrono::system_clock::now(); 
+    double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(endT-startT).count();
+    if(printTime && !forGUI){
+        printf(TIME_FORMAT.c_str(), elapsed);
+    }
+    if(!forGUI) printCalculatedTime();
 }
 
 void AssemblySimulator::doNextBreak(){
@@ -802,7 +836,7 @@ void AssemblySimulator::launchError(const std::string &message)const{
     }else{
         printRegisters(NumberBase::HEX, false, true);
     }
-    throw SimException(linePair.first + ": " + std::to_string(linePair.second) + "行目:" + message);
+    // throw SimException(linePair.first + ": " + std::to_string(linePair.second) + "行目:" + message);
 }
 void AssemblySimulator::launchWarning(const std::string &message)const{
     if(onWarning && (!forGUI)){
@@ -945,4 +979,26 @@ void AssemblySimulator::printMem(const uint32_t &address, const uint32_t &wordN,
         std::cout  << std::endl;
     }
     
+}
+
+// 時間予測
+double AssemblySimulator::calculateTime(){
+    double ans = 0;
+    // 命令の実行数
+    for(auto count: opcodeInfoMap){
+        uint8_t key = count.second[5];
+        ans += (efficientOpCounter[key]) * (count.second[6] + 1);
+    }
+    ans /= HZ;
+
+    ans += cacheRMissN * READ_MISS_TIME;
+    ans += cacheWMissN * WRITE_MISS_TIME;
+
+    ans += mmio.calculateTime();
+
+    return ans;
+}
+
+void AssemblySimulator::printCalculatedTime(){
+    printf("実行時間予測: %10.4lfs\n", calculateTime());
 }
