@@ -372,7 +372,7 @@ void AssemblySimulator::writeMemWithCacheCheck(const uint32_t& address, const Me
 // ターゲットレジスタのインデックス、入力２つを受け取り、演算、レジスタへの書き込みを行う
 // PCの更新はここでは行わない
 // opcodeはすでにシフトされ，functの部分のみ
-// R, I形式ともに使えるようにfunctは疎を得ている
+// R, I形式ともに使えるようにfunctはそろえている
 void AssemblySimulator::efficientDoALU(const uint8_t &opcode, const int &targetR, const int &source0, const int &source1){
     int ans = 0;
     switch(opcode){
@@ -390,6 +390,9 @@ void AssemblySimulator::efficientDoALU(const uint8_t &opcode, const int &targetR
             ans = source0 < source1 ? 1u: 0; break;
         case 0b01001:
             ans = static_cast<uint32_t>(source0) < static_cast<uint32_t>(source1) ? 1u : 0; break;
+        case 0b11111:
+            // nop
+            return;
         default:
             // 残りはシフト演算
             // RISC-Vではsource1の下位5ビットを（符号なし整数ととらえて？）シフトする 

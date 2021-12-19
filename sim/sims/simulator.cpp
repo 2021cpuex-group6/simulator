@@ -1020,3 +1020,8 @@ double AssemblySimulator::calculateTime(){
 void AssemblySimulator::printCalculatedTime(){
     printf("実行時間予測: %10.4lfs\n", calculateTime());
 }
+
+// アクセスされたアドレスを全表示
+void AssemblySimulator::printAccessedAddress(){
+
+}
