@@ -392,7 +392,7 @@ void AssemblySimulator::efficientDoALU(const uint8_t &opcode, const int &targetR
             ans = static_cast<uint32_t>(source0) < static_cast<uint32_t>(source1) ? 1u : 0; break;
         case 0b11111:
             // nop
-            return;
+            ans = iRegisters[targetR];break;
         default:
             // 残りはシフト演算
             // RISC-Vではsource1の下位5ビットを（符号なし整数ととらえて？）シフトする 
