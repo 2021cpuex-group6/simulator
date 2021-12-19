@@ -100,6 +100,9 @@ void InteractiveShell::start(){
                     simulator.printMem(input.second[0], input.second[1], lineN);
                 }
                 break;
+            case Command::MemList:
+                simulator.printAccessedAddress();
+                break;
             case Command::RegWrite:
                 simulator.writeReg(input.second[0], input.second[2], input.second[1] == 1);
                 break;
@@ -192,6 +195,8 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
         return {Command::IOPrint, {}};
     }else if(inputString == COMMAND_OUTPUT){
         return {Command::Output, {}};
+    }else if(inputString == COMMAND_MEM_LIST){
+        return {Command::MemList, {}};
     }else{
         if(startsWith(inputString, COMMAND_NEXT)){
             std::istringstream stream(inputString.substr(2));

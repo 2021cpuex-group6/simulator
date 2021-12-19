@@ -1023,5 +1023,22 @@ void AssemblySimulator::printCalculatedTime(){
 
 // アクセスされたアドレスを全表示
 void AssemblySimulator::printAccessedAddress(){
-
+    std::cout << "使用箇所" << std::endl;
+    
+    uint32_t address = 0;
+    uint32_t startAddress = 0;
+    while(address < MEM_BYTE_N / WORD_BYTE_N){
+        if((*wordAccessCheckMem)[address]){
+            startAddress = address;
+            while(address < MEM_BYTE_N / WORD_BYTE_N && (*wordAccessCheckMem)[address]){
+                ++address;
+            }
+            std::cout << "0x" <<std::setw(MEM_ADDRESS_HEX_LEN) << std::setfill('0') <<
+                std::hex << startAddress * WORD_BYTE_N << " ~ ";
+            std::cout << "0x" <<std::setw(MEM_ADDRESS_HEX_LEN) << std::setfill('0') <<
+                std::hex << address * WORD_BYTE_N << std::endl;
+            continue;
+        }
+        ++address;
+    }
 }

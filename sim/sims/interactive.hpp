@@ -24,6 +24,7 @@ const std::string COMMAND_RESET = "re";
 const std::string COMMAND_INFO = "i";
 const std::string COMMAND_QUIT = "quit";
 const std::string COMMAND_MEM_READ = "mr";
+const std::string COMMAND_MEM_LIST = "ml";
 const std::string COMMAND_IOPRINT = "io";
 const std::string COMMAND_OUTPUT = "out";
 
@@ -44,6 +45,7 @@ enum class Command{
     Reset,  // 初期状態へ
     Info, //統計データを見る
     MemRead,
+    MemList,
     Quit,
     IOPrint,
     Output,
