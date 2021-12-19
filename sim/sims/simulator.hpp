@@ -109,6 +109,8 @@ struct BeforeData{
     bool isMMIO; //MMIOを使ったか
     bool MMIOvalid; //valid bitを見ただけか
     bool MMIOsend; // sendか
+    bool isNewAccess; // 新しくアクセスするアドレスにアクセスしたか(memCheck用)
+    uint32_t newAccessAddress; // そのアドレス(wordAccessCheckMemのインデックスではないので4で割る)
 };
 
 
@@ -141,7 +143,9 @@ class AssemblySimulator{
         int historyN;   // 現在保持している履歴の数
         int historyPoint; // 次に履歴を保存するインデックス
         std::array<BeforeData, HISTORY_RESERVE_N> beforeHistory; // もとに戻れるようにデータをとる
-        std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N> *dram;  
+        std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N> *dram;
+        int64_t wordAccessCheckN;      // ワードアクセスされた箇所の総数
+        std::array<bool, MEM_BYTE_N / WORD_BYTE_N> *wordAccessCheckMem;  //どこにアクセスされたか
 
         FPUUnit fpu;
         std::map<uint8_t, std::string> inverseOpMap; // uint8_tのopcodeから文字列へ変換
@@ -219,6 +223,7 @@ class AssemblySimulator{
         inline BeforeData efficientDoLoad(const uint8_t &opcode, const Instruction &instruction);
         inline BeforeData efficientDoStore(const uint8_t &opcode, const Instruction &instruction);
         inline BeforeData efficientDoMix(const uint8_t &opcode, const Instruction &instruction);
+        inline bool wordAccessCheck(const uint32_t &address);
 
         int getIRegIndWithError(const std::string &regName)const;
         int getFRegIndWithError(const std::string &regName)const;
@@ -234,6 +239,7 @@ class AssemblySimulator{
         std::string getSeparatedWordString(const uint32_t &value)const;
         double calculateTime();
         void printCalculatedTime();
+        void printAccessedAddress(); // アクセスされたアドレスを全表示
 };
 
 // 以下，inline関数
@@ -499,6 +505,8 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
     if(loadInteger){
         if(opcode & 0b1){
             // lw
+            before.isNewAccess = wordAccessCheck(address);
+            before.newAccessAddress = address;
             uint32_t value = readMemWithCacheCheck(address, MemAccess::WORD, before);
             writeReg(loadRegInd, value, true);
         }else{
@@ -522,8 +530,11 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
             }
         }
     }else{
+        before.isNewAccess = wordAccessCheck(address);
+        before.newAccessAddress = address;
         uint32_t value = readMemWithCacheCheck(address, MemAccess::WORD, before);
         fRegisters[loadRegInd] = MemoryUnit(value);
+
     }
 
     return before;
@@ -559,6 +570,9 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
         }
     }else if((address > (MMIO_VALID - WORD_BYTE_N))&& address < DATA_START){
         launchError(ILEGAL_MEM_WRITE);
+    }else{
+        before.isNewAccess = wordAccessCheck(address);
+        before.newAccessAddress = address;
     }
     writeMemWithCacheCheck(address, memAccess, value, before);
     return before;
@@ -682,6 +696,17 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
     ++instCount;
     incrementPC();
     return ans;
+}
+
+// ワードアクセスする際にどこにアクセスしたかを記録しておく
+bool AssemblySimulator::wordAccessCheck(const uint32_t &address){
+    uint32_t ind = address / WORD_BYTE_N;
+    if(!(*wordAccessCheckMem)[ind]){
+        (*wordAccessCheckMem)[ind] = true;
+        ++wordAccessCheckN;
+        return true;
+    }
+    return false;
 }
 
 #endif

@@ -31,6 +31,7 @@ AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &u
         historyPoint(0), beforeHistory(), cache(), cacheWay(cacheWay), cacheIndexN(CASH_SIZE / cacheWay), 
         cacheRHitN(0), cacheWHitN(0), cacheRMissN(0), cacheWMissN(0), mmio(mmio){
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
+    wordAccessCheckMem = new std::array<bool, MEM_BYTE_N / WORD_BYTE_N>;
     MemoryUnit mu;
     
     mu.i = 0;
@@ -44,6 +45,7 @@ AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &u
         opCounter.insert({item.first, 0});
         efficientOpCounter.insert({static_cast<uint8_t>(item.second[5]), 0});
     }
+    wordAccessCheckN = 0;
     fpu = FPUUnit();
     inverseOpMap = AssemblyParser::getInverseOpMap();
     lastPC = static_cast<long>(parser.instructionVector.size()) * INST_BYTE_N;
@@ -52,6 +54,7 @@ AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &u
         
 AssemblySimulator::~AssemblySimulator(){
     delete dram;
+    delete wordAccessCheckMem;
     
 }
 
@@ -80,6 +83,7 @@ void AssemblySimulator::reset(){
     historyPoint = 0;
     beforeHistory.fill({});
     (*dram).fill({0});
+    (*wordAccessCheckMem).fill(false);
     for(int i = 0; i < CASH_SIZE; i++){
         CacheRow row = {false, 0};
         cache[i] = row;
@@ -495,6 +499,11 @@ void AssemblySimulator::back(){
         }
     }
 
+    if(before.isNewAccess){
+        (*wordAccessCheckMem)[before.newAccessAddress/4] = false;
+        --wordAccessCheckN;
+    }
+
 
 }
 
@@ -901,6 +910,15 @@ void AssemblySimulator::printOpCounter() const{
         }
 
     }
+
+    // アクセスされたワード数
+    if(useGUIMode){
+
+    }else{
+        std::cout << "ワードアクセスされた箇所数: " << wordAccessCheckN << std::endl;
+        
+    }
+
     
 }
 
