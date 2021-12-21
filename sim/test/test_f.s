@@ -9,6 +9,98 @@
     fsqrt f6 f3 # f6 = 2
     fle x2 f2 f3
     floor f6 f4
-    fsw f6 0(x0)
-    flw f7 0(x0)
+    addi x4 x0 1024
+    addi x4 x0 1024
+    addi x4 x0 1024
+    fsw f6 0(x4)
+    flw f7 0(x4)
+    fmv f8 f7
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
+    addi x0 x0 0
 

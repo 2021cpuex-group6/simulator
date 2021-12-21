@@ -20,6 +20,9 @@ constexpr int SLD_OBJ_INT_N = 4;
 constexpr int SLD_OBJ_FLOAT_N = 12;
 constexpr int SLD_OBJ_END = -1;
 
+// 時間予測用
+constexpr double recvTime = 0.002;
+constexpr double sendTime = 0.002;
 
 MMIO::MMIO(){
     initRecvData();    
@@ -191,3 +194,13 @@ void MMIO::printSended(const bool &forGUI)const{
     std::cout  << std::endl;
     
 };
+
+// 時間予測
+double MMIO::calculateTime(){
+    double ans = 0;
+    // 受信時間
+    ans += nowInd * recvTime;
+    ans += sendData.size() * sendTime; 
+
+    return ans;
+}

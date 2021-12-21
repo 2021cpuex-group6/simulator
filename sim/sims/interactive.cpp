@@ -35,6 +35,13 @@ void InteractiveShell::start(){
         }
         try{
             switch(input.first){
+            case Command::DoAllFast:
+                simulator.launchFast(!forGUI);
+                if(!forGUI){
+                    simulator.printRegisters(NumberBase::DEC, true, true);
+                    simulator.printOpCounter();
+                }
+                break; 
             case Command::DoAll:
                 simulator.launch(!forGUI);
                 if(!forGUI){
@@ -94,6 +101,9 @@ void InteractiveShell::start(){
                     int lineN = forGUI ? MEM_PRINT_LINE_GUI : MEM_PRINT_LINE_CLI;
                     simulator.printMem(input.second[0], input.second[1], lineN);
                 }
+                break;
+            case Command::MemList:
+                simulator.printAccessedAddress();
                 break;
             case Command::RegWrite:
                 simulator.writeReg(input.second[0] + (input.second[1] == 1 ? 0 : REGISTERS_N / 2), input.second[2]);
@@ -163,8 +173,9 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
     if(!(std::getline(std::cin, inputString))){
             return {Command::Invalid, {}};
     }
-
-    if(inputString == COMMAND_DO_ALL){
+    if(inputString == COMMAND_DO_ALL_FAST){
+        return {Command::DoAllFast, {}};
+    }else if(inputString == COMMAND_DO_ALL){
         return {Command::DoAll, {}};
     }else if(inputString == COMMAND_CACHE){
         return {Command::CacheInfo, {}};
@@ -186,6 +197,8 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
         return {Command::IOPrint, {}};
     }else if(inputString == COMMAND_OUTPUT){
         return {Command::Output, {}};
+    }else if(inputString == COMMAND_MEM_LIST){
+        return {Command::MemList, {}};
     }else{
         if(startsWith(inputString, COMMAND_NEXT)){
             std::istringstream stream(inputString.substr(2));

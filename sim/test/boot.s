@@ -1,24 +1,35 @@
-    addi x7 x0 144
-    addi x6 x0 4
-    addi x8 x0 12
-    sb x7 2(x0)
-load_size:
-    lbu x7 0(x0)
-    beq x7 x0 load_size
-    lbu x7 1(x0)
-    sll x7 x7 x8
-    add x9 x9 x7
-    addi x6 x6 -1
-    addi x8 x8 -4
+    addi x6 x0 144  # send data
+    lui  x7 1048576  # 0x10_0000
+    sb   x6 -1(x7)    # send 144
+    addi x6 x0 4 # for loop count
+    addi x8 x0 24   # shift 
+load_size: # x6 counter, x7 mmio base addr, x8 shift size
+    lbu x10 -3(x7)   # check valid
+    beq x10 x0 load_size
+    addi  x6 x6 -1
+    lbu x10 -2(x7)
+    sll x10 x10 x8
+    add x9 x10 x9
+    addi x8 x8 -8
     bne x6 x0 load_size
-    addi x6 x6 512 # instruction place, x9 has size
-load_inst:
-    lbu x8 0(x0)
+    addi x6 x0 512
+    addi x10 x0 4
+    addi x11 x0 24
+load_inst: # x6 instruction place, x7 mmio base addr, x9 has size, x10 loop counter, x11 shift x12 inst
+    lbu x8 -3(x7)
     beq x8 x0 load_inst
-    lbu x8 1(x0)
-    sb x8 0(x6)
-    addi x6 x6 1
-    addi x9 x9 -1
+    lbu x8 -2(x7)
+    sll x8 x8 x11
+    addi x10 x10 -1
+    addi x11 x11 -8
+    add x12 x12 x8
+    bne x0 x10 load_inst
+    sw x12 0(x6)
+    addi x12 x0 0
+    addi x6 x6 4
+    addi x9 x9 -4
+    addi x10 x0 4
+    addi x11 x0 24
     bne x9 x0 load_inst
     jr 512(x0)
     addi x0 x0 0

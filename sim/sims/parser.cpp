@@ -25,8 +25,9 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     //  3 ...即値のビット数（なければ-1）
     //  4 ...命令種別
     //  5 ...opcodeInt
+    //  6 ...命令の後にストールがいくつ入るか (0~)
 
-    {"nop",     {0, -1, -1, -1, INST_OTHERS, 0b0000000}}, 
+    {"nop",     {0, -1, -1, -1, INST_OTHERS,  0b11111001}}, 
     {"add",     {3, -1, -1, -1, INST_REGONLY, 0b0000000}}, 
     {"sub",     {3, -1, -1, -1, INST_REGONLY, 0b0100000}},
     // {"mul",     {3, -1, -1, -1, INST_REGONLY}},
@@ -86,9 +87,9 @@ int getFileLen(const std::string& filePath){
 std::map<uint8_t, std::string> AssemblyParser::getInverseOpMap(){
     std::map<uint8_t, std::string> ans = {};
     for(auto e: opcodeInfoMap){
-        if(e.first != "nop"){
-            ans.insert({static_cast<uint8_t>(e.second[5]), e.first});
-        }
+        // if(e.first != "nop"){
+        ans.insert({static_cast<uint8_t>(e.second[5]), e.first});
+        // }
     }
     return ans;
 }

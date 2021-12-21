@@ -10,6 +10,7 @@ constexpr int MEM_PRINT_LINE_GUI = 8;
 
 const std::string OUTPUT_FINISH = "Finished.";
 const std::string COMMAND_DO_ALL = "a";
+const std::string COMMAND_DO_ALL_FAST = "af";
 const std::string COMMAND_NEXT_BLOCK = "nb";
 const std::string COMMAND_NEXT = "n";
 const std::string COMMAND_BREAK_SET = "bs";
@@ -23,6 +24,7 @@ const std::string COMMAND_RESET = "re";
 const std::string COMMAND_INFO = "i";
 const std::string COMMAND_QUIT = "quit";
 const std::string COMMAND_MEM_READ = "mr";
+const std::string COMMAND_MEM_LIST = "ml";
 const std::string COMMAND_IOPRINT = "io";
 const std::string COMMAND_OUTPUT = "out";
 
@@ -30,6 +32,7 @@ const std::string COMMAND_OUTPUT = "out";
 
 enum class Command{
     DoAll, 
+    DoAllFast,
     DoNextBreak, 
     DoNext, 
     BreakSet, 
@@ -42,6 +45,7 @@ enum class Command{
     Reset,  // 初期状態へ
     Info, //統計データを見る
     MemRead,
+    MemList,
     Quit,
     IOPrint,
     Output,

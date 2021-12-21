@@ -25,6 +25,8 @@ class MMIO{
         void readSldOrNetwork(const std::vector<std::string>&, int &);
         void readSld(std::ifstream &);
 
+        double calculateTime();
+
 
     private:
         int nowInd = 0;
