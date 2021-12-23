@@ -43,7 +43,7 @@ makeコマンドでmainファイルを作成し、「`./main fib.s`」のよう�
 - 0x100000 - 1 ... send. ここに`sb`することで，データを送ることができる．送ったデータはsimulatorを`quit`したのちにdata/output.ppmファイルとして出力される．
 
 ※データはdata/contest.sldファイルから読み込みます(存在しない場合エラー)
-
+※sims/simulator.hppのMMIO_VALID ~ MMIO_SENDの値を変えることで(制限の範囲内で)自由にアドレスを変更できます．
 ### アセンブラ
 `make assembler`でassemblerファイルを作り、実行してください。
 

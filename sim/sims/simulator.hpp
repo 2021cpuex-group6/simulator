@@ -33,9 +33,14 @@ constexpr bool USE_EFFICIENT = true;
 constexpr int CASH_SIZE = 0x1000; // キャッシュの総行数　２べきにすること
 constexpr int CASH_OFFSET_N = 2; // メモリアドレスのうちのオフセット長．この2べきがキャッシュ一行のデータのバイト数
 constexpr int32_t DATA_START = 0x100000; // データの始まるアドレス (2^20)
-constexpr int32_t MMIO_SEND = DATA_START - 1; // MMIOの送信アドレス
-constexpr int32_t MMIO_RECV = DATA_START - 2; // MMIOの受信アドレス
+
+// MMIOのアドレス．
+// この順でかつ3つのアドレスが連続していれば自由に変更可能．
 constexpr int32_t MMIO_VALID = DATA_START - 3; // MMIOのvaildのアドレス
+constexpr int32_t MMIO_RECV = DATA_START - 2; // MMIOの受信アドレス
+constexpr int32_t MMIO_SEND = DATA_START - 1; // MMIOの送信アドレス
+
+
 static const std::string ILEGAL_INNER_OPCODE = "不正な内部オペコードです(実装ミス)";
 const std::string BREAKPOINT_NOT_FOUND = "ブレークポイントが見つかりませんでした";
 const std::string FILE_END = "終了しました";
@@ -568,10 +573,10 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
             before.MMIOsend = true;
             mmio.send(static_cast<char>(value));
             return before;
-        }else if(address >= MMIO_RECV && address <= MMIO_SEND ){
+        }else if(address >= MMIO_RECV && address < MMIO_SEND ){
             launchError(ILEGAL_MEM_WRITE);
         }
-    }else if((address > (MMIO_VALID - WORD_BYTE_N))&& address < DATA_START){
+    }else if((address > (MMIO_VALID - WORD_BYTE_N))&& address <= MMIO_SEND){
         launchError(ILEGAL_MEM_WRITE);
     }else{
         before.isNewAccess = wordAccessCheck(address);
