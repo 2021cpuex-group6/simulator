@@ -20,9 +20,11 @@ enum op_style {
 struct output_flags_t {
     bool output_log;
     bool output_as_binary;
+    bool output_32;
     output_flags_t() {
         output_log = false;
         output_as_binary = false;
+        output_32 = false;
         return;
     };
 };
