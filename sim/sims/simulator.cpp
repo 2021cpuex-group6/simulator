@@ -320,7 +320,7 @@ void AssemblySimulator::launchFast(const bool &printTime){
         int instInd = pc/INST_BYTE_N;
         const Instruction &inst = parser.instructionVector[instInd];
         nowLine = inst.lineN;
-        efficientDoInst(inst);
+        efficientDoInst(inst, false);
     }
     endT = std::chrono::system_clock::now(); 
     double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(endT-startT).count();
@@ -376,7 +376,7 @@ void AssemblySimulator::next(bool jumpComment, const bool& printInst){
         const Instruction &inst = parser.instructionVector[instInd];
         nowLine = inst.lineN;
         jumpComment = false;
-        BeforeData beforeData = efficientDoInst(inst);
+        BeforeData beforeData = efficientDoInst(inst, true).value();
         // if(useEfficient){
         // }else{
         //     beforeData = doInst(inst);

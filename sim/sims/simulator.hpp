@@ -15,6 +15,7 @@
 #include <bitset>
 #include <iomanip>
 #include <cmath>
+#include <optional>
 
 constexpr int REGISTERS_N = 32;
 constexpr int PRINT_REGISTERS_COL = 4;
@@ -25,7 +26,7 @@ constexpr int PRINT_INST_NUM_SIZE = 6;
 constexpr int PRINT_INFO_NUM_SIZE = 10;
 constexpr int HISTORY_RESERVE_N = 1024;
 constexpr int SHIFT_MASK5 = 0b11111;
-constexpr long MEM_BYTE_N = 0x100000000; //メモリのバイト数 2^24
+constexpr long MEM_BYTE_N = 0x10000000; //メモリのバイト数 2^24
 constexpr int MEM_ADDRESS_HEX_LEN = 8;
 constexpr int OPKIND_MASK = 0x7;
 constexpr int OPKIND_BIT_N = 3;
@@ -214,20 +215,22 @@ class AssemblySimulator{
         void back();
         inline void writeCashBeforeData(const bool &forWrite, const uint32_t& address, BeforeData &beforeData);
         inline uint32_t readMem(const uint32_t& address, const MemAccess &memAccess)const;
-        inline uint32_t readMemWithCacheCheck(const uint32_t& address, const MemAccess &memAccess, BeforeData &beforeData);
+        inline uint32_t readMemWithCacheCheck(const uint32_t& address, const MemAccess &memAccess,
+                 BeforeData &beforeData, const bool makeBefore);
         inline void writeMem(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value);
-        inline void writeMemWithCacheCheck(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value, BeforeData &beforeData);
+        inline void writeMemWithCacheCheck(const uint32_t& address, const MemAccess &MemAccess,
+                 const uint32_t value, BeforeData &beforeData, const bool makeBefore);
         BeforeData popHistory();
 
     // private:
-        inline BeforeData efficientDoInst(const Instruction &);
+        inline std::optional<BeforeData> efficientDoInst(const Instruction &, const bool);
         inline void efficientDoALU(const uint8_t &op, const int &targetR, const int &source0, const int &source1);
         inline void efficientDoFALU(const uint8_t &opcode, const int &targetR, const uint32_t &source0, const uint32_t &source1);
-        inline BeforeData efficientDoControl(const uint8_t &opcode, const Instruction &instruction);
-        inline BeforeData efficientDoJump(const uint8_t &opcode, const Instruction &instruction);
-        inline BeforeData efficientDoLoad(const uint8_t &opcode, const Instruction &instruction);
-        inline BeforeData efficientDoStore(const uint8_t &opcode, const Instruction &instruction);
-        inline BeforeData efficientDoMix(const uint8_t &opcode, const Instruction &instruction);
+        inline std::optional<BeforeData> efficientDoControl(const uint8_t &opcode, const Instruction &instruction, const bool makeBefore);
+        inline std::optional<BeforeData> efficientDoJump(const uint8_t &opcode, const Instruction &instruction, const bool makeBefore);
+        inline std::optional<BeforeData> efficientDoLoad(const uint8_t &opcode, const Instruction &instruction, const bool makeBefore);
+        inline std::optional<BeforeData> efficientDoStore(const uint8_t &opcode, const Instruction &instruction, const bool makeBefore);
+        inline std::optional<BeforeData> efficientDoMix(const uint8_t &opcode, const Instruction &instruction, const bool makeBefore);
         inline bool wordAccessCheck(const uint32_t &address);
 
         int getIRegIndWithError(const std::string &regName)const;
@@ -338,9 +341,12 @@ uint32_t AssemblySimulator::readMem(const uint32_t& address, const MemAccess &me
 // キャッシュのチェック，書き込みもする
 // BeforeDataの書き込みも行う
 // 返り値はメモリの値とヒットしたかのboolのpair
-uint32_t AssemblySimulator::readMemWithCacheCheck(const uint32_t& address, const MemAccess &memAccess, BeforeData &beforeData){
+uint32_t AssemblySimulator::readMemWithCacheCheck(const uint32_t& address, const MemAccess &memAccess,
+         BeforeData &beforeData, const bool makeBefore){
     uint32_t ans = readMem(address, memAccess);
-    writeCashBeforeData(false, address, beforeData);
+    if(makeBefore){
+        writeCashBeforeData(false, address, beforeData);
+    }
     return ans;
 }
 
@@ -368,9 +374,12 @@ void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAc
 }
 
 // キャッシュへの書き込み，BeforeDataへの書き込みも行う
-void AssemblySimulator::writeMemWithCacheCheck(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value, BeforeData &beforeData){
+void AssemblySimulator::writeMemWithCacheCheck(const uint32_t& address, const MemAccess &MemAccess,
+     const uint32_t value, BeforeData &beforeData, const bool makeBefore){
     writeMem(address, MemAccess, value);
-    writeCashBeforeData(true, address, beforeData);
+    if(makeBefore){
+        writeCashBeforeData(true, address, beforeData);
+    }
 }
 
 
@@ -443,13 +452,18 @@ void AssemblySimulator::efficientDoFALU(const uint8_t &opcode, const int &target
 }
 
 // 制御系の命令で，ジャンプするときの処理
-BeforeData AssemblySimulator::efficientDoJump(const uint8_t &opcode, const Instruction &instruction){
-    BeforeData ans = {pc,true, -1, -1, false, 0, 0, instruction.opcodeInt};
+std::optional<BeforeData> AssemblySimulator::efficientDoJump(const uint8_t &opcode, const Instruction &instruction, const bool makeBefore){
+    BeforeData ans;
+    if(makeBefore){
+        ans = {pc,true, -1, -1, false, 0, 0, instruction.opcodeInt};
+    }
     if((opcode & 0b10)){
         // レジスタへの書き込み (jal, jalr)
         int writeRegInd = instruction.regInd[0];
-        ans.regInd = writeRegInd;
-        ans.regValue = iRegisters[writeRegInd];
+        if(makeBefore){
+            ans.regInd = writeRegInd;
+            ans.regValue = iRegisters[writeRegInd];
+        }
         writeReg(writeRegInd, pc+INST_BYTE_N, true);
     }
     int nextPC = instruction.immediate;
@@ -470,15 +484,19 @@ BeforeData AssemblySimulator::efficientDoJump(const uint8_t &opcode, const Instr
         // 即値ジャンプ
         pc += instruction.immediate;
     }
-    return ans;
+    if(makeBefore){
+        return ans;
+    }else{
+        return std::nullopt;
+    }
 }
 
 // 制御系の命令実行
 // 次命令がpc+4かは不明なのでここでpcの更新をする
-BeforeData AssemblySimulator::efficientDoControl(const uint8_t &opcode, const Instruction &instruction){
+std::optional<BeforeData> AssemblySimulator::efficientDoControl(const uint8_t &opcode, const Instruction &instruction, const bool makeBefore){
     int reg0 = iRegisters[instruction.regInd[0]];
     int reg1 = iRegisters[instruction.regInd[1]];
-    bool jumpFlag;
+    bool jumpFlag = false;
     switch(opcode){
         case 0b001:
             jumpFlag = reg0 < reg1; break;
@@ -491,16 +509,21 @@ BeforeData AssemblySimulator::efficientDoControl(const uint8_t &opcode, const In
     }
     if(jumpFlag){
         // j命令と同じ
-        return efficientDoJump(0b0000, instruction);
+        return efficientDoJump(0b0000, instruction, makeBefore);
     }else{
-        BeforeData ans = {pc,false, -1, -1, false, 0, 0, instruction.opcodeInt};
-        incrementPC();
-        return ans;
+        if(makeBefore){
+            BeforeData ans = {pc,false, -1, -1, false, 0, 0, instruction.opcodeInt};
+            incrementPC();
+            return ans;
+        }else{
+            incrementPC();
+            return std::nullopt;
+        }
     }
 }
 
 
-BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instruction &instruction){
+std::optional<BeforeData> AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instruction &instruction, const bool makeBefore){
     // ロード命令を実行
     uint32_t address = instruction.immediate;
     address += static_cast<uint32_t>(iRegisters[instruction.regInd[1]]);
@@ -508,49 +531,64 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
     bool loadInteger = (opcode & 0b100) == 0u;
     int32_t loadRegInd = instruction.regInd[0];
     int32_t beforeValue = loadInteger ? iRegisters[loadRegInd] : fRegisters[loadRegInd].si;
-    BeforeData before = { pc, loadInteger, loadRegInd, beforeValue, false, 0u, 0u, instruction.opcodeInt};
+    BeforeData before;
+    if(makeBefore){
+        before = { pc, loadInteger, loadRegInd, beforeValue, false, 0u, 0u, instruction.opcodeInt};
+    }
     
     if(loadInteger){
         if(opcode & 0b1){
             // lw
-            before.isNewAccess = wordAccessCheck(address);
-            before.newAccessAddress = address;
-            uint32_t value = readMemWithCacheCheck(address, MemAccess::WORD, before);
+            if(makeBefore){
+                before.isNewAccess = wordAccessCheck(address);
+                before.newAccessAddress = address;
+            }
+            uint32_t value = readMemWithCacheCheck(address, MemAccess::WORD, before, makeBefore);
             writeReg(loadRegInd, value, true);
         }else{
             // lbu
             if(address == MMIO_RECV){
                 // MMIOとして扱う
-                before.isMMIO = true;
-                before.MMIOvalid = false;
-                before.MMIOsend = false;
+                if(makeBefore){
+                    before.isMMIO = true;
+                    before.MMIOvalid = false;
+                    before.MMIOsend = false;
+                }
                 int32_t val = 0;
                 if(mmio.valid) val = 0xff & static_cast<int32_t>(mmio.recv());
                 writeReg(loadRegInd, ((~0xff) &iRegisters[loadRegInd]) |val, true);
             }else if(address == MMIO_VALID){
-                before.isMMIO = true;
-                before.MMIOvalid = true;
+                if(makeBefore){
+                    before.isMMIO = true;
+                    before.MMIOvalid = true;
+                }
                 int32_t val = mmio.valid ? 1 : 0;
                 writeReg(loadRegInd, ((~0xff) & iRegisters[loadRegInd]) |val, true);
             }else{
-                uint32_t value = readMemWithCacheCheck(address, MemAccess::BYTE, before);
+                uint32_t value = readMemWithCacheCheck(address, MemAccess::BYTE, before, makeBefore);
                 writeReg(loadRegInd, ((~0xff) &iRegisters[loadRegInd]) | value, true);
             }
         }
     }else{
-        before.isNewAccess = wordAccessCheck(address);
-        before.newAccessAddress = address;
-        uint32_t value = readMemWithCacheCheck(address, MemAccess::WORD, before);
+        if(makeBefore){
+            before.isNewAccess = wordAccessCheck(address);
+            before.newAccessAddress = address;
+        }
+        uint32_t value = readMemWithCacheCheck(address, MemAccess::WORD, before, makeBefore);
         fRegisters[loadRegInd] = MemoryUnit(value);
 
     }
 
-    return before;
+    if(makeBefore){
+        return before;
+    }else{
+        return std::nullopt;
+    }
 }
 
 
 
-BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Instruction &instruction){
+std::optional<BeforeData> AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Instruction &instruction, const bool makeBefore){
     uint32_t address = instruction.immediate;
     address += static_cast<uint32_t>(iRegisters[instruction.regInd[1]]);
 
@@ -582,19 +620,28 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
         before.isNewAccess = wordAccessCheck(address);
         before.newAccessAddress = address;
     }
-    writeMemWithCacheCheck(address, memAccess, value, before);
-    return before;
+    writeMemWithCacheCheck(address, memAccess, value, before, makeBefore);
+    if(makeBefore){
+        return before;
+    }else{
+        return std::nullopt;
+    }
 }
 
 // 書き込み，読み込みをするレジスタの種類が違う命令
-BeforeData AssemblySimulator::efficientDoMix(const uint8_t &opcode, const Instruction &instruction){
+std::optional<BeforeData> AssemblySimulator::efficientDoMix(const uint8_t &opcode, const Instruction &instruction, const bool makeBefore){
     int targetReg = instruction.regInd[0];
-    BeforeData ans = {pc, false, targetReg, 0u, false, 0u, 0u, instruction.opcodeInt};
+    BeforeData ans;
+    if(makeBefore){
+        ans = {pc, false, targetReg, 0u, false, 0u, 0u, instruction.opcodeInt};
+    }
 
     if(opcode & 0b1){
         // 書き込み先は整数レジスタ
-        ans.isInteger = true;
-        ans.regValue = iRegisters[targetReg];
+        if(makeBefore){
+            ans.isInteger = true;
+            ans.regValue = iRegisters[targetReg];
+        }
         if(opcode & 0b100){
             // fle
             writeReg(targetReg, fpu.fle(fRegisters[instruction.regInd[1]].i, fRegisters[instruction.regInd[2]].i), true);
@@ -610,28 +657,36 @@ BeforeData AssemblySimulator::efficientDoMix(const uint8_t &opcode, const Instru
                 writeReg(targetReg, value, true);
             }
         }
-        return ans;
     }else{
         // itof
-        ans.isInteger = false;
-        ans.regValue = fRegisters[targetReg].si;
+        if(makeBefore){
+            ans.isInteger = false;
+            ans.regValue = fRegisters[targetReg].si;
+        }
         uint32_t ansInt = fpu.itof(static_cast<uint32_t>(iRegisters[instruction.regInd[1]]));
         writeReg(targetReg, ansInt, false);
+    }
+    if(makeBefore){
         return ans;
+    }else{
+        return std::nullopt;
     }
 
 }
 
 // 高速化した命令処理
-BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
+std::optional<BeforeData> AssemblySimulator::efficientDoInst(const Instruction &instruction, const bool makeBefore){
     uint8_t opcode = instruction.opcodeInt;
     // efficientOpCounter[opcode] = efficientOpCounter[opcode] + 1;
 
     const uint8_t opKind = opcode & OPKIND_MASK;
     const uint8_t opFunct = opcode >> OPKIND_BIT_N;
-    BeforeData ans = {};
-    ans.opcodeInt = opcode;
-    ans.pc = pc;
+    BeforeData ans;
+    if(makeBefore){
+        ans = {};
+        ans.opcodeInt = opcode;
+        ans.pc = pc;
+    }
     int targetR, source0, source1;
     uint32_t sourceU0, sourceU1;
     switch(opKind){
@@ -640,10 +695,12 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             // 演算命令
             // ここで前のデータを保存
             targetR = instruction.regInd[0];
-            ans.isInteger = true;
-            ans.writeMem = false;
-            ans.regInd = targetR;
-            ans.regValue = iRegisters[targetR];
+            if(makeBefore){
+                ans.isInteger = true;
+                ans.writeMem = false;
+                ans.regInd = targetR;
+                ans.regValue = iRegisters[targetR];
+            }
             source0 = iRegisters[instruction.regInd[1]];
             source1 = iRegisters[instruction.regInd[2]];
             efficientDoALU(opFunct, targetR, source0, source1);
@@ -651,39 +708,66 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
         case 0b001:
             // 整数I
             targetR = instruction.regInd[0];
-            ans.isInteger = true;
-            ans.writeMem = false;
-            ans.regInd = targetR;
-            ans.regValue = iRegisters[targetR];
+            if(makeBefore){
+                ans.isInteger = true;
+                ans.writeMem = false;
+                ans.regInd = targetR;
+                ans.regValue = iRegisters[targetR];
+            }
             source0 = iRegisters[instruction.regInd[1]];
             source1 = instruction.immediate;
             efficientDoALU(opFunct, targetR, source0, source1);
             break;
         case 0b010:
             // 制御B
-            ans =  efficientDoControl(opFunct, instruction);
-            ++instCount;
-            return ans;
+            if(makeBefore){
+                ans =  efficientDoControl(opFunct, instruction, makeBefore).value();
+                ++instCount;
+                return ans;
+            }else{
+                efficientDoControl(opFunct, instruction, makeBefore);
+                ++instCount;
+                return std::nullopt;
+            }
         case 0b011:
             // 制御J, I
-            ans =  efficientDoJump(opFunct, instruction);
-            ++instCount;
-            return ans;
+            if(makeBefore){
+                ans =  efficientDoJump(opFunct, instruction, makeBefore).value();
+                ++instCount;
+                return ans;
+            }else{
+                efficientDoJump(opFunct, instruction, makeBefore);
+                ++instCount;
+                return std::nullopt;
+            }
         case 0b100:
             // メモリI
-            ans = efficientDoLoad(opFunct, instruction); break;
+            if(makeBefore){
+                ans = efficientDoLoad(opFunct, instruction, makeBefore).value();
+            }else{
+                efficientDoLoad(opFunct, instruction, makeBefore);
+            }
+            
+            break;
         case 0b101:
             // メモリS
-            ans = efficientDoStore(opFunct, instruction); break;
+            if(makeBefore){
+                ans = efficientDoStore(opFunct, instruction, makeBefore).value();
+            }else{
+                efficientDoStore(opFunct, instruction, makeBefore);
+            }
+            break;
         case 0b110:
             // 浮動R
             targetR = instruction.regInd[0];
             // ここで前のデータを保存
-            ans.pc = pc;
-            ans.isInteger = false;
-            ans.writeMem = false;
-            ans.regInd = targetR;
-            ans.regValue = fRegisters[targetR].si;
+            if(makeBefore){
+                ans.pc = pc;
+                ans.isInteger = false;
+                ans.writeMem = false;
+                ans.regInd = targetR;
+                ans.regValue = fRegisters[targetR].si;
+            }
             sourceU0 = fRegisters[instruction.regInd[1]].i;
             if(opFunct & 0b10000){
                 // fsqrtなど，入力が１つ
@@ -695,7 +779,11 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             break;
         case 0b111:
             // 混合
-            ans = efficientDoMix(opFunct, instruction);
+            if(makeBefore){
+                ans = efficientDoMix(opFunct, instruction, makeBefore).value();
+            }else{
+                efficientDoMix(opFunct, instruction, makeBefore);
+            }
             break;
         default:
             launchError(ILEGAL_INNER_OPCODE);
@@ -703,7 +791,11 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
 
     ++instCount;
     incrementPC();
-    return ans;
+    if(makeBefore){
+        return ans;
+    }else{
+        return std::nullopt;
+    }
 }
 
 // ワードアクセスする際にどこにアクセスしたかを記録しておく
