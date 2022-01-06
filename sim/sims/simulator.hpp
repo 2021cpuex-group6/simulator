@@ -526,15 +526,15 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
                 before.MMIOsend = false;
                 int32_t val = 0;
                 if(mmio.valid) val = 0xff & static_cast<int32_t>(mmio.recv());
-                writeReg(loadRegInd, ((~0xff) &iRegisters[loadRegInd]) |val, true);
+                writeReg(loadRegInd, val, true);
             }else if(address == MMIO_VALID){
                 before.isMMIO = true;
                 before.MMIOvalid = true;
                 int32_t val = mmio.valid ? 1 : 0;
-                writeReg(loadRegInd, ((~0xff) & iRegisters[loadRegInd]) |val, true);
+                writeReg(loadRegInd, val, true);
             }else{
                 uint32_t value = readMemWithCacheCheck(address, MemAccess::BYTE, before);
-                writeReg(loadRegInd, ((~0xff) &iRegisters[loadRegInd]) | value, true);
+                writeReg(loadRegInd, value, true);
             }
         }
     }else{
