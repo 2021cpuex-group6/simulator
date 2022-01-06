@@ -19,14 +19,9 @@ int main(int argc, char* argv[]) {
     init_opcode_map();
 
     std::string output_log_yn;
-    std::cout << "Output log [y/N] : ";
+    std::cout << "Output log [Y/n] : ";
     std::getline(std::cin, output_log_yn);
     output_flags.output_log = output_log_yn == "Y" || output_log_yn == "y";
-
-    std::string output_32_yn;
-    std::cout << "Output as byte [y/N] : ";
-    std::getline(std::cin, output_32_yn);
-    output_flags.output_32 = output_32_yn == "Y" || output_32_yn == "y";
 
     
     std::string directory_path;
