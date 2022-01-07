@@ -61,7 +61,11 @@ const std::string ILEGAL_CONTROL_REGISTER = "制御命令に浮動小数点レ�
 const std::string ILEGAL_REGISTER_KIND = "適切なレジスタを使ってください";
 const std::string ILEGAL_MEM_WRITE = "このアドレスに書き込みはできません．";
 const std::string IMPLEMENT_ERROR = "バグです。報告してください";
+const std::string FOUND_DIF = "差異を検出しました．";
+const std::string FOUND_BEFORE = "元ファイル該当箇所";
+const std::string FOUND_AFTER = "現ファイル該当箇所";
 
+const std::string DIF_EXTENSION = ".dif";
 const std::string IREG_PREFIX = "%x";
 const std::string FREG_PREFIX = "%f";
 const std::string GUI_NO_HISTORY = "NoHis";
@@ -175,11 +179,13 @@ class AssemblySimulator{
         void doNextBreak();
         void launch(const bool &);
         void launchFast(const bool &);
+        static void flowInstByRegInd(const int & lineN, const Instruction &instruction, std::ostream &stream);
         static void printInstByRegInd(const int & lineN, const Instruction &instruction);
         static void printInstruction(const int &, const Instruction &);
         void printInstructionInSim(const int &, const Instruction &)const;
         void printBreakList()const;
         void printDif(const BeforeData &before, const bool &back, const std::string &opcode)const;
+        void flowDif(const BeforeData &before, const bool &back, const std::string &opcode,  std::ostream &stream)const;
         std::pair<bool, int32_t> translateBreakInd(const int &)const;
         void setBreakPoint(const int &);
         void deleteBreakPoint(const int &);
@@ -218,6 +224,8 @@ class AssemblySimulator{
         inline void writeMem(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value);
         inline void writeMemWithCacheCheck(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value, BeforeData &beforeData);
         BeforeData popHistory();
+        void checkDif();
+        void makeDif(const std::string &path);
 
     // private:
         inline BeforeData efficientDoInst(const Instruction &);

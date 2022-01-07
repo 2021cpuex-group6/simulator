@@ -115,6 +115,9 @@ void InteractiveShell::start(){
             case Command::CacheInfo:
                 simulator.printCacheSystem();
                 break;
+            case Command::CheckDif:
+                simulator.checkDif();
+                break;
             case Command::Reset:
                 simulator.reset();
                 break;
@@ -177,6 +180,8 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
         return {Command::DoAll, {}};
     }else if(inputString == COMMAND_CACHE){
         return {Command::CacheInfo, {}};
+    }else if(inputString == COMMAND_CHECK_DIF){
+        return {Command::CheckDif, {}};
     }else if(inputString == COMMAND_NEXT_BLOCK){
         return {Command::DoNextBreak, {}};
     }else if(inputString == COMMAND_BREAK_LIST){

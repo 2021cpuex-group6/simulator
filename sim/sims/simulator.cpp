@@ -3,6 +3,8 @@
 #include "../utils/utils.hpp"
 #include "fpu.hpp"
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 #include <sstream>
 #include <bitset>
 #include <iomanip>
@@ -10,6 +12,8 @@
 #include <set>
 #include <chrono>
 #include <algorithm>
+
+namespace fs = std::filesystem;
 
 static const std::string NOT_IMPLEMENTED_FOR_MULTI_FILES = "この機能は複数ファイル実行時に使えません";
 static const std::string TIME_FORMAT = "Time: %.10lfms\n";
@@ -275,7 +279,75 @@ void AssemblySimulator::printRegisters(const NumberBase &base, const bool &sign,
 
 }
 
+void AssemblySimulator::makeDif(const std::string &path){
 
+}
+
+// difをファイルに出力し，以前のものと比較
+// 最初から実行するためにresetを行うことに注意
+void AssemblySimulator::checkDif(){
+    reset();
+    fs::path difFile = parser.filePaths[0];
+    difFile.replace_extension(DIF_EXTENSION);
+
+    std::ifstream ifs(difFile);
+    bool isOld = ifs.is_open();
+    // True  ... すでにdifファイルがあるのでそれと比較
+    // False ... 新たにdifファイルを作成
+
+    std::ofstream outFile;
+    if(!isOld){
+        outFile.open(difFile.string(), std::ios::out);
+    }
+
+    std::string lineNew,lineNewAll, lineOld;
+
+    while(!end){
+        int instInd = pc/INST_BYTE_N;
+        const Instruction &inst = parser.instructionVector[instInd];
+        nowLine = inst.lineN;
+        BeforeData beforeData = efficientDoInst(inst);
+        std::string opcode;
+        try{
+            opcode = inverseOpMap.at(beforeData.opcodeInt);
+        }catch(const std::out_of_range &e){
+            launchError(ILEGAL_INNER_OPCODE);
+        }
+        auto indPair = parser.getFileNameAndLine(inst.lineN);
+        if(isOld){
+            // 一行ずつ比較
+            std::ostringstream oss;
+            flowInstByRegInd(indPair.second, inst, oss);
+            flowDif(beforeData, false, opcode, oss);
+            lineNewAll = oss.str();
+            std::istringstream iss(lineNewAll);
+            while(std::getline(iss, lineNew)){
+                std::getline(ifs, lineOld);
+                if(lineNew != lineOld){
+                    std::cout << FOUND_DIF << std::endl;
+                    std::cout << lineNewAll << std::endl;
+                    std::cout << std::endl;
+                    std::cout << FOUND_BEFORE << std::endl;
+                    std::cout << lineOld << std::endl;
+                    std::cout << FOUND_AFTER << std::endl;
+                    std::cout << lineNew << std::endl; 
+                    reset();
+                    return;                  
+                }
+            }
+        }else{
+            flowInstByRegInd(indPair.second, inst, outFile);
+            flowDif(beforeData, false, opcode, outFile);
+        }
+    }
+    if(!isOld){
+        outFile.close();
+    }
+
+    reset();
+    
+
+}
 
 // 終了まで実行する
 void AssemblySimulator::launch(const bool &printTime){
@@ -506,8 +578,7 @@ void AssemblySimulator::back(){
 
 
 }
-
-void AssemblySimulator::printInstByRegInd(const int & lineN, const Instruction &instruction){
+void  AssemblySimulator::flowInstByRegInd(const int & lineN, const Instruction &instruction, std::ostream &stream){
     std::stringstream ss;
     ss << std::setw(PRINT_INST_NUM_SIZE) << std::to_string(lineN) << ":";
     ss <<  std::setw(PRINT_INST_NUM_SIZE) << instruction.opcode;
@@ -545,12 +616,17 @@ void AssemblySimulator::printInstByRegInd(const int & lineN, const Instruction &
         case INST_OTHERS:
             break;
         default:
-            std::cout << IMPLEMENT_ERROR << std::endl;
+            stream << IMPLEMENT_ERROR << std::endl;
             return;
             
 
     }
-    std::cout << ss.str() << std::endl;
+    stream << ss.str() << std::endl;
+}
+
+
+void AssemblySimulator::printInstByRegInd(const int & lineN, const Instruction &instruction){
+    flowInstByRegInd(lineN, instruction, std::cout);
 }
 
 void AssemblySimulator::printInstruction(const int & lineN, const Instruction &instruction){
@@ -650,15 +726,18 @@ void AssemblySimulator::printBreakList()const{
 
 void AssemblySimulator::printDif(const BeforeData & before, const bool &back, const std::string &opcode)const{
     // 差分を表示 GUI用にbackのときも実装
-    
+    flowDif(before, back, opcode, std::cout);
+}
+
+void AssemblySimulator::flowDif(const BeforeData &before, const bool &back, const std::string &opcode, std::ostream &stream)const{
     if(forGUI){
         // 変化のあったレジスタ名とその変化後の値を表示
         if(opcode != "nop"){
             if(before.pc != pc -4){
                 if(back){
-                    std::cout << "pc " << before.pc << std::endl;
+                    stream << "pc " << before.pc << std::endl;
                 }else{
-                    std::cout << "pc " << pc << std::endl;
+                    stream << "pc " << pc << std::endl;
                 }
                 if(before.regInd >= 0){
                     int change = 0;
@@ -667,7 +746,7 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back, co
                     }else{
                         change = iRegisters[before.regInd];
                     }
-                    std::cout <<"x"<< std::setw(2) << std::setfill('0') <<   std::internal << before.regInd 
+                    stream <<"x"<< std::setw(2) << std::setfill('0') <<   std::internal << before.regInd 
                         << " " << change <<  std::endl;
                 }
                 return;
@@ -689,42 +768,42 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back, co
                         change = fRegisters[before.regInd].si;
                     }
                 }
-                std::cout <<pref<< std::setw(2) << std::setfill('0') <<  std::internal << before.regInd 
+                stream <<pref<< std::setw(2) << std::setfill('0') <<  std::internal << before.regInd 
                     << " " << change <<  std::endl;
                 return;
             }else if(before.writeMem){
                 
                 // メモリの変更があったことを示すため，GUI_MEM_CHANGEをまず表示
-                std::cout << GUI_MEM_CHANGE << std::endl;
+                stream << GUI_MEM_CHANGE << std::endl;
                 //アドレス
-                std::cout  << before.memAddress << " ";
+                stream  << before.memAddress << " ";
                 uint32_t value;
                 if(back){
                     value = before.memValue;
                 }else{
                     value = readMem(before.memAddress, MemAccess::WORD);
                 }
-                std::cout << getSeparatedWordString(value) << std::endl;
+                stream << getSeparatedWordString(value) << std::endl;
 
             } else if(before.MMIOsend){
                     // サーバに送った
                     // mmioの情報はioコマンドで受け取るのでOK?
-                    std::cout << GUI_NO_CHANGE << std::endl;
-                    // std::cout << GUI_SEND << " " << static_cast<int32_t>(mmio.getLast()) << std::endl;
+                    stream << GUI_NO_CHANGE << std::endl;
+                    // stream << GUI_SEND << " " << static_cast<int32_t>(mmio.getLast()) << std::endl;
             }else{
-                std::cout << GUI_NO_CHANGE << std::endl;
+                stream << GUI_NO_CHANGE << std::endl;
                 
             }
         }else{
-             std::cout << GUI_NO_CHANGE << std::endl;
+             stream << GUI_NO_CHANGE << std::endl;
         }
     }else{
-        std::cout << "  " << std::setfill(' ') ;
+        stream << "  " << std::setfill(' ') ;
         bool isChanged = false;
         if(opcode != "nop"){
             if(before.pc != pc -4){
                 // pcと同時にレジスタが変わることもあるので，returnはしない
-                std::cout << "pc:" <<  std::setw(11) << std::internal <<before.pc << " -> " 
+                stream << "pc:" <<  std::setw(11) << std::internal <<before.pc << " -> " 
                     << std::setw(11) << std::internal << pc  << std::endl;
                 isChanged = true;
 
@@ -732,35 +811,35 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back, co
             
                 uint32_t nowValue = readMem(before.memAddress, MemAccess::WORD);
                 //アドレス
-                std::cout <<  "0x" << std::setw(MEM_ADDRESS_HEX_LEN) << std::setfill('0') << std::hex << before.memAddress;
+                stream <<  "0x" << std::setw(MEM_ADDRESS_HEX_LEN) << std::setfill('0') << std::hex << before.memAddress;
                 // 旧値
-                std::cout <<  ": 0x" << std::setw(WORD_BYTE_N) << std::setfill('0') << std::hex << before.memValue;
-                std::cout << " -> ";
-                std::cout <<  "0x" << std::setw(WORD_BYTE_N) << std::setfill('0') << std::hex << nowValue << std::endl;
+                stream <<  ": 0x" << std::setw(WORD_BYTE_N) << std::setfill('0') << std::hex << before.memValue;
+                stream << " -> ";
+                stream <<  "0x" << std::setw(WORD_BYTE_N) << std::setfill('0') << std::hex << nowValue << std::endl;
                 return;
             }else if(before.MMIOsend){
                     // サーバに送った
-                    std::cout << GUI_SEND << " " << static_cast<int32_t>(mmio.getLast()) << std::endl;
+                    stream << GUI_SEND << " " << static_cast<int32_t>(mmio.getLast()) << std::endl;
                     return ;
             }
             if(before.regInd >= 0){
                 if(before.isInteger){
                     std::string regInfo = getIRegisterInfoUnit(before.regInd, NumberBase::DEC, true);
-                    std::cout << " " <<  regInfo.substr(0, 3) << " " << std::setw(11) <<   std::internal << std::dec<<
+                    stream << " " <<  regInfo.substr(0, 3) << " " << std::setw(11) <<   std::internal << std::dec<<
                     before.regValue << " -> " << regInfo.substr(3) << std::endl;
                     return;
                 }else{
                     std::string regInfo = getFRegisterInfoUnit(before.regInd, NumberBase::DEC, true, true);
                     MemoryUnit mu;
                     mu.si = before.regValue;
-                    std::cout << regInfo.substr(0, 3) << " " << std::setw(11) <<   std::internal << std::dec<<
+                    stream << regInfo.substr(0, 3) << " " << std::setw(11) <<   std::internal << std::dec<<
                     mu.f << " -> " << regInfo.substr(3) << std::endl;
                     return;
                 }
             }
         }
         if(!isChanged){
-            std::cout << "--- No Change ---" << std::endl;
+            stream << "--- No Change ---" << std::endl;
         }
         
         
