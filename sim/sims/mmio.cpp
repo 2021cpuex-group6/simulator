@@ -20,6 +20,10 @@ constexpr int SLD_OBJ_INT_N = 4;
 constexpr int SLD_OBJ_FLOAT_N = 12;
 constexpr int SLD_OBJ_END = -1;
 
+
+static constexpr int PPM_INT_W = 3;
+static constexpr bool CLEAR_ZERO = true;
+
 // 時間予測用
 constexpr double recvTime = 0.002;
 constexpr double sendTime = 0.002;
@@ -145,7 +149,29 @@ void MMIO::send(const char &value){
 void MMIO::outputPPM()const{
     if(sendData.size() > 0){
         std::ofstream ofs(OUTPUT_FILE);
-        ofs.write(&(sendData[0]), sendData.size());
+        if(CLEAR_ZERO){
+            std::string allString(sendData.data());
+            std::stringstream allSs(allString);
+            
+            std::string line;
+            std::getline(allSs, line);
+            ofs << line << std::endl; // 最初の１行はそのまま
+            while(std::getline(allSs, line)){
+                std::stringstream inSs(line);
+                bool flag = false;
+                while(!inSs.eof()){
+                    std::string intStr;
+                    inSs >> intStr;
+                    int width = flag ? PPM_INT_W + 1 : PPM_INT_W;
+                    flag = true;
+                    ofs << std::setw(width) << std::stoi(intStr);
+                }
+                ofs << std::endl;
+            }
+
+        }else{
+            ofs.write(&(sendData[0]), sendData.size());
+        }
         ofs.close();
     }
 }
