@@ -27,6 +27,20 @@ static const double  WRITE_MISS_TIME = 0.002;
 static const double  READ_MISS_TIME = 0.002;
 static const double  HZ = 50000000;
 
+CacheStatistics::CacheStatistics(){
+    reset();
+    
+}
+
+void CacheStatistics::reset(){
+    for (int i = 0; i < CacheStatistics::TYPES_N; i++)
+    {
+        HitN[i] = 0;
+        InitMissN[i] = 0;
+        OtherMissN[i] = 0;
+    }
+}
+
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
                                      const bool &forGUI, const int & cacheWay, const MMIO &mmio):
         useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
@@ -97,6 +111,7 @@ void AssemblySimulator::reset(){
     cacheRMissN = 0;
     cacheWMissN = 0;
     mmio.reset();
+    cacheStatistics.reset();
 }
 
 // レジスタ番号を受け取り，その情報を文字列で返す

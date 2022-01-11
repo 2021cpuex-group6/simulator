@@ -30,8 +30,8 @@ constexpr int MEM_ADDRESS_HEX_LEN = 8;
 constexpr int OPKIND_MASK = 0x7;
 constexpr int OPKIND_BIT_N = 3;
 constexpr bool USE_EFFICIENT = true;
-constexpr int CASH_SIZE = 0x1000; // キャッシュの総行数　２べきにすること
-constexpr int CASH_OFFSET_N = 2; // メモリアドレスのうちのオフセット長．この2べきがキャッシュ一行のデータのバイト数
+constexpr int CASH_SIZE = 0x100; // キャッシュの総行数　２べきにすること
+constexpr int CASH_OFFSET_N = 4; // メモリアドレスのうちのオフセット長．この2べきがキャッシュ一行のデータのバイト数
 constexpr int32_t DATA_START = 0x100000; // データの始まるアドレス (2^20)
 
 // MMIOのアドレス．
@@ -122,6 +122,21 @@ struct BeforeData{
     uint32_t newAccessAddress; // そのアドレス(wordAccessCheckMemのインデックスではないので4で割る)
 };
 
+// キャッシュのクラス
+class Cache{
+    public:
+    static constexpr int READ = 0;
+    static constexpr int WRITE = 1;
+    static constexpr int TYPES_N = 2;
+
+    uint64_t HitN[TYPES_N];
+    uint64_t InitMissN[TYPES_N];
+    uint64_t OtherMissN[TYPES_N];
+
+    Cache();
+    void reset();
+
+};
 
 // launchErrorで吐くエラー
 class SimException : public std::runtime_error
@@ -162,10 +177,7 @@ class AssemblySimulator{
         CacheRow cache[CASH_SIZE]; // キャッシュ
         int32_t cacheWay; //ウェイ数
         int32_t cacheIndexN; // キャッシュのインデックス数 (CASH_SIZE / cacheWay)
-        uint64_t cacheRHitN; // 読み出し時キャッシュヒット数
-        uint64_t cacheWHitN; // 書き込み時キャッシュヒット数
-        uint64_t cacheRMissN; //　読み出し時キャッシュミス数
-        uint64_t cacheWMissN; //　書き込み時キャッシュミス数
+        Cache cache;
 
         MMIO mmio;
         
@@ -349,6 +361,10 @@ uint32_t AssemblySimulator::readMem(const uint32_t& address, const MemAccess &me
 uint32_t AssemblySimulator::readMemWithCacheCheck(const uint32_t& address, const MemAccess &memAccess, BeforeData &beforeData){
     uint32_t ans = readMem(address, memAccess);
     writeCashBeforeData(false, address, beforeData);
+    if(memAccess == MemAccess::WORD){
+        beforeData.isNewAccess = wordAccessCheck(address); // cashの書き込みでここのデータを使うので，書き込みはそのあと
+        beforeData.newAccessAddress = address;
+    }
     return ans;
 }
 
@@ -379,6 +395,10 @@ void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAc
 void AssemblySimulator::writeMemWithCacheCheck(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value, BeforeData &beforeData){
     writeMem(address, MemAccess, value);
     writeCashBeforeData(true, address, beforeData);
+    if(MemAccess == MemAccess::WORD){
+        beforeData.isNewAccess = wordAccessCheck(address);
+        beforeData.newAccessAddress = address;
+    }
 }
 
 
@@ -521,8 +541,6 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
     if(loadInteger){
         if(opcode & 0b1){
             // lw
-            before.isNewAccess = wordAccessCheck(address);
-            before.newAccessAddress = address;
             uint32_t value = readMemWithCacheCheck(address, MemAccess::WORD, before);
             writeReg(loadRegInd, value, true);
         }else{
@@ -546,8 +564,6 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
             }
         }
     }else{
-        before.isNewAccess = wordAccessCheck(address);
-        before.newAccessAddress = address;
         uint32_t value = readMemWithCacheCheck(address, MemAccess::WORD, before);
         fRegisters[loadRegInd] = MemoryUnit(value);
 
@@ -587,8 +603,7 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
     }else if((address > (MMIO_VALID - WORD_BYTE_N))&& address <= MMIO_SEND){
         launchError(ILEGAL_MEM_WRITE);
     }else{
-        before.isNewAccess = wordAccessCheck(address);
-        before.newAccessAddress = address;
+
     }
     writeMemWithCacheCheck(address, memAccess, value, before);
     return before;
