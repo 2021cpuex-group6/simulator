@@ -40,6 +40,7 @@ Cache::Cache(const uint32_t &cacheWay, const uint32_t &offsetLen,
     cacheIndexN = 1 << indexLen;
     cacheSize = cacheIndexN * cacheWay;
     indexMask = (1 << indexLen) - 1; // アドレスをoffsetビットだけシフトした後にかけてindexにするマスク
+    indexTagMask = ~((1 << offsetLen) - 1); 
     reset();
 }
 

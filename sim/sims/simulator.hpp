@@ -19,6 +19,7 @@
 constexpr int REGISTERS_N = 32;
 constexpr int PRINT_REGISTERS_COL = 4;
 constexpr size_t REGISTER_BIT_N = 32;
+constexpr int WORD_BIT_N = 2;
 
 constexpr int PRINT_INST_COL = 2;
 constexpr int PRINT_INST_NUM_SIZE = 6;
@@ -39,7 +40,7 @@ constexpr int32_t MMIO_RECV = DATA_START - 2; // MMIOの受信アドレス
 constexpr int32_t MMIO_SEND = DATA_START - 1; // MMIOの送信アドレス
 
 //キャッシュの定数
-constexpr int CACHE_MAX_SIZE = 0x10000; // キャッシュの最大行数　これ以下の2べきの数でキャッシュの行数を決められる
+constexpr int CACHE_MAX_SIZE = 0x40000; // キャッシュの最大行数　これ以下の2べきの数でキャッシュの行数を決められる
 
 
 
@@ -153,12 +154,15 @@ class Cache{
          const uint32_t &tagLen);
     void reset();
     inline bool clearLRUIfNecessary(const uint32_t &index);
-    inline void writeCashBeforeData(const bool &forWrite, const uint32_t& address, BeforeData &beforeData);
+    inline void writeCashBeforeData(const bool &forWrite,
+         const uint32_t& address, BeforeData &beforeData, 
+         const std::array<bool, MEM_BYTE_N / WORD_BYTE_N> *wordAccessCheckMem);
     void printCacheSystem()const;
     void backCache(const BeforeData &beforeData);
 
     private:
     uint32_t indexMask;  // タグ長, オフセット長の長さに基づいて作られるマスク
+    uint32_t indexTagMask; // インデックスとタグ部分をちょうど含むマスク
     
 };
 
@@ -303,10 +307,11 @@ bool Cache::clearLRUIfNecessary(const uint32_t &index){
     return true;
 }
 // メモリにアクセスする際に，cash系のbeforeDataを書き込み，キャッシュデータを書き込む
-void Cache::writeCashBeforeData(const bool &forWrite, const uint32_t& address, BeforeData &beforeData){
+void Cache::writeCashBeforeData(const bool &forWrite, const uint32_t& address,
+     BeforeData &beforeData, const std::array<bool, MEM_BYTE_N / WORD_BYTE_N> *wordAccessCheckMem){
     int type = forWrite ? WRITE : READ;
     beforeData.useMem = true;
-    uint32_t index = shiftRightLogical(address, offsetLen) & (cacheIndexN - 1);
+    uint32_t index = shiftRightLogical(address, offsetLen);
     index &= indexMask;
     uint32_t cacheAddress = index * cacheWay;
 
@@ -352,14 +357,22 @@ void Cache::writeCashBeforeData(const bool &forWrite, const uint32_t& address, B
     beforeData.cacheAddress = cacheAddress;
     beforeData.changeCache = true;
 
-    bool isNewAccess;
+    bool isNewAccess = true;
     // 初期参照ミスの定義による
     // 各ワードごとに初期参照かを考えるのであれば以下
     // isNewAccess = beforeData.isNewAccess
     // キャッシュブロックごとに初期参照かを考える場合
-    
+    uint32_t wordAccessCheckAddress = 
+        shiftRightLogical(address & indexTagMask, WORD_BIT_N);
+    uint32_t checkN = (1 << (offsetLen-WORD_BIT_N));
+    for(uint32_t i = 0; i < checkN; i++){
+        if((*wordAccessCheckMem)[wordAccessCheckAddress]){
+            isNewAccess = false;
+            break;
+        }
+    }
 
-    if(beforeData.isNewAccess){
+    if(isNewAccess){
         ++initMissN[type];
     }else{
         ++otherMissN[type];
@@ -419,7 +432,7 @@ uint32_t AssemblySimulator::readMemWithCacheCheck(const uint32_t& address, const
         beforeData.isNewAccess = wordAccessCheck(address); // cashの書き込みでここのデータを使うので，書き込みはその前に
         beforeData.newAccessAddress = address;
     }
-    cache.writeCashBeforeData(false, address, beforeData);
+    cache.writeCashBeforeData(false, address, beforeData, wordAccessCheckMem);
     return ans;
 }
 
@@ -453,7 +466,7 @@ void AssemblySimulator::writeMemWithCacheCheck(const uint32_t& address, const Me
         beforeData.isNewAccess = wordAccessCheck(address);
         beforeData.newAccessAddress = address;
     }
-    cache.writeCashBeforeData(true, address, beforeData);
+    cache.writeCashBeforeData(true, address, beforeData, wordAccessCheckMem);
 }
 
 
