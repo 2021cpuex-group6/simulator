@@ -35,7 +35,7 @@ int main(int argc, char* argv[]){
             forGUI = true;          
         }else if(startsWith(arg, OPTION_CASH)){    
             cacheWay = std::stoi(arg.substr(2));
-            if(!isPowerOf2(cacheWay, CASH_SIZE)){
+            if(!isPowerOf2(cacheWay, CACHE_MAX_SIZE)){
                 // ウェイ数が2べきではない
                 std::cout << INVALID_CASH_WAY << std::endl;
             }
@@ -44,10 +44,14 @@ int main(int argc, char* argv[]){
         }
     }
 
+    uint32_t offsetLen = 4;
+    uint32_t tagLen = 14;
+    
+
     try{
         MMIO mmio;
         AssemblyParser parser(fileNames, useBin, forGUI);
-        AssemblySimulator simulator(parser, useBin, forGUI, cacheWay, mmio);
+        AssemblySimulator simulator(parser, useBin, forGUI, mmio, cacheWay, offsetLen, tagLen);
 
         InteractiveShell shell(simulator, parser, forGUI);
         shell.start();

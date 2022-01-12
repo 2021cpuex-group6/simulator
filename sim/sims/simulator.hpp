@@ -40,8 +40,7 @@ constexpr int32_t MMIO_SEND = DATA_START - 1; // MMIOの送信アドレス
 
 //キャッシュの定数
 constexpr int CACHE_MAX_SIZE = 0x10000; // キャッシュの最大行数　これ以下の2べきの数でキャッシュの行数を決められる
-constexpr int CACHE_SIZE = 0x100; // キャッシュの総行数(インデックス数*ウェイ数)　２べきにすること
-constexpr int CACHE_OFFSET_N = 4; // メモリアドレスのうちのオフセット長．この2べきがキャッシュ一行のデータのバイト数
+
 
 
 static const std::string ILEGAL_INNER_OPCODE = "不正な内部オペコードです(実装ミス)";
@@ -98,8 +97,9 @@ enum class MemAccess{
 
 // キャッシュの一行に対応するデータ
 struct CacheRow{
-    uint32_t address; //面倒なのでアドレスをそのまま保存してる
+    uint32_t tag; //tagを保存
     bool valid;
+    bool used; // 擬似LRU用
 
 };
 
@@ -115,14 +115,15 @@ struct BeforeData{
     uint32_t memValue;
     uint8_t opcodeInt; // 高速化時の命令データ
     bool useMem; // メモリを使ったか (hit, miss数の復元に必要)
-    bool changeCash; // キャッシュが変更されたか == ミスしたか
-    uint32_t cashAddress; // 書き換えたキャッシュのアドレス
+    bool changeCache; // キャッシュが変更されたか == ミスしたか
+    uint32_t cacheAddress; // 書き換えたキャッシュのアドレス
     CacheRow cacheRow; // 前のキャッシュデータ
     bool isMMIO; //MMIOを使ったか
     bool MMIOvalid; //valid bitを見ただけか
     bool MMIOsend; // sendか
     bool isNewAccess; // 新しくアクセスするアドレスにアクセスしたか(memCheck用)
     uint32_t newAccessAddress; // そのアドレス(wordAccessCheckMemのインデックスではないので4で割る)
+    bool clearLRU; // LRU用のusedbitをクリアしたか
 };
 
 // キャッシュのクラス
@@ -135,19 +136,29 @@ class Cache{
     static constexpr int TYPES_N = 2;
 
     CacheRow cache[CACHE_MAX_SIZE]; // キャッシュ
-    int32_t cacheWay; //ウェイ数
-    int32_t cacheIndexN; // キャッシュのインデックス数 (CACHE_SIZE / cacheWay)
-    int32_t offsetN; // オフセット数
+    uint32_t cacheWay; //ウェイ数
+    uint32_t offsetLen; // メモリアドレスのうちのオフセット長．この2べきがキャッシュ一行のデータのバイト数
+    uint32_t tagLen;    // タグ長
+    uint32_t indexLen;  // インデックス長
+    uint32_t cacheIndexN; // キャッシュのインデックス数 (cacheSize / cacheWay)
+
+    int32_t cacheSize; // 実際に使われるcacheの行数
+                        // キャッシュの総行数(インデックス数*ウェイ数)　２べきにすること
 
     uint64_t hitN[TYPES_N];
     uint64_t initMissN[TYPES_N];
     uint64_t otherMissN[TYPES_N];
 
-    Cache(const int &cacheWay, const int &cacheSize, const int &offset);
+    Cache(const uint32_t &cacheWay, const uint32_t &offsetLen,
+         const uint32_t &tagLen);
     void reset();
+    inline bool clearLRUIfNecessary(const uint32_t &index);
     inline void writeCashBeforeData(const bool &forWrite, const uint32_t& address, BeforeData &beforeData);
     void printCacheSystem()const;
     void backCache(const BeforeData &beforeData);
+
+    private:
+    uint32_t indexMask;  // タグ長, オフセット長の長さに基づいて作られるマスク
     
 };
 
@@ -192,7 +203,8 @@ class AssemblySimulator{
         Cache cache;
         
         AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
-             const bool &forGUI, const MMIO &mmio, const int & cacheWay, const int &cacheSize, const int &offset);
+             const bool &forGUI, const MMIO &mmio, const uint32_t &cacheWay, const uint32_t &offsetLen,
+             const uint32_t &tagLen);
         ~AssemblySimulator();
         void printRegisters(const NumberBase&, const bool &sign, const bool& useFnotation) const;
         void printOpCounter()const;
@@ -277,6 +289,89 @@ class AssemblySimulator{
 };
 
 // 以下，inline関数
+// LRUbitが全部立っていたらクリア
+bool Cache::clearLRUIfNecessary(const uint32_t &index){
+    uint32_t cacheAddress = index * cacheWay;
+    for(uint32_t i  = 0; i < cacheWay; ++i){
+        CacheRow nowRow = cache[cacheAddress];
+        if(!nowRow.used) return false;
+    }
+    // 全部usedbitが立っているのでクリア
+    for(uint32_t i  = 0; i < cacheWay; ++i){
+        cache[cacheAddress].used = false;
+    }
+    return true;
+}
+// メモリにアクセスする際に，cash系のbeforeDataを書き込み，キャッシュデータを書き込む
+void Cache::writeCashBeforeData(const bool &forWrite, const uint32_t& address, BeforeData &beforeData){
+    int type = forWrite ? WRITE : READ;
+    beforeData.useMem = true;
+    uint32_t index = shiftRightLogical(address, offsetLen) & (cacheIndexN - 1);
+    index &= indexMask;
+    uint32_t cacheAddress = index * cacheWay;
+
+    bool foundLRU = false; //置き換えの対象を見つけたか
+    uint32_t cacheLRUAddress = cacheAddress; // 競合時置き換えの対象となるアドレス
+
+    uint32_t tag = shiftRightLogical(address, REGISTER_BIT_N - tagLen); // タグ　これがあっていればヒット
+    for(uint32_t i  = 0; i < cacheWay; ++i){
+        // 常に先頭から見て先頭から埋めるので，validじゃないものが現れた時点で後ろもvalidじゃない
+        CacheRow nowRow = cache[cacheAddress];
+        if(!nowRow.valid ){
+            beforeData.cacheRow = cache[cacheAddress];
+            beforeData.cacheAddress = cacheAddress;
+            beforeData.changeCache = true;
+
+            // wordAccessCheckを前にしておくのでこれが使える
+            ++initMissN[type];
+            
+            CacheRow newRow = {tag, true, true};
+            cache[cacheAddress] = newRow;
+            beforeData.clearLRU = clearLRUIfNecessary(index);
+            return;
+        }
+        if(nowRow.tag == tag){
+            // ヒット
+            ++hitN[type];
+            cache[cacheAddress].used = true;
+            beforeData.changeCache = false;
+            beforeData.clearLRU = clearLRUIfNecessary(index);
+            return;
+        }
+        if(!foundLRU && !nowRow.used){
+            foundLRU = true;
+            cacheLRUAddress = cacheAddress;
+        }
+        ++cacheAddress;
+    }
+    // キャッシュが競合
+    // 擬似LRUに基づくアドレスへ
+    cacheAddress = cacheLRUAddress;
+    
+    beforeData.cacheRow = cache[cacheAddress];
+    beforeData.cacheAddress = cacheAddress;
+    beforeData.changeCache = true;
+
+    bool isNewAccess;
+    // 初期参照ミスの定義による
+    // 各ワードごとに初期参照かを考えるのであれば以下
+    // isNewAccess = beforeData.isNewAccess
+    // キャッシュブロックごとに初期参照かを考える場合
+    
+
+    if(beforeData.isNewAccess){
+        ++initMissN[type];
+    }else{
+        ++otherMissN[type];
+    }
+
+    CacheRow newRow = {tag, true, true};
+    cache[cacheAddress] = newRow;
+    beforeData.clearLRU = clearLRUIfNecessary(index);
+    return;
+}
+
+
 
 void AssemblySimulator::incrementPC(){
     // pcのインクリメントと、ファイル末端に到達したかのチェックを行う
@@ -290,55 +385,6 @@ void AssemblySimulator::incrementPC(){
             std::cout << FILE_END << std::endl;
         }
     }
-}
-
-// メモリにアクセスする際に，cash系のbeforeDataを書き込み，キャッシュデータを書き込む
-void AssemblySimulator::writeCashBeforeData(const bool &forWrite, const uint32_t& address, BeforeData &beforeData){
-    beforeData.useMem = true;
-    uint32_t index = shiftRightLogical(address, CACHE_OFFSET_N) & (cacheIndexN - 1);
-    uint32_t cashAddress = index * cacheWay;
-    for(int i  = 0; i < cacheWay; ++i){
-        // 常に先頭から見て先頭から埋めるので，validじゃないものが現れた時点で後ろもvalidじゃない
-        CacheRow nowRow = cache[cashAddress];
-        if(!nowRow.valid ){
-            beforeData.cacheRow = cache[cashAddress];
-            beforeData.cashAddress = cashAddress;
-            beforeData.changeCash = true;
-            if(forWrite){
-                ++cacheWMissN;
-            }else{
-                ++cacheRMissN;
-            }
-            CacheRow newRow = {address, true};
-            cache[cashAddress] = newRow;
-            return;
-        }
-        if(nowRow.address == address){
-            // ヒット
-            if(forWrite){
-                ++cacheWHitN;
-            }else{
-                ++cacheRHitN;
-            }
-            beforeData.changeCash = false;
-            return;
-        }
-        ++cashAddress;
-    }
-    // キャッシュが競合
-    // とりあえず先頭を取り出すことにする
-    cashAddress -= cacheWay;
-    
-    beforeData.cacheRow = cache[cashAddress];
-    beforeData.cashAddress = cashAddress;
-    beforeData.changeCash = true;
-    if(forWrite){
-        ++cacheWMissN;
-    }else{
-        ++cacheRMissN;
-    }
-    CacheRow newRow = {address, true};
-    cache[cashAddress] = newRow;
 }
 
 uint32_t AssemblySimulator::readMem(const uint32_t& address, const MemAccess &memAccess)const{
@@ -369,11 +415,11 @@ uint32_t AssemblySimulator::readMem(const uint32_t& address, const MemAccess &me
 // 返り値はメモリの値とヒットしたかのboolのpair
 uint32_t AssemblySimulator::readMemWithCacheCheck(const uint32_t& address, const MemAccess &memAccess, BeforeData &beforeData){
     uint32_t ans = readMem(address, memAccess);
-    writeCashBeforeData(false, address, beforeData);
     if(memAccess == MemAccess::WORD){
-        beforeData.isNewAccess = wordAccessCheck(address); // cashの書き込みでここのデータを使うので，書き込みはそのあと
+        beforeData.isNewAccess = wordAccessCheck(address); // cashの書き込みでここのデータを使うので，書き込みはその前に
         beforeData.newAccessAddress = address;
     }
+    cache.writeCashBeforeData(false, address, beforeData);
     return ans;
 }
 
@@ -403,11 +449,11 @@ void AssemblySimulator::writeMem(const uint32_t& address, const MemAccess &memAc
 // キャッシュへの書き込み，BeforeDataへの書き込みも行う
 void AssemblySimulator::writeMemWithCacheCheck(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value, BeforeData &beforeData){
     writeMem(address, MemAccess, value);
-    writeCashBeforeData(true, address, beforeData);
     if(MemAccess == MemAccess::WORD){
         beforeData.isNewAccess = wordAccessCheck(address);
         beforeData.newAccessAddress = address;
     }
+    cache.writeCashBeforeData(true, address, beforeData);
 }
 
 
@@ -597,7 +643,7 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
         // sbの時
         value &= 0xff;
         memAccess = MemAccess::BYTE;        
-        before.changeCash = false;
+        before.changeCache = false;
         if(address == MMIO_SEND){
             // MMIOとして扱う
             before.writeMem = false;
@@ -739,6 +785,7 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
 }
 
 // ワードアクセスする際にどこにアクセスしたかを記録しておく
+// キャッシュで初期参照ミスかを調べるので，キャッシュへの記録の前にこれを行うこと
 bool AssemblySimulator::wordAccessCheck(const uint32_t &address){
     uint32_t ind = address / WORD_BYTE_N;
     if(!(*wordAccessCheckMem)[ind]){

@@ -18,25 +18,34 @@ namespace fs = std::filesystem;
 static const std::string NOT_IMPLEMENTED_FOR_MULTI_FILES = "この機能は複数ファイル実行時に使えません";
 static const std::string TIME_FORMAT = "Time: %.10lfms\n";
 
+static const std::string CACHE_PARAMETER_ERROR = "パラメータの大きさが不適切です";
 static const std::string CACHE_PRINT_USE_RATE = "キャッシュ使用率: ";
 static const std::string CACHE_PRINT_ACCESS =   "アクセス回数: ";
-static const std::string CACHE_PRINT_MISS_RATE =     "ミス率: ";
-static const std::string CACHE_PRINT_ALL_MISS_RATE =     "初期参照ミスを含めたミス率: ";
-static constexpr int CACHE_PRINT_W = 15;
+static const std::string CACHE_PRINT_MISS_RATE =     "ミス率     : ";
+static const std::string CACHE_PRINT_ALL_MISS_RATE =     "ミス率(All): ";
+static constexpr int CACHE_PRINT_W = 10;
 // 時間予測のパラメータ
 static const double  WRITE_MISS_TIME = 0.002; 
 static const double  READ_MISS_TIME = 0.002;
 static const double  HZ = 50000000;
 
 
-Cache::Cache(const int & cacheWay, const int &cacheSize, const int &offset):
-    cacheWay(cacheWay), cacheIndexN(CACHE_SIZE / cacheWay), offsetN(offset){
+Cache::Cache(const uint32_t &cacheWay, const uint32_t &offsetLen,
+         const uint32_t &tagLen):
+    cacheWay(cacheWay), offsetLen(offsetLen), tagLen(tagLen){
+    indexLen = REGISTER_BIT_N - offsetLen - tagLen;
+    if(offsetLen + tagLen >= REGISTER_BIT_N){
+        throw SimException(CACHE_PARAMETER_ERROR);
+    }
+    cacheIndexN = 1 << indexLen;
+    cacheSize = cacheIndexN * cacheWay;
+    indexMask = (1 << indexLen) - 1; // アドレスをoffsetビットだけシフトした後にかけてindexにするマスク
     reset();
 }
 
 void Cache::reset(){
-    for(int i = 0; i < CACHE_SIZE; i++){
-        CacheRow row = {false, 0};
+    for(int i = 0; i < cacheSize; i++){
+        CacheRow row = {0, false, false};
         cache[i] = row;
     }
 
@@ -50,9 +59,21 @@ void Cache::reset(){
 
 // backコマンドでもとに戻すとき，cacheのデータも巻き戻す
 void Cache::backCache(const BeforeData &before){
-    if(before.changeCash){
+    if(before.clearLRU){
+        // LRUをクリアしたので，該当箇所と同一インデックスのusedbitを該当箇所以外全部立てる
+        uint32_t cacheAddress = (before.cacheAddress / cacheWay) * cacheWay;
+        for(uint32_t i = 0; i < cacheWay; i++){
+            if(cacheAddress != before.cacheAddress){
+                cache[cacheAddress].used = true;
+            }else{
+                cache[cacheAddress].used = false;
+            }
+            ++cacheAddress;
+        }
+    }
+    if(before.changeCache){
         //キャッシュミスしてた
-        cache[before.cashAddress] = before.cacheRow;
+        cache[before.cacheAddress] = before.cacheRow;
         if(before.isNewAccess){
             // 初期参照ミス
             --initMissN[before.writeMem ? WRITE : READ];
@@ -68,10 +89,11 @@ void Cache::backCache(const BeforeData &before){
 // キャッシュの情報を表示
 void Cache::printCacheSystem()const{
     int32_t usedCacheN = 0;
-    for(auto e: cache){
+    for(uint32_t i = 0; i < cacheSize; i++){
+        CacheRow e = cache[i];
         usedCacheN += e.valid ? 1 : 0;
     }
-    float cacheUseRate = ((float) usedCacheN) / CACHE_SIZE * 100;
+    float cacheUseRate = ((float) usedCacheN) / cacheSize * 100;
     std::cout << CACHE_PRINT_USE_RATE << std::setprecision(3) << cacheUseRate << "%" << std::endl;
     for(int i = 0; i < TYPES_N; i++) {
         std::string type = i == READ ? "読み込み: " : "書き込み";
@@ -80,13 +102,13 @@ void Cache::printCacheSystem()const{
         int typeInt = i == READ ? READ : WRITE;
 
         int32_t accessN = hitN[typeInt] + initMissN[typeInt] + otherMissN[typeInt];
-        std::cout << std::setw(CACHE_PRINT_W) <<
+        std::cout << std::setw(CACHE_PRINT_W) << std::setfill(' ')<<
              CACHE_PRINT_ACCESS << accessN << std::endl;
-        std::cout << std::setw(CACHE_PRINT_W) <<
+        std::cout << std::setw(CACHE_PRINT_W) << std::setfill(' ') <<
              CACHE_PRINT_MISS_RATE << std::setprecision(3) <<
             ((float) otherMissN[typeInt]) / accessN  * 100 << "%" << std::endl;
-        std::cout << std::setw(CACHE_PRINT_W) <<
-             CACHE_PRINT_MISS_RATE << std::setprecision(3) <<
+        std::cout << std::setw(CACHE_PRINT_W) << std::setfill(' ') <<
+             CACHE_PRINT_ALL_MISS_RATE << std::setprecision(3) <<
             ((float) otherMissN[typeInt] + initMissN[typeInt]) / accessN  * 100 << "%" << std::endl;
     }
 
@@ -94,12 +116,12 @@ void Cache::printCacheSystem()const{
 
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
-                                     const bool &forGUI, const MMIO &mmio, const int & cacheWay,
-                                      const int &cacheSize, const int &offset):
+                                     const bool &forGUI, const MMIO &mmio, const uint32_t &cacheWay,
+                                      const uint32_t &offsetLen, const uint32_t &tagLen):
         useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
         parser(parser), iRegisters(), fRegisters(),
         instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0),
-        historyPoint(0), beforeHistory(), mmio(mmio), cache(cacheWay, cacheSize, offset){
+        historyPoint(0), beforeHistory(), mmio(mmio), cache(cacheWay, offsetLen, tagLen){
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
     wordAccessCheckMem = new std::array<bool, MEM_BYTE_N / WORD_BYTE_N>;
     MemoryUnit mu;
