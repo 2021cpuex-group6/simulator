@@ -27,27 +27,50 @@ static const double  WRITE_MISS_TIME = 0.002;
 static const double  READ_MISS_TIME = 0.002;
 static const double  HZ = 50000000;
 
-CacheStatistics::CacheStatistics(){
+
+Cache::Cache(const int & cacheWay, const int &cacheSize, const int &offset):
+    cacheWay(cacheWay), cacheIndexN(CACHE_SIZE / cacheWay), offsetN(offset){
     reset();
-    
 }
 
-void CacheStatistics::reset(){
-    for (int i = 0; i < CacheStatistics::TYPES_N; i++)
+void Cache::reset(){
+    for(int i = 0; i < CACHE_SIZE; i++){
+        CacheRow row = {false, 0};
+        cache[i] = row;
+    }
+
+    for (int i = 0; i < Cache::TYPES_N; i++)
     {
-        HitN[i] = 0;
-        InitMissN[i] = 0;
-        OtherMissN[i] = 0;
+        hitN[i] = 0;
+        initMissN[i] = 0;
+        otherMissN[i] = 0;
+    }
+}
+
+// backコマンドでもとに戻すとき，cacheのデータも巻き戻す
+void Cache::backCache(const BeforeData &before){
+    if(before.changeCash){
+        //キャッシュミスしてた
+        cache[before.cashAddress] = before.cacheRow;
+        if(before.isNewAccess){
+            // 初期参照ミス
+            --initMissN[before.writeMem ? WRITE : READ];
+        }else{
+            --otherMissN[before.writeMem ? WRITE : READ];
+        }
+    }else{
+        // キャッシュヒット
+        --hitN[before.writeMem ? WRITE : READ];
     }
 }
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
-                                     const bool &forGUI, const int & cacheWay, const MMIO &mmio):
+                                     const bool &forGUI, const MMIO &mmio, const int & cacheWay,
+                                      const int &cacheSize, const int &offset):
         useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
         parser(parser), iRegisters(), fRegisters(),
         instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0),
-        historyPoint(0), beforeHistory(), cache(), cacheWay(cacheWay), cacheIndexN(CASH_SIZE / cacheWay), 
-        cacheRHitN(0), cacheWHitN(0), cacheRMissN(0), cacheWMissN(0), mmio(mmio){
+        historyPoint(0), beforeHistory(), mmio(mmio), cache(cacheWay, cacheSize, offset){
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
     wordAccessCheckMem = new std::array<bool, MEM_BYTE_N / WORD_BYTE_N>;
     MemoryUnit mu;
@@ -102,16 +125,8 @@ void AssemblySimulator::reset(){
     beforeHistory.fill({});
     (*dram).fill({0});
     (*wordAccessCheckMem).fill(false);
-    for(int i = 0; i < CASH_SIZE; i++){
-        CacheRow row = {false, 0};
-        cache[i] = row;
-    }
-    cacheRHitN = 0;
-    cacheWHitN = 0;
-    cacheRMissN = 0;
-    cacheWMissN = 0;
     mmio.reset();
-    cacheStatistics.reset();
+    cache.reset();
 }
 
 // レジスタ番号を受け取り，その情報を文字列で返す
@@ -547,27 +562,9 @@ void AssemblySimulator::back(){
         }
         // メモリ，キャッシュ系を戻す
         if(before.useMem){
-            if(before.changeCash){
-                //キャッシュミスしてた
-                cache[before.cashAddress] = before.cacheRow;
-                if(before.writeMem){
-                    // メモリをもとに戻す
-                    writeMem(before.memAddress, MemAccess::WORD, before.memValue);
-                    --cacheWMissN;
-                }else{
-                    --cacheRMissN;
-                }
-
-            }else{
-                // キャッシュヒット
-                if(before.writeMem){
-                    // メモリをもとに戻す
-                    writeMem(before.memAddress, MemAccess::WORD, before.memValue);
-                    --cacheWHitN;
-                }else{
-                    --cacheRHitN;
-                }
-
+            cache.backCache(before);
+            if(before.writeMem){
+                writeMem(before.memAddress, MemAccess::WORD, before.memValue);
             }
 
         }else if(before.isMMIO){
@@ -1022,7 +1019,7 @@ void AssemblySimulator::printCacheSystem()const{
     for(auto e: cache){
         usedCacheN += e.valid ? 1 : 0;
     }
-    float cacheUseRate = ((float) usedCacheN) / CASH_SIZE * 100;
+    float cacheUseRate = ((float) usedCacheN) / CACHE_SIZE * 100;
     std::cout << CACHE_PRINT_USE_RATE << std::setprecision(3) << cacheUseRate << "%" << std::endl;
     std::cout << "読み込み: " << std::endl;
     int32_t accessN = cacheRHitN + cacheRMissN;

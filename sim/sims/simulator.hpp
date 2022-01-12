@@ -30,8 +30,6 @@ constexpr int MEM_ADDRESS_HEX_LEN = 8;
 constexpr int OPKIND_MASK = 0x7;
 constexpr int OPKIND_BIT_N = 3;
 constexpr bool USE_EFFICIENT = true;
-constexpr int CASH_SIZE = 0x100; // キャッシュの総行数　２べきにすること
-constexpr int CASH_OFFSET_N = 4; // メモリアドレスのうちのオフセット長．この2べきがキャッシュ一行のデータのバイト数
 constexpr int32_t DATA_START = 0x100000; // データの始まるアドレス (2^20)
 
 // MMIOのアドレス．
@@ -39,6 +37,11 @@ constexpr int32_t DATA_START = 0x100000; // データの始まるアドレス (2
 constexpr int32_t MMIO_VALID = DATA_START - 3; // MMIOのvaildのアドレス
 constexpr int32_t MMIO_RECV = DATA_START - 2; // MMIOの受信アドレス
 constexpr int32_t MMIO_SEND = DATA_START - 1; // MMIOの送信アドレス
+
+//キャッシュの定数
+constexpr int CACHE_MAX_SIZE = 0x10000; // キャッシュの最大行数　これ以下の2べきの数でキャッシュの行数を決められる
+constexpr int CACHE_SIZE = 0x100; // キャッシュの総行数(インデックス数*ウェイ数)　２べきにすること
+constexpr int CACHE_OFFSET_N = 4; // メモリアドレスのうちのオフセット長．この2べきがキャッシュ一行のデータのバイト数
 
 
 static const std::string ILEGAL_INNER_OPCODE = "不正な内部オペコードです(実装ミス)";
@@ -129,12 +132,20 @@ class Cache{
     static constexpr int WRITE = 1;
     static constexpr int TYPES_N = 2;
 
-    uint64_t HitN[TYPES_N];
-    uint64_t InitMissN[TYPES_N];
-    uint64_t OtherMissN[TYPES_N];
+    CacheRow cache[CACHE_MAX_SIZE]; // キャッシュ
+    int32_t cacheWay; //ウェイ数
+    int32_t cacheIndexN; // キャッシュのインデックス数 (CACHE_SIZE / cacheWay)
+    int32_t offsetN; // オフセット数
 
-    Cache();
+    uint64_t hitN[TYPES_N];
+    uint64_t initMissN[TYPES_N];
+    uint64_t otherMissN[TYPES_N];
+
+    Cache(const int &cacheWay, const int &cacheSize, const int &offset);
     void reset();
+    inline void writeCashBeforeData(const bool &forWrite, const uint32_t& address, BeforeData &beforeData);
+    void printCacheSystem()const;
+    void backCache(const BeforeData &beforeData);
 
 };
 
@@ -174,15 +185,12 @@ class AssemblySimulator{
         FPUUnit fpu;
         std::map<uint8_t, std::string> inverseOpMap; // uint8_tのopcodeから文字列へ変換
 
-        CacheRow cache[CASH_SIZE]; // キャッシュ
-        int32_t cacheWay; //ウェイ数
-        int32_t cacheIndexN; // キャッシュのインデックス数 (CASH_SIZE / cacheWay)
-        Cache cache;
-
         MMIO mmio;
+
+        Cache cache;
         
         AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
-             const bool &forGUI, const int &cacheWay, const MMIO &mmio);
+             const bool &forGUI, const MMIO &mmio, const int & cacheWay, const int &cacheSize, const int &offset);
         ~AssemblySimulator();
         void printRegisters(const NumberBase&, const bool &sign, const bool& useFnotation) const;
         void printOpCounter()const;
@@ -230,7 +238,7 @@ class AssemblySimulator{
         void reset();
         void addHistory(const BeforeData &);
         void back();
-        inline void writeCashBeforeData(const bool &forWrite, const uint32_t& address, BeforeData &beforeData);
+        
         inline uint32_t readMem(const uint32_t& address, const MemAccess &memAccess)const;
         inline uint32_t readMemWithCacheCheck(const uint32_t& address, const MemAccess &memAccess, BeforeData &beforeData);
         inline void writeMem(const uint32_t& address, const MemAccess &MemAccess, const uint32_t value);
@@ -286,7 +294,7 @@ void AssemblySimulator::incrementPC(){
 // メモリにアクセスする際に，cash系のbeforeDataを書き込み，キャッシュデータを書き込む
 void AssemblySimulator::writeCashBeforeData(const bool &forWrite, const uint32_t& address, BeforeData &beforeData){
     beforeData.useMem = true;
-    uint32_t index = shiftRightLogical(address, CASH_OFFSET_N) & (cacheIndexN - 1);
+    uint32_t index = shiftRightLogical(address, CACHE_OFFSET_N) & (cacheIndexN - 1);
     uint32_t cashAddress = index * cacheWay;
     for(int i  = 0; i < cacheWay; ++i){
         // 常に先頭から見て先頭から埋めるので，validじゃないものが現れた時点で後ろもvalidじゃない
