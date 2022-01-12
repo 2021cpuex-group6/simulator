@@ -128,6 +128,8 @@ struct BeforeData{
 // キャッシュのクラス
 class Cache{
     public:
+
+
     static constexpr int READ = 0;
     static constexpr int WRITE = 1;
     static constexpr int TYPES_N = 2;
@@ -146,7 +148,7 @@ class Cache{
     inline void writeCashBeforeData(const bool &forWrite, const uint32_t& address, BeforeData &beforeData);
     void printCacheSystem()const;
     void backCache(const BeforeData &beforeData);
-
+    
 };
 
 // launchErrorで吐くエラー
@@ -194,7 +196,6 @@ class AssemblySimulator{
         ~AssemblySimulator();
         void printRegisters(const NumberBase&, const bool &sign, const bool& useFnotation) const;
         void printOpCounter()const;
-        void printCacheSystem()const;
         void next(bool, const bool&);
         void doNextBreak();
         void launch(const bool &);

@@ -17,11 +17,12 @@ namespace fs = std::filesystem;
 
 static const std::string NOT_IMPLEMENTED_FOR_MULTI_FILES = "この機能は複数ファイル実行時に使えません";
 static const std::string TIME_FORMAT = "Time: %.10lfms\n";
-static const std::string CACHE_PRINT_USE_RATE = "キャッシュ使用率: ";
-static const std::string CACHE_PRINT_ACCESS =   "  アクセス回数: ";
-static const std::string CACHE_PRINT_RATE =     "  ヒット率: ";
-static const std::string CACHE_PRINT_READ = "";
 
+static const std::string CACHE_PRINT_USE_RATE = "キャッシュ使用率: ";
+static const std::string CACHE_PRINT_ACCESS =   "アクセス回数: ";
+static const std::string CACHE_PRINT_MISS_RATE =     "ミス率: ";
+static const std::string CACHE_PRINT_ALL_MISS_RATE =     "初期参照ミスを含めたミス率: ";
+static constexpr int CACHE_PRINT_W = 15;
 // 時間予測のパラメータ
 static const double  WRITE_MISS_TIME = 0.002; 
 static const double  READ_MISS_TIME = 0.002;
@@ -63,6 +64,34 @@ void Cache::backCache(const BeforeData &before){
         --hitN[before.writeMem ? WRITE : READ];
     }
 }
+
+// キャッシュの情報を表示
+void Cache::printCacheSystem()const{
+    int32_t usedCacheN = 0;
+    for(auto e: cache){
+        usedCacheN += e.valid ? 1 : 0;
+    }
+    float cacheUseRate = ((float) usedCacheN) / CACHE_SIZE * 100;
+    std::cout << CACHE_PRINT_USE_RATE << std::setprecision(3) << cacheUseRate << "%" << std::endl;
+    for(int i = 0; i < TYPES_N; i++) {
+        std::string type = i == READ ? "読み込み: " : "書き込み";
+        std::cout << type << std::endl;
+
+        int typeInt = i == READ ? READ : WRITE;
+
+        int32_t accessN = hitN[typeInt] + initMissN[typeInt] + otherMissN[typeInt];
+        std::cout << std::setw(CACHE_PRINT_W) <<
+             CACHE_PRINT_ACCESS << accessN << std::endl;
+        std::cout << std::setw(CACHE_PRINT_W) <<
+             CACHE_PRINT_MISS_RATE << std::setprecision(3) <<
+            ((float) otherMissN[typeInt]) / accessN  * 100 << "%" << std::endl;
+        std::cout << std::setw(CACHE_PRINT_W) <<
+             CACHE_PRINT_MISS_RATE << std::setprecision(3) <<
+            ((float) otherMissN[typeInt] + initMissN[typeInt]) / accessN  * 100 << "%" << std::endl;
+    }
+
+}
+
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
                                      const bool &forGUI, const MMIO &mmio, const int & cacheWay,
@@ -1013,26 +1042,6 @@ void AssemblySimulator::printOpCounter() const{
     
 }
 
-// キャッシュの情報を表示
-void AssemblySimulator::printCacheSystem()const{
-    int32_t usedCacheN = 0;
-    for(auto e: cache){
-        usedCacheN += e.valid ? 1 : 0;
-    }
-    float cacheUseRate = ((float) usedCacheN) / CACHE_SIZE * 100;
-    std::cout << CACHE_PRINT_USE_RATE << std::setprecision(3) << cacheUseRate << "%" << std::endl;
-    std::cout << "読み込み: " << std::endl;
-    int32_t accessN = cacheRHitN + cacheRMissN;
-    std::cout << CACHE_PRINT_ACCESS << accessN << std::endl;
-    std::cout << CACHE_PRINT_RATE << std::setprecision(3) <<
-         ((float) cacheRHitN) / accessN  * 100 << "%" << std::endl;
-    std::cout << "書き込み: " << std::endl;
-    accessN = cacheWHitN + cacheWMissN;
-    std::cout << CACHE_PRINT_ACCESS << accessN << std::endl;
-    std::cout << CACHE_PRINT_RATE << std::setprecision(3) <<
-         ((float) cacheWHitN) / accessN  * 100 << "%" << std::endl;
-
-}
 
 
  std::string AssemblySimulator::getMemWordString(const uint32_t & address)const{
@@ -1100,8 +1109,8 @@ double AssemblySimulator::calculateTime(){
     }
     ans /= HZ;
 
-    ans += cacheRMissN * READ_MISS_TIME;
-    ans += cacheWMissN * WRITE_MISS_TIME;
+    ans += (cache.otherMissN[Cache::READ] + cache.initMissN[Cache::READ]) * READ_MISS_TIME;
+    ans += (cache.otherMissN[Cache::WRITE] + cache.initMissN[Cache::WRITE]) * WRITE_MISS_TIME;
 
     ans += mmio.calculateTime();
 

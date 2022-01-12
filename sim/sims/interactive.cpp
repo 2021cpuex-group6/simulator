@@ -113,7 +113,7 @@ void InteractiveShell::start(){
                 simulator.printOpCounter();
                 break;
             case Command::CacheInfo:
-                simulator.printCacheSystem();
+                simulator.cache.printCacheSystem();
                 break;
             case Command::CheckDif:
                 simulator.checkDif();
