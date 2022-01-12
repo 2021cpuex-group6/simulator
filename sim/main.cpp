@@ -78,9 +78,9 @@ void paramCheck(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
     constexpr uint32_t tagMin = 14;
     // 最適値が入る
 
-    int paramN = 4;
-    uint32_t ways[paramN] = {1, 1, 2, 2};
-    uint32_t offsets[paramN] = {7, 5, 10, 4};
+    int paramN = 5;
+    uint32_t ways[paramN] = {1, 1, 2, 2, 4};
+    uint32_t offsets[paramN] = {7, 5, 10, 4, 10};
 
     bool first = true;
     uint64_t accessN[2] = {0, 0};
