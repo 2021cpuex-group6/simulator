@@ -16,6 +16,7 @@ static constexpr int START_LINE = 1;// すでに1行追加された状態で命�
 static constexpr int INST_BYTE_N = 4;
 static constexpr bool USE_REAL_BINARY = true; // 本当のバイナリファイルを使う
 
+
 std::map<std::string, std::vector<int>>opcodeInfoMap = {
     // 命令の情報を持つ
     // ind

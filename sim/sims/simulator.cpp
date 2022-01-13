@@ -3,6 +3,8 @@
 #include "../utils/utils.hpp"
 #include "fpu.hpp"
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 #include <sstream>
 #include <bitset>
 #include <iomanip>
@@ -11,25 +13,116 @@
 #include <chrono>
 #include <algorithm>
 
+namespace fs = std::filesystem;
+
 static const std::string NOT_IMPLEMENTED_FOR_MULTI_FILES = "この機能は複数ファイル実行時に使えません";
 static const std::string TIME_FORMAT = "Time: %.10lfms\n";
-static const std::string CACHE_PRINT_USE_RATE = "キャッシュ使用率: ";
-static const std::string CACHE_PRINT_ACCESS =   "  アクセス回数: ";
-static const std::string CACHE_PRINT_RATE =     "  ヒット率: ";
-static const std::string CACHE_PRINT_READ = "";
 
+static const std::string CACHE_PARAMETER_ERROR = "パラメータの大きさが不適切です";
+static const std::string CACHE_PRINT_USE_RATE = "キャッシュ使用率: ";
+static const std::string CACHE_PRINT_ACCESS =   "アクセス回数: ";
+static const std::string CACHE_PRINT_MISS_RATE =     "ミス率     : ";
+static const std::string CACHE_PRINT_ALL_MISS_RATE =     "ミス率(All): ";
+static constexpr int CACHE_PRINT_W = 10;
 // 時間予測のパラメータ
 static const double  WRITE_MISS_TIME = 0.002; 
 static const double  READ_MISS_TIME = 0.002;
 static const double  HZ = 50000000;
 
+
+Cache::Cache(const uint32_t &cacheWay, const uint32_t &offsetLen,
+         const uint32_t &tagLen):
+    cacheWay(cacheWay), offsetLen(offsetLen), tagLen(tagLen){
+    indexLen = REGISTER_BIT_N - offsetLen - tagLen;
+    if(offsetLen + tagLen >= REGISTER_BIT_N){
+        throw SimException(CACHE_PARAMETER_ERROR);
+    }
+    cacheIndexN = 1 << indexLen;
+    cacheSize = cacheIndexN * cacheWay;
+    indexMask = (1 << indexLen) - 1; // アドレスをoffsetビットだけシフトした後にかけてindexにするマスク
+    indexTagMask = ~((1 << offsetLen) - 1); 
+    reset();
+}
+
+void Cache::reset(){
+    for(int i = 0; i < cacheSize; i++){
+        CacheRow row = {0, false, false};
+        cache[i] = row;
+    }
+
+    for (int i = 0; i < Cache::TYPES_N; i++)
+    {
+        hitN[i] = 0;
+        initMissN[i] = 0;
+        otherMissN[i] = 0;
+    }
+}
+
+// backコマンドでもとに戻すとき，cacheのデータも巻き戻す
+void Cache::backCache(const BeforeData &before){
+    if(before.clearLRU){
+        // LRUをクリアしたので，該当箇所と同一インデックスのusedbitを該当箇所以外全部立てる
+        uint32_t cacheAddress = (before.cacheAddress / cacheWay) * cacheWay;
+        for(uint32_t i = 0; i < cacheWay; i++){
+            if(cacheAddress != before.cacheAddress){
+                cache[cacheAddress].used = true;
+            }else{
+                cache[cacheAddress].used = false;
+            }
+            ++cacheAddress;
+        }
+    }
+    if(before.changeCache){
+        //キャッシュミスしてた
+        cache[before.cacheAddress] = before.cacheRow;
+        if(before.isNewAccess){
+            // 初期参照ミス
+            --initMissN[before.writeMem ? WRITE : READ];
+        }else{
+            --otherMissN[before.writeMem ? WRITE : READ];
+        }
+    }else{
+        // キャッシュヒット
+        --hitN[before.writeMem ? WRITE : READ];
+    }
+}
+
+// キャッシュの情報を表示
+void Cache::printCacheSystem()const{
+    int32_t usedCacheN = 0;
+    for(uint32_t i = 0; i < cacheSize; i++){
+        CacheRow e = cache[i];
+        usedCacheN += e.valid ? 1 : 0;
+    }
+    float cacheUseRate = ((float) usedCacheN) / cacheSize * 100;
+    std::cout << CACHE_PRINT_USE_RATE << std::setprecision(3) << cacheUseRate << "%" << std::endl;
+    for(int i = 0; i < TYPES_N; i++) {
+        std::string type = i == READ ? "読み込み: " : "書き込み";
+        std::cout << type << std::endl;
+
+        int typeInt = i == READ ? READ : WRITE;
+
+        int32_t accessN = hitN[typeInt] + initMissN[typeInt] + otherMissN[typeInt];
+        std::cout << std::setw(CACHE_PRINT_W) << std::setfill(' ')<<
+             CACHE_PRINT_ACCESS << accessN << std::endl;
+        std::cout << std::setw(CACHE_PRINT_W) << std::setfill(' ') <<
+             CACHE_PRINT_MISS_RATE << std::setprecision(3) <<
+            ((float) otherMissN[typeInt]) / accessN  * 100 << "%" << std::endl;
+        std::cout << std::setw(CACHE_PRINT_W) << std::setfill(' ') <<
+             CACHE_PRINT_ALL_MISS_RATE << std::setprecision(3) <<
+            ((float) otherMissN[typeInt] + initMissN[typeInt]) / accessN  * 100 << "%" << std::endl;
+    }
+
+}
+
+
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
-                                     const bool &forGUI, const int & cacheWay, const MMIO &mmio):
-        useBinary(useBin), forGUI(forGUI), pc(0), end(false),
+                                     const bool &forGUI, const MMIO &mmio, const uint32_t &cacheWay,
+                                      const uint32_t &offsetLen, const uint32_t &tagLen):
+        useBinary(useBin), forGUI(forGUI), pc(0),  end(false),
         parser(parser), registers(),
         instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0),
-        historyPoint(0), beforeHistory(), cache(), cacheWay(cacheWay), cacheIndexN(CASH_SIZE / cacheWay), 
-        cacheRHitN(0), cacheWHitN(0), cacheRMissN(0), cacheWMissN(0), mmio(mmio){
+        historyPoint(0), beforeHistory(), mmio(mmio), cache(cacheWay, offsetLen, tagLen){
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
     wordAccessCheckMem = new std::array<bool, MEM_BYTE_N / WORD_BYTE_N>;
     MemoryUnit mu;
@@ -82,15 +175,8 @@ void AssemblySimulator::reset(){
     beforeHistory.fill({});
     (*dram).fill({0});
     (*wordAccessCheckMem).fill(false);
-    for(int i = 0; i < CASH_SIZE; i++){
-        CacheRow row = {false, 0};
-        cache[i] = row;
-    }
-    cacheRHitN = 0;
-    cacheWHitN = 0;
-    cacheRMissN = 0;
-    cacheWMissN = 0;
     mmio.reset();
+    cache.reset();
 }
 
 
@@ -207,7 +293,75 @@ void AssemblySimulator::printRegisters(const NumberBase &base, const bool &sign,
 
 }
 
+void AssemblySimulator::makeDif(const std::string &path){
 
+}
+
+// difをファイルに出力し，以前のものと比較
+// 最初から実行するためにresetを行うことに注意
+void AssemblySimulator::checkDif(){
+    reset();
+    fs::path difFile = parser.filePaths[0];
+    difFile.replace_extension(DIF_EXTENSION);
+
+    std::ifstream ifs(difFile);
+    bool isOld = ifs.is_open();
+    // True  ... すでにdifファイルがあるのでそれと比較
+    // False ... 新たにdifファイルを作成
+
+    std::ofstream outFile;
+    if(!isOld){
+        outFile.open(difFile.string(), std::ios::out);
+    }
+
+    std::string lineNew,lineNewAll, lineOld;
+
+    while(!end){
+        int instInd = pc/INST_BYTE_N;
+        const Instruction &inst = parser.instructionVector[instInd];
+        nowLine = inst.lineN;
+        BeforeData beforeData = efficientDoInst(inst);
+        std::string opcode;
+        try{
+            opcode = inverseOpMap.at(beforeData.opcodeInt);
+        }catch(const std::out_of_range &e){
+            launchError(ILEGAL_INNER_OPCODE);
+        }
+        auto indPair = parser.getFileNameAndLine(inst.lineN);
+        if(isOld){
+            // 一行ずつ比較
+            std::ostringstream oss;
+            flowInstByRegInd(indPair.second, inst, oss);
+            flowDif(beforeData, false, opcode, oss);
+            lineNewAll = oss.str();
+            std::istringstream iss(lineNewAll);
+            while(std::getline(iss, lineNew)){
+                std::getline(ifs, lineOld);
+                if(lineNew != lineOld){
+                    std::cout << FOUND_DIF << std::endl;
+                    std::cout << lineNewAll << std::endl;
+                    std::cout << std::endl;
+                    std::cout << FOUND_BEFORE << std::endl;
+                    std::cout << lineOld << std::endl;
+                    std::cout << FOUND_AFTER << std::endl;
+                    std::cout << lineNew << std::endl; 
+                    reset();
+                    return;                  
+                }
+            }
+        }else{
+            flowInstByRegInd(indPair.second, inst, outFile);
+            flowDif(beforeData, false, opcode, outFile);
+        }
+    }
+    if(!isOld){
+        outFile.close();
+    }
+
+    reset();
+    
+
+}
 
 // 終了まで実行する
 void AssemblySimulator::launch(const bool &printTime){
@@ -388,27 +542,9 @@ void AssemblySimulator::back(){
         }
         // メモリ，キャッシュ系を戻す
         if(before.useMem){
-            if(before.changeCash){
-                //キャッシュミスしてた
-                cache[before.cashAddress] = before.cacheRow;
-                if(before.writeMem){
-                    // メモリをもとに戻す
-                    writeMem(before.memAddress, MemAccess::WORD, before.memValue);
-                    --cacheWMissN;
-                }else{
-                    --cacheRMissN;
-                }
-
-            }else{
-                // キャッシュヒット
-                if(before.writeMem){
-                    // メモリをもとに戻す
-                    writeMem(before.memAddress, MemAccess::WORD, before.memValue);
-                    --cacheWHitN;
-                }else{
-                    --cacheRHitN;
-                }
-
+            cache.backCache(before);
+            if(before.writeMem){
+                writeMem(before.memAddress, MemAccess::WORD, before.memValue);
             }
 
         }else if(before.isMMIO){
@@ -434,8 +570,7 @@ void AssemblySimulator::back(){
 
 
 }
-
-void AssemblySimulator::printInstByRegInd(const int & lineN, const Instruction &instruction){
+void  AssemblySimulator::flowInstByRegInd(const int & lineN, const Instruction &instruction, std::ostream &stream){
     std::stringstream ss;
     ss << std::setw(PRINT_INST_NUM_SIZE) << std::to_string(lineN) << ":";
     ss <<  std::setw(PRINT_INST_NUM_SIZE) << instruction.opcode;
@@ -473,12 +608,17 @@ void AssemblySimulator::printInstByRegInd(const int & lineN, const Instruction &
         case INST_OTHERS:
             break;
         default:
-            std::cout << IMPLEMENT_ERROR << std::endl;
+            stream << IMPLEMENT_ERROR << std::endl;
             return;
             
 
     }
-    std::cout << ss.str() << std::endl;
+    stream << ss.str() << std::endl;
+}
+
+
+void AssemblySimulator::printInstByRegInd(const int & lineN, const Instruction &instruction){
+    flowInstByRegInd(lineN, instruction, std::cout);
 }
 
 void AssemblySimulator::printInstruction(const int & lineN, const Instruction &instruction){
@@ -578,15 +718,18 @@ void AssemblySimulator::printBreakList()const{
 
 void AssemblySimulator::printDif(const BeforeData & before, const bool &back, const std::string &opcode)const{
     // 差分を表示 GUI用にbackのときも実装
-    
+    flowDif(before, back, opcode, std::cout);
+}
+
+void AssemblySimulator::flowDif(const BeforeData &before, const bool &back, const std::string &opcode, std::ostream &stream)const{
     if(forGUI){
         // 変化のあったレジスタ名とその変化後の値を表示
         if(opcode != "nop"){
             if(before.pc != pc -4){
                 if(back){
-                    std::cout << "pc " << before.pc << std::endl;
+                    stream << "pc " << before.pc << std::endl;
                 }else{
-                    std::cout << "pc " << pc << std::endl;
+                    stream << "pc " << pc << std::endl;
                 }
                 if(before.regInd >= 0){
                     int change = 0;
@@ -595,7 +738,7 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back, co
                     }else{
                         change = registers[before.regInd].si;
                     }
-                    std::cout <<"x"<< std::setw(2) << std::setfill('0') <<   std::internal << before.regInd 
+                    stream <<"x"<< std::setw(2) << std::setfill('0') <<   std::internal << before.regInd 
                         << " " << change <<  std::endl;
                 }
                 return;
@@ -612,42 +755,42 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back, co
                 }else{
                     change = registers[before.regInd].si;
                 }
-                std::cout <<pref<< std::setw(2) << std::setfill('0') <<  std::internal << before.regInd 
+                stream <<pref<< std::setw(2) << std::setfill('0') <<  std::internal << before.regInd 
                     << " " << change <<  std::endl;
                 return;
             }else if(before.writeMem){
                 
                 // メモリの変更があったことを示すため，GUI_MEM_CHANGEをまず表示
-                std::cout << GUI_MEM_CHANGE << std::endl;
+                stream << GUI_MEM_CHANGE << std::endl;
                 //アドレス
-                std::cout  << before.memAddress << " ";
+                stream  << before.memAddress << " ";
                 uint32_t value;
                 if(back){
                     value = before.memValue;
                 }else{
                     value = readMem(before.memAddress, MemAccess::WORD);
                 }
-                std::cout << getSeparatedWordString(value) << std::endl;
+                stream << getSeparatedWordString(value) << std::endl;
 
             } else if(before.MMIOsend){
                     // サーバに送った
                     // mmioの情報はioコマンドで受け取るのでOK?
-                    std::cout << GUI_NO_CHANGE << std::endl;
-                    // std::cout << GUI_SEND << " " << static_cast<int32_t>(mmio.getLast()) << std::endl;
+                    stream << GUI_NO_CHANGE << std::endl;
+                    // stream << GUI_SEND << " " << static_cast<int32_t>(mmio.getLast()) << std::endl;
             }else{
-                std::cout << GUI_NO_CHANGE << std::endl;
+                stream << GUI_NO_CHANGE << std::endl;
                 
             }
         }else{
-             std::cout << GUI_NO_CHANGE << std::endl;
+             stream << GUI_NO_CHANGE << std::endl;
         }
     }else{
-        std::cout << "  " << std::setfill(' ') ;
+        stream << "  " << std::setfill(' ') ;
         bool isChanged = false;
         if(opcode != "nop"){
             if(before.pc != pc -4){
                 // pcと同時にレジスタが変わることもあるので，returnはしない
-                std::cout << "pc:" <<  std::setw(11) << std::internal <<before.pc << " -> " 
+                stream << "pc:" <<  std::setw(11) << std::internal <<before.pc << " -> " 
                     << std::setw(11) << std::internal << pc  << std::endl;
                 isChanged = true;
 
@@ -655,15 +798,15 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back, co
             
                 uint32_t nowValue = readMem(before.memAddress, MemAccess::WORD);
                 //アドレス
-                std::cout <<  "0x" << std::setw(MEM_ADDRESS_HEX_LEN) << std::setfill('0') << std::hex << before.memAddress;
+                stream <<  "0x" << std::setw(MEM_ADDRESS_HEX_LEN) << std::setfill('0') << std::hex << before.memAddress;
                 // 旧値
-                std::cout <<  ": 0x" << std::setw(WORD_BYTE_N) << std::setfill('0') << std::hex << before.memValue;
-                std::cout << " -> ";
-                std::cout <<  "0x" << std::setw(WORD_BYTE_N) << std::setfill('0') << std::hex << nowValue << std::endl;
+                stream <<  ": 0x" << std::setw(WORD_BYTE_N) << std::setfill('0') << std::hex << before.memValue;
+                stream << " -> ";
+                stream <<  "0x" << std::setw(WORD_BYTE_N) << std::setfill('0') << std::hex << nowValue << std::endl;
                 return;
             }else if(before.MMIOsend){
                     // サーバに送った
-                    std::cout << GUI_SEND << " " << static_cast<int32_t>(mmio.getLast()) << std::endl;
+                    stream << GUI_SEND << " " << static_cast<int32_t>(mmio.getLast()) << std::endl;
                     return ;
             }
             if(before.regInd >= 0){
@@ -671,13 +814,13 @@ void AssemblySimulator::printDif(const BeforeData & before, const bool &back, co
                 std::string regInfo = getRegisterInfoUnit(before.regInd, NumberBase::DEC, true, useFNotation);
                 MemoryUnit mu;
                 mu.si = before.regValue;
-                std::cout << regInfo.substr(0, 3) << " " << std::setw(11) <<   std::internal << std::dec<<
+                stream << regInfo.substr(0, 3) << " " << std::setw(11) <<   std::internal << std::dec<<
                 (useFNotation ? mu.f : mu.si) << " -> " << regInfo.substr(3) << std::endl;
                 return;
             }
         }
         if(!isChanged){
-            std::cout << "--- No Change ---" << std::endl;
+            stream << "--- No Change ---" << std::endl;
         }
         
         
@@ -837,26 +980,6 @@ void AssemblySimulator::printOpCounter() const{
     
 }
 
-// キャッシュの情報を表示
-void AssemblySimulator::printCacheSystem()const{
-    int32_t usedCacheN = 0;
-    for(auto e: cache){
-        usedCacheN += e.valid ? 1 : 0;
-    }
-    float cacheUseRate = ((float) usedCacheN) / CASH_SIZE * 100;
-    std::cout << CACHE_PRINT_USE_RATE << std::setprecision(3) << cacheUseRate << "%" << std::endl;
-    std::cout << "読み込み: " << std::endl;
-    int32_t accessN = cacheRHitN + cacheRMissN;
-    std::cout << CACHE_PRINT_ACCESS << accessN << std::endl;
-    std::cout << CACHE_PRINT_RATE << std::setprecision(3) <<
-         ((float) cacheRHitN) / accessN  * 100 << "%" << std::endl;
-    std::cout << "書き込み: " << std::endl;
-    accessN = cacheWHitN + cacheWMissN;
-    std::cout << CACHE_PRINT_ACCESS << accessN << std::endl;
-    std::cout << CACHE_PRINT_RATE << std::setprecision(3) <<
-         ((float) cacheWHitN) / accessN  * 100 << "%" << std::endl;
-
-}
 
 
  std::string AssemblySimulator::getMemWordString(const uint32_t & address)const{
@@ -924,8 +1047,8 @@ double AssemblySimulator::calculateTime(){
     }
     ans /= HZ;
 
-    ans += cacheRMissN * READ_MISS_TIME;
-    ans += cacheWMissN * WRITE_MISS_TIME;
+    ans += (cache.otherMissN[Cache::READ] + cache.initMissN[Cache::READ]) * READ_MISS_TIME;
+    ans += (cache.otherMissN[Cache::WRITE] + cache.initMissN[Cache::WRITE]) * WRITE_MISS_TIME;
 
     ans += mmio.calculateTime();
 
