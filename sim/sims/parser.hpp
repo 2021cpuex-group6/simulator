@@ -59,6 +59,7 @@ class AssemblyParser{
         std::vector<Instruction> instructionVector;
         std::vector<uint32_t> lineIndMap; // ファイルの行数をinstructionVectorのインデックスに変更 バイナリファイルを使わない時のみ使う
         std::map<std::string, int> labelMap; //値は次の命令のinstructionVectorでのインデックス
+        std::map<int, std::string>invLabelMap; // 上のマップの逆引き.ラベルの使用率を測定するために使われる
         AssemblyParser(const std::vector<std::string> &filePaths, const bool &useBin, const bool &forGUI);
         std::pair<std::string, int> getFileNameAndLine(const int &lineN)const;
         static std::map<uint8_t, std::string > getInverseOpMap();

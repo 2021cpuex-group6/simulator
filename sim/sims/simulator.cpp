@@ -29,6 +29,11 @@ static const double  WRITE_MISS_TIME = 0.002;
 static const double  READ_MISS_TIME = 0.002;
 static const double  HZ = 50000000;
 
+// ラベルのジャンプ回数表示
+static const std::string PRINT_JUMP_LABEL_ERROR = "まだ一度もラベルにジャンプしていません";
+static const std::string PRINT_JUMP_INTERVAL = "   ";
+static constexpr int PRINT_JUMP_INT_W = 12;
+
 
 Cache::Cache(const uint32_t &cacheWay, const uint32_t &offsetLen,
          const uint32_t &tagLen):
@@ -599,6 +604,11 @@ void AssemblySimulator::back(){
         printDif(before, true, opcode);
     }
     end = false;
+    if(before.jumpToLabel){
+        // jumpedLabelCountが更新された
+        
+        jumpedLabelCount[pc] = jumpedLabelCount[pc] - 1;
+    }
     pc = before.pc;
     if(opcode != ""){
         instCount--;
@@ -1164,4 +1174,40 @@ void AssemblySimulator::printAccessedAddress(){
         }
         ++address;
     }
+}
+
+// ジャンプしたアドレスを多い順に表示
+void AssemblySimulator::printJumpLabelRanking(const unsigned int &printN){
+    // 一度もラベルにジャンプしていない
+    if(jumpedLabelCount.size() == 0){
+        std::cout << PRINT_JUMP_LABEL_ERROR  << std::endl;
+        return;
+    }
+
+    std::cout << std::setw(PRINT_JUMP_INT_W) << std::setfill(' ') << "Times"
+        << std::setw(PRINT_JUMP_INT_W) << "Line" 
+        << PRINT_JUMP_INTERVAL << "Label name" << std::endl;
+
+    // マップをソートするためにvectorを作る
+    std::vector<std::pair<uint32_t, uint64_t>> jumpedLabelVector;
+    jumpedLabelVector.reserve(jumpedLabelCount.size());
+    for(const auto &item: jumpedLabelCount){
+        jumpedLabelVector.emplace_back(item);
+    }
+    std::sort(jumpedLabelVector.begin(), jumpedLabelVector.end(), 
+            [](const auto &x, const auto &y){return x.second > y.second;});
+    
+    for(unsigned int  i = 0 ;i < printN; i++){
+        if(i == jumpedLabelCount.size()) break;
+        int32_t address = jumpedLabelVector[i].first;
+        uint32_t count = jumpedLabelVector[i].second;
+        int index = address / INST_BYTE_N;
+        std::cout << std::setw(PRINT_JUMP_INT_W) << count
+         << std::setw(PRINT_JUMP_INT_W) << parser.instructionVector[index].lineN -1
+         << PRINT_JUMP_INTERVAL << parser.invLabelMap.at(address) << std::endl;
+        
+    }
+
+
+
 }

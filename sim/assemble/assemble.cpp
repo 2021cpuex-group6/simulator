@@ -307,7 +307,8 @@ static void assemble_error(const std::string &message, const int & line){
 // 初めにファイルを全探索してラベルを探す
 // そのあと、ファイルポインタをもとにもどす
 // 返り値が最終アドレス
-static int check_labels(std::istream& ifs,const int &start_addr, std::map<std::string, int> &label_dict){
+static int check_labels(std::istream& ifs,const int &start_addr,
+         std::map<std::string, int> &label_dict){
     int line_count = 1;
     int addr_count = start_addr;
     while(!ifs.eof()) {
@@ -343,6 +344,7 @@ static int check_labels(std::istream& ifs,const int &start_addr, std::map<std::s
                     }
                 }
                 line_count ++;
+                
                 continue;
             }
             if( ELIMINATE_NOP){
@@ -360,7 +362,8 @@ static int check_labels(std::istream& ifs,const int &start_addr, std::map<std::s
 }
 
 // 複数ファイルにまたがってラベル検索をする
-void check_labels_many_files(const std::vector<std::string> &files, std::map<std::string, int> &label_dict){
+void check_labels_many_files(const std::vector<std::string> &files,
+         std::map<std::string, int> &label_dict){
     int start_addr = START_ADDRESS;
     for(auto file: files){
         std::ifstream ifs(file);

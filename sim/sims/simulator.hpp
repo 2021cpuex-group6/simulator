@@ -125,6 +125,7 @@ struct BeforeData{
     bool isNewAccess; // 新しくアクセスするアドレスにアクセスしたか(memCheck用)
     uint32_t newAccessAddress; // そのアドレス(wordAccessCheckMemのインデックスではないので4で割る)
     bool clearLRU; // LRU用のusedbitをクリアしたか
+    bool jumpToLabel; // ラベルにジャンプしたか
 };
 
 // キャッシュのクラス
@@ -203,8 +204,9 @@ class AssemblySimulator{
         std::map<uint8_t, std::string> inverseOpMap; // uint8_tのopcodeから文字列へ変換
 
         MMIO mmio;
-
         Cache cache;
+
+        std::map<uint32_t, uint64_t> jumpedLabelCount; // キーのアドレスにjal, branchで飛んだ回数を記録
         
         AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
              const bool &forGUI, const MMIO &mmio, const uint32_t &cacheWay, const uint32_t &offsetLen,
@@ -290,6 +292,7 @@ class AssemblySimulator{
         double calculateTime();
         void printCalculatedTime();
         void printAccessedAddress(); // アクセスされたアドレスを全表示
+        void printJumpLabelRanking(const unsigned int &printN); // ジャンプしたアドレスを回数順に表示
 };
 
 // 以下，inline関数
@@ -564,6 +567,15 @@ BeforeData AssemblySimulator::efficientDoJump(const uint8_t &opcode, const Instr
 
     }else{
         // 即値ジャンプ
+        uint32_t jumpAddress = static_cast<uint32_t>(instruction.immediate + pc);
+        auto count = jumpedLabelCount.find(jumpAddress);
+        if(count != jumpedLabelCount.end()){
+            // もう何度かjump済
+            jumpedLabelCount[jumpAddress] = count->second + 1;
+        }else{
+            jumpedLabelCount[jumpAddress] = 1;
+        }
+        ans.jumpToLabel = true;
         pc += instruction.immediate;
     }
     return ans;

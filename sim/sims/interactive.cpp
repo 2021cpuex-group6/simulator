@@ -88,6 +88,9 @@ void InteractiveShell::start(){
                                                                             input.second[3] == 1, input.second[1] == 1) << std::endl;
                 }
                 break;
+            case Command::LabelRanking:
+                simulator.printJumpLabelRanking(input.second[0]);
+                break;
             case Command::MemRead:
                 if(input.second[0] + WORD_BYTE_N * input.second[1] >= MEM_BYTE_N || 
                     input.second[0] < 0){
@@ -227,6 +230,15 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
             }catch(const std::invalid_argument &e){
                 return{Command::Invalid, {}};
             }
+        }else if(startsWith(inputString, COMMAND_LABEL_RANK)){
+            std::string input = inputString.substr(2);
+            try{
+                int printN = std::stoi(input);
+                return {Command::LabelRanking, {printN}};
+            }catch(const std::invalid_argument &e){
+                return{Command::LabelRanking, {10}};
+            }
+
         }else if(startsWith(inputString, COMMAND_REG_READ)){
             return getRRInput(inputString);
         }else if(startsWith(inputString, COMMAND_REG_WRITE)){

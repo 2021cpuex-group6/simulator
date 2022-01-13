@@ -12,7 +12,7 @@
 static const std::string SOME_BINARY_FILES = "バイナリファイルは複数入力できません.";
 static const std::string INVALID_BINARY = "バイナリファイルは4バイトの倍数のサイズである必要があります.";
 static const std::string IMPLEMENT_ERROR = "実装エラー：バグ報告してください．";
-static constexpr int START_LINE = 1;// すでに1行追加された状態で命令を追加していく
+static constexpr int START_LINE = 0;
 static constexpr int INST_BYTE_N = 4;
 static constexpr bool USE_REAL_BINARY = true; // 本当のバイナリファイルを使う
 
@@ -184,6 +184,10 @@ AssemblyParser::AssemblyParser(const std::vector<std::string> &filePaths, const 
     }else{
         init_opcode_map();
         check_labels_many_files(filePaths, labelMap);
+        // invLabelMapを作る
+        for(const auto item: labelMap){
+            invLabelMap.insert(std::make_pair(item.second, item.first));
+        }
 
         instructionVector.resize(allLen);
         lineIndMap.resize(allLen);
