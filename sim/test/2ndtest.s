@@ -17,7 +17,7 @@ test3:
 # MMIOのテスト
     addi x1 x0 1
     addi x2 x0 20
-    sll  x1 x1 x2 # 0x10000
+    sll  x1 x1 x2 # 0x100000
     addi x2 x0 0
     lbu  x2 -3(x1) # valid
     lbu  x2 -2(x1) # データ受け取り
@@ -90,9 +90,7 @@ test3:
     sw f7 -4(%x6) # 00 00 30 c1
     sw f10 0(%x6) # 00 00 c4 40
     addi x1 x0 1
-    addi x2 x0 22
-    sll x1 x1 x2
-    slli x1 x1 22
+    slli x1 x1 10
     addi x2 x0 0
 loop1: # 2^22 回繰り返す
     add x3 x2 x0 
