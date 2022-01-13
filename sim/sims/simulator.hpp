@@ -154,7 +154,7 @@ class Cache{
     Cache(const uint32_t &cacheWay, const uint32_t &offsetLen,
          const uint32_t &tagLen);
     void reset();
-    inline bool clearLRUIfNecessary(const uint32_t &index);
+    inline bool clearLRUIfNecessary(const uint32_t &address);
     inline void writeCashBeforeData(const bool &forWrite,
          const uint32_t& address, BeforeData &beforeData, 
          const std::array<bool, MEM_BYTE_N / WORD_BYTE_N> *wordAccessCheckMem);
@@ -297,8 +297,9 @@ class AssemblySimulator{
 
 // 以下，inline関数
 // LRUbitが全部立っていたらクリア
-bool Cache::clearLRUIfNecessary(const uint32_t &index){
-    uint32_t cacheAddress = index * cacheWay;
+// address は直前に埋めたアドレス
+bool Cache::clearLRUIfNecessary(const uint32_t &address){
+    uint32_t cacheAddress = (address / cacheWay) * cacheWay;
     for(uint32_t i  = 0; i < cacheWay; ++i){
         CacheRow nowRow = cache[cacheAddress];
         if(!nowRow.used) return false;
@@ -307,6 +308,7 @@ bool Cache::clearLRUIfNecessary(const uint32_t &index){
     for(uint32_t i  = 0; i < cacheWay; ++i){
         cache[cacheAddress].used = false;
     }
+    cache[address].used = true;
     return true;
 }
 // メモリにアクセスする際に，cash系のbeforeDataを書き込み，キャッシュデータを書き込む

@@ -18,20 +18,20 @@ const std::string OPTION_SEARCH_P = "-sp";
 void searchParameters(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
     // パラメタの下限
     constexpr uint32_t offsetMin = 2; 
-    constexpr uint32_t tagMin = 15;
+    constexpr uint32_t tagMin = 14;
     // 最適値が入る
-    uint32_t optWay[2] = {1, 1};
+    uint32_t optWay[2] = {0, 0};
     uint32_t optTag[2] = {tagMin, tagMin};
-    uint32_t optOffset[2] = {7, 5};
-    uint64_t optHitN[2] = {704070462,   176076202};
+    uint32_t optOffset[2] = {0, 0};
+    uint64_t optHitN[2] = {707395530, 176263670};
 
-    uint32_t wayListN = 2;
-    uint32_t wayList[wayListN] = {2, 4};
+    uint32_t wayListN = 1;
+    uint32_t wayList[wayListN] = {2};
 
     bool first = true;
     uint64_t accessN[2] = {0, 0};
     for(uint32_t way: wayList){
-        uint32_t tag = way == 2 ? tagMin : tagMin + 1;
+        uint32_t tag = way == 1 ? tagMin : tagMin + 1;
         for(uint32_t offset = offsetMin; offset < (REGISTER_BIT_N - tag - 1); offset++){
             std::cout << "tag数: " << tag << "way数: " << way << " offset数: " << offset << std::endl;
             
@@ -71,16 +71,16 @@ void searchParameters(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
 }
 
 // 与えたパラメータでの性能をチェックする
-void paramCheck(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
+void checkParam(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
 // パラメタの下限
     constexpr uint32_t offsetMin = 4; 
     constexpr uint32_t tagMin = 14;
     // 最適値が入る
 
-    int paramN = 4;
+    int paramN = 2;
     uint32_t tags[paramN] = {tagMin, tagMin, tagMin + 1, tagMin + 1};
-    uint32_t ways[paramN] = {1, 1, 2, 2};
-    uint32_t offsets[paramN] = {7, 5, 9, 10};
+    uint32_t ways[paramN] = {1, 1};
+    uint32_t offsets[paramN] = {8, 10};
 
     bool first = true;
     uint64_t accessN[2] = {0, 0};
@@ -137,7 +137,7 @@ int main(int argc, char* argv[]){
         }
     }
 
-    uint32_t offsetLen = 4;
+    uint32_t offsetLen = 8;
     uint32_t tagLen = 14;
     
 
@@ -145,7 +145,7 @@ int main(int argc, char* argv[]){
         MMIO mmio;
         AssemblyParser parser(fileNames, useBin, forGUI);
         if(searchParam){
-            paramCheck(parser, useBin, mmio);
+            searchParameters(parser, useBin, mmio);
         }else{
             AssemblySimulator simulator(parser, useBin, forGUI, mmio, cacheWay, offsetLen, tagLen);
             InteractiveShell shell(simulator, parser, forGUI);
