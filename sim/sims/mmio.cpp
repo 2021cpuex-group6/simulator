@@ -23,10 +23,12 @@ constexpr int SLD_OBJ_END = -1;
 
 static constexpr int PPM_INT_W = 3;
 static constexpr bool CLEAR_ZERO = true;
+static constexpr double BAUD_RATE = 576000;
+static constexpr int BYTE_BIT_N = 8;
 
 // 時間予測用
-constexpr double recvTime = 0.002;
-constexpr double sendTime = 0.002;
+constexpr double recvTime = 1 / BAUD_RATE;
+constexpr double sendTime = 1 / BAUD_RATE;
 
 MMIO::MMIO(){
     initRecvData();    
@@ -225,8 +227,8 @@ void MMIO::printSended(const bool &forGUI)const{
 double MMIO::calculateTime(){
     double ans = 0;
     // 受信時間
-    ans += nowInd * recvTime;
-    ans += sendData.size() * sendTime; 
+    ans += nowInd * recvTime * BYTE_BIT_N;
+    ans += sendData.size() * sendTime * BYTE_BIT_N; 
 
     return ans;
 }

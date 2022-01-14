@@ -160,6 +160,7 @@ class Cache{
          const std::array<bool, MEM_BYTE_N / WORD_BYTE_N> *wordAccessCheckMem);
     void printCacheSystem()const;
     void backCache(const BeforeData &beforeData);
+    double calcStallN(const int &)const;
 
     private:
     uint32_t indexMask;  // タグ長, オフセット長の長さに基づいて作られるマスク

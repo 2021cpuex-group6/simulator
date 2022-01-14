@@ -120,6 +120,14 @@ void Cache::printCacheSystem()const{
 
 }
 
+// ミス時のストール数を計算
+// 128, 512, 2048, 8192bitの時のデータに基づく
+double Cache::calcStallN(const int &forWrite)const{
+    double con = 53;
+    double exp = offsetLen >= 7 ? (std::pow(4.0, ((double)offsetLen-7) / 2 + 1) - 1) / 3 : 0 ;
+    double ans = con + exp;
+    return forWrite == WRITE ? ans * 1.5 : ans;
+}
 
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
                                      const bool &forGUI, const MMIO &mmio, const uint32_t &cacheWay,
@@ -1132,6 +1140,7 @@ void AssemblySimulator::printMem(const uint32_t &address, const uint32_t &wordN,
     
 }
 
+
 // 時間予測
 double AssemblySimulator::calculateTime(){
     double ans = 0;
@@ -1142,8 +1151,11 @@ double AssemblySimulator::calculateTime(){
     }
     ans /= HZ;
 
-    ans += (cache.otherMissN[Cache::READ] + cache.initMissN[Cache::READ]) * READ_MISS_TIME;
-    ans += (cache.otherMissN[Cache::WRITE] + cache.initMissN[Cache::WRITE]) * WRITE_MISS_TIME;
+    for(int i = 0; i < Cache::TYPES_N; i++){
+        double stallTimes = cache.otherMissN[i] + cache.initMissN[i];
+        stallTimes = stallTimes * cache.calcStallN(i) / HZ;
+        ans += stallTimes;
+    }
 
     ans += mmio.calculateTime();
 
