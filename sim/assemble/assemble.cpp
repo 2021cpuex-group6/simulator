@@ -441,9 +441,9 @@ void init_opcode_map(){
     output |= (0b001 << 11);
     opecode_map.insert({"slli", {IS, output}});
     output |= (0b101 << 11);
-    opecode_map.insert({"srli", {IS, output}});
-    output |= (0b010 << 25);
     opecode_map.insert({"srai", {IS, output}});
+    output |= (0b010 << 25);
+    opecode_map.insert({"srli", {IS, output}});
 
 
     output = 0b00000;
@@ -462,21 +462,21 @@ void init_opcode_map(){
 
     output = 0b01100;
     opecode_map.insert({"add", {R, output}});
-    output |= (0b1 << 26);
+    output |= (0b010 << 11);
     opecode_map.insert({"sub", {R, output}});
     output = 0b01100;
     output |= (0b001 << 11);
     opecode_map.insert({"sll", {R, output}});
     output = 0b01100;
     output |= (0b101 << 11);
-    opecode_map.insert({"srl", {R, output}});
-    output |= (0b01 << 26);
     opecode_map.insert({"sra", {R, output}});
+    output |= (0b01 << 26);
+    opecode_map.insert({"srl", {R, output}});
 
     output = 0b01100;
-    output |= (0b010 << 11);
-    opecode_map.insert({"slt", {R, output}});
     output |= (0b011 << 11);
+    opecode_map.insert({"slt", {R, output}});
+    output |= (0b0001 << 26);
     opecode_map.insert({"sltu", {R, output}});
     
     output = 0b01100;
