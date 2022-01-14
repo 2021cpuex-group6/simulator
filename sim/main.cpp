@@ -13,6 +13,7 @@ const std::string OPTION_BIN = "-b";
 const std::string OPTION_GUI = "-g";
 const std::string OPTION_CASH = "-c";
 const std::string OPTION_SEARCH_P = "-sp";
+const std::string OPTION_DEBUG = "-d";
 
 // パラメータ探索
 void searchParameters(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
@@ -108,6 +109,7 @@ int main(int argc, char* argv[]){
     bool useBin = false; //バイナリを使うかアセンブリか
     bool forGUI = false; // GUI用の出力か
     bool searchParam = false; // パラメタ探索モードか
+    bool forDebug = false;
     int cacheWay = 1;
     std::vector<std::string> fileNames;
 
@@ -124,6 +126,8 @@ int main(int argc, char* argv[]){
             useBin = true;
         }else if(arg == OPTION_GUI){
             forGUI = true;          
+        }else if(arg == OPTION_DEBUG){
+            forDebug = true;          
         }else if(startsWith(arg, OPTION_CASH)){    
             cacheWay = std::stoi(arg.substr(2));
             if(!isPowerOf2(cacheWay, CACHE_MAX_SIZE)){
@@ -148,7 +152,7 @@ int main(int argc, char* argv[]){
             searchParameters(parser, useBin, mmio);
         }else{
             AssemblySimulator simulator(parser, useBin, forGUI, mmio, cacheWay, offsetLen, tagLen);
-            InteractiveShell shell(simulator, parser, forGUI);
+            InteractiveShell shell(simulator, parser, forGUI, forDebug);
             shell.start();
             simulator.mmio.outputPPM();
             if(forGUI) std::cout << "Exited" << std::endl;

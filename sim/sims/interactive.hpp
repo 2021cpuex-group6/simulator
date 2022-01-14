@@ -64,6 +64,7 @@ class InteractiveShell
 private:
     /* data */
     bool forGUI;
+    bool forDebug;
     std::pair<int, int> getRROptionInput(std::string)const;
     std::pair<int, bool> getRRRegisterInput(std::string)const;
     std::pair<Command, std::vector<int>> getRRInput(const std::string &) const;
@@ -76,7 +77,8 @@ public:
     AssemblySimulator &simulator;
     AssemblyParser &parser;
 
-    InteractiveShell(AssemblySimulator& sim, AssemblyParser& pars, const bool &forGUI);
+    InteractiveShell(AssemblySimulator& sim, AssemblyParser& pars,
+         const bool &forGUI, const bool &forDebug);
     void start();
     std::pair<Command, std::vector<int>> getInput()const;
 

@@ -18,7 +18,8 @@ static const std::string IO_CONTINUE = "何か入力すると送信内容全体�
 static const std::string UNEXPECTED_ERROR = "想定外のエラーのため，内部状態が不正な値になっている可能性があります．";
 
 
-InteractiveShell::InteractiveShell(AssemblySimulator & sim, AssemblyParser& parse, const bool &  forGUI):  forGUI(forGUI), simulator(sim), parser(parse){}
+InteractiveShell::InteractiveShell(AssemblySimulator & sim, AssemblyParser& parse,
+ const bool &  forGUI, const bool &forDebug):  forGUI(forGUI), forDebug(forDebug), simulator(sim), parser(parse){}
 
 void InteractiveShell::start(){
     std::pair<Command, std::vector<int>> input;
