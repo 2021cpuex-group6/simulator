@@ -127,12 +127,12 @@ Instruction intRParse(const uint32_t &code){
     uint32_t funct7 = code & FUNCT_7_MASK;
     switch(funct7){
         case 0x04000000:
-            // sra, sub
+            // sltu, srl
             switch(funct3){
-                case 0:
-                    inst.opcode = "sub"; break;
+                case 011:
+                    inst.opcode = "slt"; break;
                 case 0b101:
-                    inst.opcode = "sra"; break;
+                    inst.opcode = "srl"; break;
                 default:
                     printError("intRparse: " + INVALID_CODE);
             }
@@ -151,11 +151,11 @@ Instruction intRParse(const uint32_t &code){
                 case 0b001:
                     inst.opcode = "sll"; break;
                 case 0b101:
-                    inst.opcode = "srl"; break;
+                    inst.opcode = "sra"; break;
                 case 0b010:
-                    inst.opcode = "slt"; break;
+                    inst.opcode = "sub"; break;
                 case 0b011:
-                    inst.opcode = "sltu"; break;
+                    inst.opcode = "slt"; break;
                 default:
                     printError("intRparse: " + INVALID_CODE);
             }
@@ -171,6 +171,7 @@ Instruction intRParse(const uint32_t &code){
 Instruction intIParse(const uint32_t & code){
     Instruction inst;
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
+    uint32_t funct7 = shiftRightLogical(code & FUNCT_7_MASK, 25);
     // まず，シフト系かどうかを調べる
     if((funct3 & 0b11) == 0b01){
         // シフト系
@@ -179,10 +180,12 @@ Instruction intIParse(const uint32_t & code){
             case 0b001:
                 inst.opcode = "slli"; break;
             case 0b101:
-                if(code & 0x04000000){
+                if(funct7 == 0b10){
+                    inst.opcode = "srli"; break;
+                }else if(funct7 == 0b0){
                     inst.opcode = "srai"; break;
                 }else{
-                    inst.opcode = "srli"; break;
+                    printError("intIParse: " + INVALID_CODE);    
                 }
             default:
                 printError("intIParse: " + INVALID_CODE);
