@@ -132,7 +132,7 @@ void InteractiveShell::start(){
                 continueFlag = false;
                 break;
             case Command::ProgramProfile:
-                simulator.outProfile();
+                simulator.outputProfile();
                 break;
             case Command::IOPrint:
                 simulator.mmio.printInfo();

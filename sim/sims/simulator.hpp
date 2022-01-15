@@ -32,6 +32,7 @@ constexpr int OPKIND_MASK = 0x7;
 constexpr int OPKIND_BIT_N = 3;
 constexpr bool USE_EFFICIENT = true;
 constexpr int32_t DATA_START = 0x100000; // データの始まるアドレス (2^20)
+constexpr int EXPECT_MISS_PENALTY = 2;
 
 // MMIOのアドレス．
 // この順でかつ3つのアドレスが連続していれば自由に変更可能．
@@ -126,6 +127,9 @@ struct BeforeData{
     uint32_t newAccessAddress; // そのアドレス(wordAccessCheckMemのインデックスではないので4で割る)
     bool clearLRU; // LRU用のusedbitをクリアしたか
     bool jumpToLabel; // ラベルにジャンプしたか
+    // bool isHazard; //　ハザードが発生したか
+    // bool hazardForIntReg; // ハザードが整数レジスタで起きたか 
+    // int loadRegInd; // ハザードが起きたレジスタのインデックス
 };
 
 // キャッシュのクラス
@@ -195,6 +199,7 @@ class AssemblySimulator{
         std::map<std::string, int> opCounter; //実行命令の統計
         std::map<uint8_t, uint64_t> efficientOpCounter; // uint8_t ver
         uint64_t expectMissN; // 分岐予測失敗数(jも含む)
+        uint64_t hazardN; // ハザードが起きた回数
         std::unordered_set<int32_t> breakPoints; // ブレークポイントの集合　行数で管理（1始まり）
 
         int historyN;   // 現在保持している履歴の数
@@ -281,6 +286,7 @@ class AssemblySimulator{
         inline BeforeData efficientDoStore(const uint8_t &opcode, const Instruction &instruction);
         inline BeforeData efficientDoMix(const uint8_t &opcode, const Instruction &instruction);
         inline bool wordAccessCheck(const uint32_t &address);
+        inline bool checkHazard(const bool & isInt, const int &regInd1, const int &regInd2);
 
         int getIRegIndWithError(const std::string &regName)const;
         int getFRegIndWithError(const std::string &regName)const;
@@ -298,7 +304,8 @@ class AssemblySimulator{
         void printCalculatedTime();
         void printAccessedAddress(); // アクセスされたアドレスを全表示
         void printJumpLabelRanking(const unsigned int &printN); // ジャンプしたアドレスを回数順に表示
-        void outProfile();
+        void outputProfile();
+        void inputProfile(std::string &dataPath, std::string &paramPath);
 };
 
 // 以下，inline関数
@@ -564,11 +571,14 @@ BeforeData AssemblySimulator::efficientDoJump(const uint8_t &opcode, const Instr
         // レジスタを使う (jalr, jr)
         // 即値とレジスタの値を足して最下位ビットを0にした値がジャンプ先
         // しかしこのシミュレータは4バイトの固定長命令を使うことを暗に仮定しているので、もう1ビットも0にする
+        // レジスタから読み込むのでWARハザードを起こす可能性あり
         if(opcode & 0b10){
             // jalr
             nextPC += iRegisters[instruction.regInd[1]];
+            checkHazard(true, -1, instruction.regInd[1]);
         }else{
             nextPC += iRegisters[instruction.regInd[0]];
+            checkHazard(true, instruction.regInd[0], -1);
         }
         nextPC &= (~0) << 2;
         pc = nextPC;
@@ -586,6 +596,10 @@ BeforeData AssemblySimulator::efficientDoJump(const uint8_t &opcode, const Instr
         ans.jumpToLabel = true;
         pc += instruction.immediate;
     }
+    if(ans.pc + INST_BYTE_N != pc){
+        // 分岐予測失敗
+        ++expectMissN;
+    }
     return ans;
 }
 
@@ -594,6 +608,7 @@ BeforeData AssemblySimulator::efficientDoJump(const uint8_t &opcode, const Instr
 BeforeData AssemblySimulator::efficientDoControl(const uint8_t &opcode, const Instruction &instruction){
     int reg0 = iRegisters[instruction.regInd[0]];
     int reg1 = iRegisters[instruction.regInd[1]];
+    checkHazard(true, instruction.regInd[0], instruction.regInd[1]);
     bool jumpFlag;
     switch(opcode){
         case 0b001:
@@ -620,6 +635,7 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
     // ロード命令を実行
     uint32_t address = instruction.immediate;
     address += static_cast<uint32_t>(iRegisters[instruction.regInd[1]]);
+    checkHazard(true, -1, instruction.regInd[1]); // アドレスの値を読むときにハザードの可能性
 
     bool loadInteger = (opcode & 0b100) == 0u;
     int32_t loadRegInd = instruction.regInd[0];
@@ -665,6 +681,7 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
 BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Instruction &instruction){
     uint32_t address = instruction.immediate;
     address += static_cast<uint32_t>(iRegisters[instruction.regInd[1]]);
+    checkHazard(true, -1, instruction.regInd[1]);
 
     uint32_t beforeAddress = (address/4)*4; // 4バイトアラインする
     BeforeData before = {pc, false, -1, -1, true, beforeAddress, readMem(beforeAddress, MemAccess::WORD), instruction.opcodeInt};
@@ -709,6 +726,7 @@ BeforeData AssemblySimulator::efficientDoMix(const uint8_t &opcode, const Instru
         if(opcode & 0b100){
             // fle
             writeReg(targetReg, fpu.fle(fRegisters[instruction.regInd[1]].i, fRegisters[instruction.regInd[2]].i), true);
+            checkHazard(false, instruction.regInd[1], instruction.regInd[2]);
         }else{
             if(opcode & 0b10){
                 //lui
@@ -718,6 +736,7 @@ BeforeData AssemblySimulator::efficientDoMix(const uint8_t &opcode, const Instru
             }else{
                 // ftoi
                 int32_t value = fpu.ftoi(fRegisters[instruction.regInd[1]].i);
+                checkHazard(false, -1, instruction.regInd[1]);
                 writeReg(targetReg, value, true);
             }
         }
@@ -728,6 +747,7 @@ BeforeData AssemblySimulator::efficientDoMix(const uint8_t &opcode, const Instru
         ans.regValue = fRegisters[targetReg].si;
         uint32_t ansInt = fpu.itof(static_cast<uint32_t>(iRegisters[instruction.regInd[1]]));
         writeReg(targetReg, ansInt, false);
+        checkHazard(true, -1, instruction.regInd[1]);
         return ans;
     }
 
@@ -758,6 +778,7 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             source0 = iRegisters[instruction.regInd[1]];
             source1 = iRegisters[instruction.regInd[2]];
             efficientDoALU(opFunct, targetR, source0, source1);
+            checkHazard(true, instruction.regInd[1], instruction.regInd[2]);
             break;
         case 0b001:
             // 整数I
@@ -769,6 +790,7 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             source0 = iRegisters[instruction.regInd[1]];
             source1 = instruction.immediate;
             efficientDoALU(opFunct, targetR, source0, source1);
+            checkHazard(true, instruction.regInd[1], -1);
             break;
         case 0b010:
             // 制御B
@@ -799,9 +821,12 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             if(opFunct & 0b10000){
                 // fsqrtなど，入力が１つ
                 sourceU1 = 0;
+                checkHazard(false, instruction.regInd[1], -1);
             }else{
                 sourceU1 = fRegisters[instruction.regInd[2]].i;
+                checkHazard(false, instruction.regInd[1], instruction.regInd[2]);
             }
+            
             efficientDoFALU(opFunct, targetR, sourceU0, sourceU1);
             break;
         case 0b111:
@@ -828,5 +853,21 @@ bool AssemblySimulator::wordAccessCheck(const uint32_t &address){
     }
     return false;
 }
+
+// WARハザードが発生するかを調べる
+// regIndが一つで十分なときは片方に-1をいれればよい
+bool AssemblySimulator::checkHazard(const bool & isInt, const int &regInd1, const int &regInd2){
+    BeforeData before = beforeHistory[(historyPoint-1 + HISTORY_RESERVE_N) % HISTORY_RESERVE_N];
+    bool hazard = false;
+    if(before.useMem && (!before.writeMem) || before.isMMIO && !before.MMIOsend){
+        // 前がloadかMMIORecvか
+        if(isInt == before.isInteger){
+            // 使ったレジスタのタイプが同じ
+            hazard = regInd1 == before.regInd || regInd2 == before.regInd;
+            if(hazard) ++hazardN;
+        }        
+    }
+    return hazard;
+};
 
 #endif
