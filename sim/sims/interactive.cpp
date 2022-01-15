@@ -131,6 +131,9 @@ void InteractiveShell::start(){
             case Command::Quit:
                 continueFlag = false;
                 break;
+            case Command::ProgramProfile:
+                simulator.outProfile();
+                break;
             case Command::IOPrint:
                 simulator.mmio.printInfo();
                 if(!forGUI){
@@ -206,6 +209,12 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
         return {Command::Output, {}};
     }else if(inputString == COMMAND_MEM_LIST){
         return {Command::MemList, {}};
+    }else if(inputString == COMMAND_PROGRAM_PROFILE){
+        if(forDebug){
+            return {Command::ProgramProfile, {}};
+        }else{
+            return {Command::Invalid, {}};
+        }
     }else{
         if(startsWith(inputString, COMMAND_NEXT)){
             std::istringstream stream(inputString.substr(2));

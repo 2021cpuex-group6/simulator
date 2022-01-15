@@ -161,6 +161,8 @@ class Cache{
     void printCacheSystem()const;
     void backCache(const BeforeData &beforeData);
     double calcStallN(const int &)const;
+    void outputCacheInfo(std::ostream &stream)const;
+    void inputCacheInfo(std::istream &stream);
 
     private:
     uint32_t indexMask;  // タグ長, オフセット長の長さに基づいて作られるマスク
@@ -192,6 +194,7 @@ class AssemblySimulator{
         uint64_t instCount; // 実行命令数
         std::map<std::string, int> opCounter; //実行命令の統計
         std::map<uint8_t, uint64_t> efficientOpCounter; // uint8_t ver
+        uint64_t expectMissN; // 分岐予測失敗数(jも含む)
         std::unordered_set<int32_t> breakPoints; // ブレークポイントの集合　行数で管理（1始まり）
 
         int historyN;   // 現在保持している履歴の数
@@ -214,6 +217,7 @@ class AssemblySimulator{
              const uint32_t &tagLen);
         ~AssemblySimulator();
         void printRegisters(const NumberBase&, const bool &sign, const bool& useFnotation) const;
+        void printOpCounterWithParam(std::ostream &stream, const bool &GUIMode)const;
         void printOpCounter()const;
         void next(bool, const bool&);
         void doNextBreak();
@@ -294,6 +298,7 @@ class AssemblySimulator{
         void printCalculatedTime();
         void printAccessedAddress(); // アクセスされたアドレスを全表示
         void printJumpLabelRanking(const unsigned int &printN); // ジャンプしたアドレスを回数順に表示
+        void outProfile();
 };
 
 // 以下，inline関数

@@ -34,6 +34,12 @@ static const std::string PRINT_JUMP_LABEL_ERROR = "まだ一度もラベルに�
 static const std::string PRINT_JUMP_INTERVAL = "   ";
 static constexpr int PRINT_JUMP_INT_W = 12;
 
+// デバッグ用
+static const std::string PROF_FOLDER = "prof/";
+static const std::string PROF_DATA = "programData";
+static const std::string PROF_PARAM_EXT = ".param";
+static const std::string PROF_SEPARATOR = "---";
+static const std::string PROF_PARAM_SEP = "_";
 
 Cache::Cache(const uint32_t &cacheWay, const uint32_t &offsetLen,
          const uint32_t &tagLen):
@@ -129,12 +135,49 @@ double Cache::calcStallN(const int &forWrite)const{
     return forWrite == WRITE ? ans * 1.5 : ans;
 }
 
+
+// デバッグ用
+// キャッシュシステムのパラメータを出力
+void Cache::outputCacheInfo(std::ostream &stream)const{
+    stream << cacheWay << " " << offsetLen << " " <<
+         tagLen << " " << indexLen <<  std::endl;
+    for(int i = 0; i < TYPES_N; i++){
+        stream << hitN[i] << " " << initMissN[i] << " " <<
+            otherMissN[i] << std::endl;
+    }
+}
+
+// outputの逆
+void Cache::inputCacheInfo(std::istream &stream){
+    std::string line;
+    std::getline(stream, line);
+    std::istringstream iss(line);
+    std::string unit1, unit2, unit3, unit4;
+    iss >> unit1 >> unit2 >> unit3 >> unit4;
+    cacheWay = std::stoull(unit1);
+    offsetLen = std::stoull(unit2);
+    tagLen = std::stoull(unit3);
+    indexLen = std::stoull(unit4);
+
+    for(int i = 0; i < TYPES_N; i++){
+        std::getline(stream, line);
+        std::istringstream issIn(line);
+        std::string access1, access2, access3;
+        issIn >> access1 >> access2 >> access3;
+        hitN[i] = std::stoull(access1);
+        initMissN[i] = std::stoull(access2);
+        otherMissN[i] = std::stoull(access3);
+    }
+
+}
+
+
 AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &useBin,
                                      const bool &forGUI, const MMIO &mmio, const uint32_t &cacheWay,
                                       const uint32_t &offsetLen, const uint32_t &tagLen):
         useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
         parser(parser), iRegisters(), fRegisters(),
-        instCount(0), opCounter({}), efficientOpCounter({}), breakPoints({}), historyN(0),
+        instCount(0), opCounter({}), efficientOpCounter({}), expectMissN(0), breakPoints({}), historyN(0),
         historyPoint(0), beforeHistory(), mmio(mmio), cache(cacheWay, offsetLen, tagLen){
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
     wordAccessCheckMem = new std::array<bool, MEM_BYTE_N / WORD_BYTE_N>;
@@ -192,6 +235,7 @@ void AssemblySimulator::reset(){
     (*wordAccessCheckMem).fill(false);
     mmio.reset();
     cache.reset();
+    expectMissN = 0;
 }
 
 // レジスタ番号を受け取り，その情報を文字列で返す
@@ -1019,15 +1063,13 @@ void AssemblySimulator::launchWarning(const std::string &message)const{
 
 
 
-
-
-void AssemblySimulator::printOpCounter() const{
+void AssemblySimulator::printOpCounterWithParam(std::ostream &stream, const bool &GUIMode)const{
     // 実行命令の統計をプリント
-    bool useGUIMode = false;
+    bool useGUIMode = GUIMode;
     if(useGUIMode){
-        std::cout << instCount << std::endl;
+        stream << instCount << std::endl;
     }else{
-        std::cout << "総実行命令数: " <<  std::to_string(instCount) << std::endl;
+        stream << "総実行命令数: " <<  std::to_string(instCount) << std::endl;
     }
     
     std::stringstream ss;
@@ -1037,7 +1079,7 @@ void AssemblySimulator::printOpCounter() const{
         for(auto x:opcodeInfoMap){
             if(useGUIMode){
                 // 各命令につき一行
-                std::cout << x.first << "  " <<  efficientOpCounter.at(static_cast<uint8_t>((x.second)[5])) << std::endl;
+                stream << x.first << "  " <<  efficientOpCounter.at(static_cast<uint8_t>((x.second)[5])) << std::endl;
                 
             }else{
                 ss << std::setw(PRINT_INST_NUM_SIZE)<< x.first <<  ": " << std::setw(PRINT_INFO_NUM_SIZE) <<
@@ -1045,7 +1087,7 @@ void AssemblySimulator::printOpCounter() const{
                 
                 if(++count == PRINT_INST_COL){
                     count = 0;
-                    std::cout << ss.str() << std::endl;
+                    stream << ss.str() << std::endl;
                     ss.str("");
                     ss.clear(std::stringstream::goodbit);
                 }
@@ -1055,7 +1097,7 @@ void AssemblySimulator::printOpCounter() const{
         for(auto x:opCounter){
             if(useGUIMode){
                 // 各命令につき一行
-                std::cout << x.first << " " << x.second << std::endl;
+                stream << x.first << " " << x.second << std::endl;
                 
             }else{
                 ss << std::setw(PRINT_INST_NUM_SIZE)<< x.first <<  ": " << std::setw(PRINT_INST_NUM_SIZE) <<
@@ -1063,7 +1105,7 @@ void AssemblySimulator::printOpCounter() const{
                 
                 if(++count == PRINT_INST_COL){
                     count = 0;
-                    std::cout << ss.str() << std::endl;
+                    stream << ss.str() << std::endl;
                     ss.str("");
                     ss.clear(std::stringstream::goodbit);
                 }
@@ -1076,11 +1118,13 @@ void AssemblySimulator::printOpCounter() const{
     if(useGUIMode){
 
     }else{
-        std::cout << "ワードアクセスされた箇所数: " << wordAccessCheckN << std::endl;
-        
+        stream << "ワードアクセスされた箇所数: " << wordAccessCheckN << std::endl;
     }
 
-    
+}
+
+void AssemblySimulator::printOpCounter() const{
+    printOpCounterWithParam(std::cout, false);
 }
 
 
@@ -1219,7 +1263,34 @@ void AssemblySimulator::printJumpLabelRanking(const unsigned int &printN){
          << PRINT_JUMP_INTERVAL << parser.invLabelMap.at(address) << std::endl;
         
     }
+}
 
+// デバッグ用
+// 時間予測に使うパラメタをファイル出力
+void AssemblySimulator::outProfile(){
+    fs::path programFile(parser.filePaths[0]);
+    fs::path dataFile(mmio.dataPath);
+    std::string profDirectory = PROF_FOLDER + programFile.stem().string() + "-" + dataFile.stem().string();
+    fs::create_directories(profDirectory);
 
+    // 共通データ　(programDataファイル)
+    // 命令数とmmioの送受信数
+    std::string pdFilePath = profDirectory + "/" + PROF_DATA;
+    std::ofstream programDataFile;
+    programDataFile.open(pdFilePath, std::ios::out);
+    printOpCounterWithParam(programDataFile, true);
+    programDataFile << PROF_SEPARATOR << std::endl;
+    mmio.outputMMIOInfo(programDataFile);
+    programDataFile.close();
+
+    // パラメータによるデータ
+    std::string paramFilePath = 
+        profDirectory + "/" + std::to_string(cache.cacheWay) + PROF_PARAM_SEP + 
+         std::to_string(cache.offsetLen) + PROF_PARAM_SEP + 
+         std::to_string(cache.tagLen) + PROF_PARAM_EXT;
+    std::ofstream paramFile;
+    paramFile.open(paramFilePath, std::ios::out);
+    cache.outputCacheInfo(paramFile);
+    paramFile.close();
 
 }

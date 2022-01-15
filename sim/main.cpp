@@ -13,7 +13,14 @@ const std::string OPTION_BIN = "-b";
 const std::string OPTION_GUI = "-g";
 const std::string OPTION_CASH = "-c";
 const std::string OPTION_SEARCH_P = "-sp";
-const std::string OPTION_DEBUG = "-d";
+const std::string OPTION_DEBUG = "--debug";
+const std::string OPTION_TIME = "--time";
+const std::string OPTION_DATA = "-d";
+const std::string OPTION_PARAM = "-p";
+
+constexpr char PARAM_DELIM = '_';
+
+const std::string RECV_DATA_FILE = "data/contest.sld";
 
 // パラメータ探索
 void searchParameters(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
@@ -110,13 +117,16 @@ int main(int argc, char* argv[]){
     bool forGUI = false; // GUI用の出力か
     bool searchParam = false; // パラメタ探索モードか
     bool forDebug = false;
-    int cacheWay = 1;
     std::vector<std::string> fileNames;
+    std::string dataPath = RECV_DATA_FILE;
 
     if(argc < 2){
         std::cout << LACK_ARGUMENT << std::endl;
         return -1;
     }
+    uint32_t cacheWay = 1;
+    uint32_t offsetLen = 8;
+    uint32_t tagLen = 14;
     int optionN = 1;
     while(optionN < argc){
         std::string arg = argv[optionN++];
@@ -127,13 +137,24 @@ int main(int argc, char* argv[]){
         }else if(arg == OPTION_GUI){
             forGUI = true;          
         }else if(arg == OPTION_DEBUG){
-            forDebug = true;          
-        }else if(startsWith(arg, OPTION_CASH)){    
-            cacheWay = std::stoi(arg.substr(2));
+            forDebug = true;    
+        }else if(startsWith(arg, OPTION_DATA)){
+            // データファイルの指定
+            dataPath = arg.substr(OPTION_DATA.length()+1);
+        }else if(startsWith(arg, OPTION_PARAM)){
+            std::stringstream ss(arg.substr(OPTION_PARAM.length() + 1));
+            std::string param;
+            std::getline(ss,param, PARAM_DELIM);
+            cacheWay = std::stoul(param);
             if(!isPowerOf2(cacheWay, CACHE_MAX_SIZE)){
                 // ウェイ数が2べきではない
                 std::cout << INVALID_CASH_WAY << std::endl;
+                return -1;
             }
+            std::getline(ss,param, PARAM_DELIM);
+            offsetLen = std::stoul(param);
+            std::getline(ss,param, PARAM_DELIM);
+            tagLen = std::stoul(param);
         }else if(arg == OPTION_SEARCH_P){
             searchParam = true;
         }else{
@@ -141,12 +162,10 @@ int main(int argc, char* argv[]){
         }
     }
 
-    uint32_t offsetLen = 8;
-    uint32_t tagLen = 14;
     
 
     try{
-        MMIO mmio;
+        MMIO mmio(dataPath);
         AssemblyParser parser(fileNames, useBin, forGUI);
         if(searchParam){
             searchParameters(parser, useBin, mmio);
