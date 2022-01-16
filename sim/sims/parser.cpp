@@ -191,10 +191,13 @@ AssemblyParser::AssemblyParser(const std::vector<std::string> &filePaths, const 
 
         instructionVector.resize(allLen);
         lineIndMap.resize(allLen);
-        parseFiles(filePaths);
+        if(allLen > 0){
+            parseFiles(filePaths);
+        }
     }
 
 }
+
 
 void AssemblyParser::parseFiles(const std::vector<std::string> &filePaths){
     int startLine = START_LINE;

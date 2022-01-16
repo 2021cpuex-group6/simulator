@@ -43,6 +43,10 @@ constexpr int32_t MMIO_SEND = DATA_START - 1; // MMIOの送信アドレス
 //キャッシュの定数
 constexpr int CACHE_MAX_SIZE = 0x40000; // キャッシュの最大行数　これ以下の2べきの数でキャッシュの行数を決められる
 
+// デバッグ用
+static const std::string PROF_FOLDER = "prof/";
+static const std::string PROF_DATA = "programData";
+static const std::string PROF_PARAM_EXT = ".param";
 
 
 static const std::string ILEGAL_INNER_OPCODE = "不正な内部オペコードです(実装ミス)";
@@ -305,7 +309,8 @@ class AssemblySimulator{
         void printAccessedAddress(); // アクセスされたアドレスを全表示
         void printJumpLabelRanking(const unsigned int &printN); // ジャンプしたアドレスを回数順に表示
         void outputProfile();
-        void inputProfile(std::string &dataPath, std::string &paramPath);
+        void inputProfileFromFiles(std::string &dataPath, std::string &paramPath);
+        void inputProfile();
 };
 
 // 以下，inline関数
@@ -859,7 +864,7 @@ bool AssemblySimulator::wordAccessCheck(const uint32_t &address){
 bool AssemblySimulator::checkHazard(const bool & isInt, const int &regInd1, const int &regInd2){
     BeforeData before = beforeHistory[(historyPoint-1 + HISTORY_RESERVE_N) % HISTORY_RESERVE_N];
     bool hazard = false;
-    if(before.useMem && (!before.writeMem) || before.isMMIO && !before.MMIOsend){
+    if((before.useMem && (!before.writeMem)) || (before.isMMIO && !before.MMIOsend)){
         // 前がloadかMMIORecvか
         if(isInt == before.isInteger){
             // 使ったレジスタのタイプが同じ

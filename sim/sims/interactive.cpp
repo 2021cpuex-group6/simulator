@@ -116,6 +116,9 @@ void InteractiveShell::start(){
             case Command::Info:
                 simulator.printOpCounter();
                 break;
+            case Command::Input:
+                simulator.inputProfile();
+                break;
             case Command::CacheInfo:
                 simulator.cache.printCacheSystem();
                 break;
@@ -205,6 +208,8 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
         return {Command::Quit, {}};
     }else if(inputString == COMMAND_IOPRINT){
         return {Command::IOPrint, {}};
+    }else if(inputString == COMMAND_INPUT){
+        return {Command::Input, {}};
     }else if(inputString == COMMAND_OUTPUT){
         return {Command::Output, {}};
     }else if(inputString == COMMAND_MEM_LIST){

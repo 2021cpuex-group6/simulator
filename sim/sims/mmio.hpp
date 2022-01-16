@@ -8,6 +8,7 @@ class MMIO{
     public:
         std::string dataPath;
         MMIO(const std::string &dataPath);
+        MMIO();
         bool valid = true; // 読みだせるか
         char recv();
         void send(const char&);

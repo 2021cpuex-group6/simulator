@@ -5,6 +5,9 @@
 #include <iostream>
 #include <cmath>
 #include <regex>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 const std::string LACK_ARGUMENT = "引数にアセンブリファイルを入力してください";                                                                                                           
 const std::string INVALID_CASH_WAY = "ウェイ数が不適切です．";    
@@ -21,6 +24,7 @@ const std::string OPTION_PARAM = "-p";
 constexpr char PARAM_DELIM = '_';
 
 const std::string RECV_DATA_FILE = "data/contest.sld";
+const std::string EMPTY_FILE = "test/no.s";
 
 // パラメータ探索
 void searchParameters(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
@@ -111,12 +115,42 @@ void checkParam(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
     }
 }
 
+
+// 保存してあるプロファイルをもとに時間予測
+void expectTime(){
+    MMIO mmio;
+    std::vector<std::string> files;
+    files.emplace_back(EMPTY_FILE);
+    AssemblyParser parser(files, false, false);
+
+    for (const auto &folder: fs::directory_iterator(PROF_FOLDER)){
+        std::cout << folder.path().stem() << std::endl;
+        fs::path profData = folder.path() / PROF_DATA;
+        std::string profDataS = profData.string();
+
+        for(const auto &file: fs::directory_iterator(folder.path())){
+            if(profData == file.path()) continue;
+            std::cout << "  " << file.path().stem() << std::endl;
+            AssemblySimulator simulator(parser, false, false, mmio, 1, 2, 2);
+            std::string fileS = file.path().string();
+            simulator.inputProfileFromFiles(profDataS, fileS);
+            std::cout << "  " ;
+
+            simulator.printCalculatedTime();
+            std::cout << "------" << std::endl;
+        }
+        std::cout << "----------------------------------------------------------------" <<std::endl;
+    }
+
+}
+
 int main(int argc, char* argv[]){
     // bool doAll = false; //対話型にせず全実行するか
     bool useBin = false; //バイナリを使うかアセンブリか
     bool forGUI = false; // GUI用の出力か
     bool searchParam = false; // パラメタ探索モードか
     bool forDebug = false;
+    bool timeMode = false; // 時間予測モード
     std::vector<std::string> fileNames;
     std::string dataPath = RECV_DATA_FILE;
 
@@ -138,6 +172,8 @@ int main(int argc, char* argv[]){
             forGUI = true;          
         }else if(arg == OPTION_DEBUG){
             forDebug = true;    
+        }else if(arg == OPTION_TIME){
+            timeMode = true;  
         }else if(startsWith(arg, OPTION_DATA)){
             // データファイルの指定
             dataPath = arg.substr(OPTION_DATA.length()+1);
@@ -162,7 +198,10 @@ int main(int argc, char* argv[]){
         }
     }
 
-    
+    if(timeMode){
+        expectTime();
+        return 0;
+    }
 
     try{
         MMIO mmio(dataPath);

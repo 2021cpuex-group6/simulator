@@ -29,6 +29,7 @@ const std::string COMMAND_MEM_READ = "mr";
 const std::string COMMAND_MEM_LIST = "ml";
 const std::string COMMAND_IOPRINT = "io";
 const std::string COMMAND_OUTPUT = "out";
+const std::string COMMAND_INPUT = "in";
 const std::string COMMAND_PROGRAM_PROFILE = "pp";
 
 // const std::string GUI_ERROR = "Error";
@@ -49,6 +50,7 @@ enum class Command{
     Back, 
     Reset,  // 初期状態へ
     Info, //統計データを見る
+    Input,
     MemRead,
     MemList,
     Quit,

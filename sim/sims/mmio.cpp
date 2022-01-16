@@ -26,8 +26,10 @@ static constexpr double BAUD_RATE = 576000;
 static constexpr int BYTE_BIT_N = 8;
 
 // 時間予測用
-constexpr double recvTime = 0.88 / 1000;
-constexpr double sendTime = 0.88 / 1000;
+constexpr double recvTime = 1 / BAUD_RATE;
+constexpr double sendTime = 1 / BAUD_RATE;
+
+MMIO::MMIO(){}
 
 MMIO::MMIO(const std::string &dataPath): dataPath(dataPath){
     initRecvData();    

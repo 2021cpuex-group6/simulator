@@ -35,9 +35,6 @@ static const std::string PRINT_JUMP_INTERVAL = "   ";
 static constexpr int PRINT_JUMP_INT_W = 12;
 
 // デバッグ用
-static const std::string PROF_FOLDER = "prof/";
-static const std::string PROF_DATA = "programData";
-static const std::string PROF_PARAM_EXT = ".param";
 static const std::string PROF_SEPARATOR = "---";
 static const std::string PROF_PARAM_SEP = "_";
 
@@ -130,7 +127,7 @@ void Cache::printCacheSystem()const{
 // 128, 512, 2048, 8192bitの時のデータに基づく
 double Cache::calcStallN(const int &forWrite)const{
     double con = 53;
-    double exp = offsetLen >= 7 ? (std::pow(4.0, ((double)offsetLen-7) / 2 + 1) - 1) / 3 : 0 ;
+    double exp = offsetLen >= 4 ? (std::pow(4.0, ((double)offsetLen-4) / 2 + 1) - 1) / 3 : 0 ;
     double ans = con + exp;
     return forWrite == WRITE ? ans * 1.5 : ans;
 }
@@ -1300,14 +1297,16 @@ void AssemblySimulator::outputProfile(){
 }
 
 // ファイルからパラメータを復元
-void AssemblySimulator::inputProfile(std::string &dataPath, std::string &paramPath){
+void AssemblySimulator::inputProfileFromFiles(std::string &dataPath, std::string &paramPath){
     std::ifstream programDataFile;
     programDataFile.open(dataPath, std::ios::in);
     // opCounterの復元
     std::string line;
     std::string op, countN;
     std::getline(programDataFile, line);
-    while( line != PROF_PARAM_SEP){
+    instCount = std::stoull(line);
+    std::getline(programDataFile, line);
+    while( line != PROF_SEPARATOR){
         std::istringstream iss(line);
         iss >> op >> countN;
         uint8_t key = opcodeInfoMap[op][5];
@@ -1331,4 +1330,22 @@ void AssemblySimulator::inputProfile(std::string &dataPath, std::string &paramPa
     cache.inputCacheInfo(paramDataFile);
     paramDataFile.close();
 
+}
+
+void AssemblySimulator::inputProfile(){
+fs::path programFile(parser.filePaths[0]);
+    fs::path dataFile(mmio.dataPath);
+    std::string profDirectory = PROF_FOLDER + programFile.stem().string() + "-" + dataFile.stem().string();
+
+    // 共通データ　(programDataファイル)
+    // 命令数とmmioの送受信数, ハザード，予測ミス
+    std::string pdFilePath = profDirectory + "/" + PROF_DATA;
+
+    // パラメータによるデータ
+    std::string paramFilePath = 
+        profDirectory + "/" + std::to_string(cache.cacheWay) + PROF_PARAM_SEP + 
+         std::to_string(cache.offsetLen) + PROF_PARAM_SEP + 
+         std::to_string(cache.tagLen) + PROF_PARAM_EXT;
+
+    inputProfileFromFiles(pdFilePath, paramFilePath);
 }

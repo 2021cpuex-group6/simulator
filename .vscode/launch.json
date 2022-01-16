@@ -30,7 +30,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/sim/main",
-            "args": ["test/test.s"], 
+            "args": ["--time"], 
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/sim",
             "environment": [],
