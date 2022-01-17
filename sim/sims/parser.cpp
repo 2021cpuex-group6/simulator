@@ -12,7 +12,7 @@
 static const std::string SOME_BINARY_FILES = "バイナリファイルは複数入力できません.";
 static const std::string INVALID_BINARY = "バイナリファイルは4バイトの倍数のサイズである必要があります.";
 static const std::string IMPLEMENT_ERROR = "実装エラー：バグ報告してください．";
-static constexpr int START_LINE = 1;// すでに1行追加された状態で命令を追加していく
+static constexpr int START_LINE = 0;
 static constexpr int INST_BYTE_N = 4;
 static constexpr bool USE_REAL_BINARY = true; // 本当のバイナリファイルを使う
 
@@ -28,49 +28,49 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     //  5 ...opcodeInt
     //  6 ...命令の後にストールがいくつ入るか (0~)
 
-    {"nop",     {0, -1, -1, -1, INST_OTHERS,  0b11111001}}, 
-    {"add",     {3, -1, -1, -1, INST_REGONLY, 0b0000000}}, 
-    {"sub",     {3, -1, -1, -1, INST_REGONLY, 0b0100000}},
+    {"nop",     {0, -1, -1, -1, INST_OTHERS,  0b11111001, 0}}, 
+    {"add",     {3, -1, -1, -1, INST_REGONLY, 0b0000000, 0}}, 
+    {"sub",     {3, -1, -1, -1, INST_REGONLY, 0b0100000, 0}},
     // {"mul",     {3, -1, -1, -1, INST_REGONLY}},
     // {"div",     {3, -1, -1, -1, INST_REGONLY}},
-    {"and",     {3, -1, -1, -1, INST_REGONLY, 0b00001000}}, 
-    {"slt",     {3, -1, -1, -1, INST_REGONLY, 0b01000000}},
-    {"sltu",    {3, -1, -1, -1, INST_REGONLY, 0b01001000}}, 
-    {"sll",     {3, -1, -1, -1, INST_REGONLY, 0b10000000}}, 
-    {"sra",     {3, -1, -1, -1, INST_REGONLY, 0b10011000}}, 
-    {"srl",     {3, -1, -1, -1, INST_REGONLY, 0b10010000}}, 
-    {"or",      {3, -1, -1, -1, INST_REGONLY, 0b00010000}}, 
-    {"xor",     {3, -1, -1, -1, INST_REGONLY, 0b00011000}},
-    {"fadd",     {3, -1, -1, -1, INST_REGONLY, 0b0000110}}, 
-    {"fsub",     {3, -1, -1, -1, INST_REGONLY, 0b0100110}}, 
-    {"fmul",     {3, -1, -1, -1, INST_REGONLY, 0b0001110}}, 
-    {"fdiv",     {3, -1, -1, -1, INST_REGONLY, 0b0010110}}, 
-    {"fle",     {3, -1, -1, -1, INST_2REGF,   0b01000110}}, 
-    {"feq",     {3, -1, -1, -1, INST_2REGF,   0b01001110}}, 
-    {"fsqrt",     {2, -1, -1, -1, INST_2REGF, 0b10000110}}, 
-    {"floor",     {2, -1, -1, -1, INST_2REGF, 0b10100110}}, 
-    {"itof",     {2, -1, -1, -1, INST_2REGF,  0b10010110}}, 
-    {"ftoi",     {2, -1, -1, -1, INST_2REGF,  0b10001110}}, 
-    {"addi",    {3, 2, -1, 12, INST_REGIMM, 0b00000001}}, 
-    {"andi",    {3, 2, -1, 12, INST_REGIMM, 0b00001001}}, 
-    {"ori",    {3, 2, -1, 12, INST_REGIMM,  0b00010001}}, 
-    {"xori",    {3, 2, -1, 12, INST_REGIMM, 0b00011001}}, 
-    {"slli",     {3, 2, -1, 12, INST_REGIMM, 0b10000001}}, 
-    {"srai",     {3, 2, -1, 12, INST_REGIMM, 0b10011001}}, 
-    {"srli",     {3, 2, -1, 12, INST_REGIMM, 0b10010001}}, 
-    {"blt",     {3, -1, 2, -1, INST_CONTROL, 0b00001010}}, 
-    {"bge",     {3, -1, 2, -1, INST_CONTROL, 0b01000010}}, 
-    {"beq",     {3, -1, 2, -1, INST_CONTROL, 0b00010010}}, 
-    {"bne",     {3, -1, 2, -1, INST_CONTROL, 0b00100010}}, 
-    {"j",       {1, -1, 0, -1, INST_CONTROL, 0b00000011}},
-    {"jal",      {2, -1, 1, -1, INST_CONTROL, 0b00010011}}, 
-    {"jr",       {1, 0, -1, 12, INST_CONTROL, 0b00001011}}, 
-    {"jalr",     {2, 1, -1, 12, INST_CONTROL, 0b00011011}}, 
-    {"lw",       {2, 1, -1, 12, INST_LOAD, 0b00001100}}, 
-    {"lbu",       {2, 1, -1, 12, INST_LOAD, 0b00010100}},
-    {"sw",       {2, 1, -1, 12, INST_STORE,  0b00000101}},
-    {"sb",       {2, 1, -1, 12, INST_STORE,  0b00010101}},
-    {"lui",       {2, 1, -1, 21, INST_REGIMM,  0b00000111}},
+    {"and",     {3, -1, -1, -1, INST_REGONLY, 0b00001000, 0}}, 
+    {"slt",     {3, -1, -1, -1, INST_REGONLY, 0b01000000, 0}},
+    {"sltu",    {3, -1, -1, -1, INST_REGONLY, 0b01001000, 0}}, 
+    {"sll",     {3, -1, -1, -1, INST_REGONLY, 0b10000000, 0}}, 
+    {"sra",     {3, -1, -1, -1, INST_REGONLY, 0b10011000, 0}}, 
+    {"srl",     {3, -1, -1, -1, INST_REGONLY, 0b10010000, 0}}, 
+    {"or",      {3, -1, -1, -1, INST_REGONLY, 0b00010000, 0}}, 
+    {"xor",     {3, -1, -1, -1, INST_REGONLY, 0b00011000, 0}},
+    {"fadd",     {3, -1, -1, -1, INST_REGONLY, 0b0000110, 2}}, 
+    {"fsub",     {3, -1, -1, -1, INST_REGONLY, 0b0100110, 2}}, 
+    {"fmul",     {3, -1, -1, -1, INST_REGONLY, 0b0001110, 1}}, 
+    {"fdiv",     {3, -1, -1, -1, INST_REGONLY, 0b0010110, 3}}, 
+    {"fle",     {3, -1, -1, -1, INST_2REGF,   0b01000110, 0}}, 
+    {"feq",     {3, -1, -1, -1, INST_2REGF,   0b01001110, 0}}, 
+    {"fsqrt",     {2, -1, -1, -1, INST_2REGF, 0b10000110, 1}}, 
+    {"floor",     {2, -1, -1, -1, INST_2REGF, 0b10100110, 5}}, 
+    {"itof",     {2, -1, -1, -1, INST_2REGF,  0b10010110, 1}}, 
+    {"ftoi",     {2, -1, -1, -1, INST_2REGF,  0b10001110, 0}}, 
+    {"addi",    {3, 2, -1, 12, INST_REGIMM, 0b00000001, 0}}, 
+    {"andi",    {3, 2, -1, 12, INST_REGIMM, 0b00001001, 0}}, 
+    {"ori",    {3, 2, -1, 12, INST_REGIMM,  0b00010001, 0}}, 
+    {"xori",    {3, 2, -1, 12, INST_REGIMM, 0b00011001, 0}}, 
+    {"slli",     {3, 2, -1, 12, INST_REGIMM, 0b10000001, 0}}, 
+    {"srai",     {3, 2, -1, 12, INST_REGIMM, 0b10011001, 0}}, 
+    {"srli",     {3, 2, -1, 12, INST_REGIMM, 0b10010001, 0}}, 
+    {"blt",     {3, -1, 2, -1, INST_CONTROL, 0b00001010, 0}}, 
+    {"bge",     {3, -1, 2, -1, INST_CONTROL, 0b01000010, 0}}, 
+    {"beq",     {3, -1, 2, -1, INST_CONTROL, 0b00010010, 0}}, 
+    {"bne",     {3, -1, 2, -1, INST_CONTROL, 0b00100010, 0}}, 
+    {"j",       {1, -1, 0, -1, INST_CONTROL, 0b00000011, 0}},
+    {"jal",      {2, -1, 1, -1, INST_CONTROL, 0b00010011, 0}}, 
+    {"jr",       {1, 0, -1, 12, INST_CONTROL, 0b00001011, 0}}, 
+    {"jalr",     {2, 1, -1, 12, INST_CONTROL, 0b00011011, 0}}, 
+    {"lw",       {2, 1, -1, 12, INST_LOAD, 0b00001100, 1}}, 
+    {"lbu",       {2, 1, -1, 12, INST_LOAD, 0b00010100, 0}},
+    {"sw",       {2, 1, -1, 12, INST_STORE,  0b00000101, 1}},
+    {"sb",       {2, 1, -1, 12, INST_STORE,  0b00010101, 0}},
+    {"lui",       {2, 1, -1, 21, INST_REGIMM,  0b00000111, 0}}
 };
 
 
@@ -186,13 +186,20 @@ AssemblyParser::AssemblyParser(const std::vector<std::string> &filePaths, const 
     }else{
         init_opcode_map();
         check_labels_many_files(filePaths, labelMap);
+        // invLabelMapを作る
+        for(const auto item: labelMap){
+            invLabelMap.insert(std::make_pair(item.second, item.first));
+        }
 
         instructionVector.resize(allLen);
         lineIndMap.resize(allLen);
-        parseFiles(filePaths);
+        if(allLen > 0){
+            parseFiles(filePaths);
+        }
     }
 
 }
+
 
 void AssemblyParser::parseFiles(const std::vector<std::string> &filePaths){
     int startLine = START_LINE;

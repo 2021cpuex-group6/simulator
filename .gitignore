@@ -1,3 +1,10 @@
 *.o
 *.s.out
 main
+*.param
+*.sld
+*.dif
+sim/test2.cpp
+sim/test2
+memo.txt
+*programData

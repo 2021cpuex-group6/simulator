@@ -5,6 +5,9 @@
 #include <iostream>
 #include <cmath>
 #include <regex>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 const std::string LACK_ARGUMENT = "引数にアセンブリファイルを入力してください";                                                                                                           
 const std::string INVALID_CASH_WAY = "ウェイ数が不適切です．";    
@@ -13,25 +16,34 @@ const std::string OPTION_BIN = "-b";
 const std::string OPTION_GUI = "-g";
 const std::string OPTION_CASH = "-c";
 const std::string OPTION_SEARCH_P = "-sp";
+const std::string OPTION_DEBUG = "--debug";
+const std::string OPTION_TIME = "--time";
+const std::string OPTION_DATA = "-d";
+const std::string OPTION_PARAM = "-p";
+
+constexpr char PARAM_DELIM = '_';
+
+const std::string RECV_DATA_FILE = "data/contest.sld";
+const std::string EMPTY_FILE = "test/no.s";
 
 // パラメータ探索
 void searchParameters(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
     // パラメタの下限
     constexpr uint32_t offsetMin = 2; 
-    constexpr uint32_t tagMin = 15;
+    constexpr uint32_t tagMin = 14;
     // 最適値が入る
-    uint32_t optWay[2] = {1, 1};
+    uint32_t optWay[2] = {0, 0};
     uint32_t optTag[2] = {tagMin, tagMin};
-    uint32_t optOffset[2] = {7, 5};
-    uint64_t optHitN[2] = {704070462,   176076202};
+    uint32_t optOffset[2] = {0, 0};
+    uint64_t optHitN[2] = {707395530, 176263670};
 
-    uint32_t wayListN = 2;
-    uint32_t wayList[wayListN] = {2, 4};
+    uint32_t wayListN = 1;
+    uint32_t wayList[wayListN] = {2};
 
     bool first = true;
     uint64_t accessN[2] = {0, 0};
     for(uint32_t way: wayList){
-        uint32_t tag = way == 2 ? tagMin : tagMin + 1;
+        uint32_t tag = way == 1 ? tagMin : tagMin + 1;
         for(uint32_t offset = offsetMin; offset < (REGISTER_BIT_N - tag - 1); offset++){
             std::cout << "tag数: " << tag << "way数: " << way << " offset数: " << offset << std::endl;
             
@@ -71,16 +83,16 @@ void searchParameters(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
 }
 
 // 与えたパラメータでの性能をチェックする
-void paramCheck(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
+void checkParam(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
 // パラメタの下限
     constexpr uint32_t offsetMin = 4; 
     constexpr uint32_t tagMin = 14;
     // 最適値が入る
 
-    int paramN = 4;
+    int paramN = 2;
     uint32_t tags[paramN] = {tagMin, tagMin, tagMin + 1, tagMin + 1};
-    uint32_t ways[paramN] = {1, 1, 2, 2};
-    uint32_t offsets[paramN] = {7, 5, 9, 10};
+    uint32_t ways[paramN] = {1, 1};
+    uint32_t offsets[paramN] = {8, 10};
 
     bool first = true;
     uint64_t accessN[2] = {0, 0};
@@ -103,18 +115,52 @@ void paramCheck(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
     }
 }
 
+
+// 保存してあるプロファイルをもとに時間予測
+void expectTime(){
+    MMIO mmio;
+    std::vector<std::string> files;
+    files.emplace_back(EMPTY_FILE);
+    AssemblyParser parser(files, false, false);
+
+    for (const auto &folder: fs::directory_iterator(PROF_FOLDER)){
+        std::cout << folder.path().stem() << std::endl;
+        fs::path profData = folder.path() / PROF_DATA;
+        std::string profDataS = profData.string();
+
+        for(const auto &file: fs::directory_iterator(folder.path())){
+            if(profData == file.path()) continue;
+            std::cout << "  " << file.path().stem() << std::endl;
+            AssemblySimulator simulator(parser, false, false, mmio, 1, 2, 2);
+            std::string fileS = file.path().string();
+            simulator.inputProfileFromFiles(profDataS, fileS);
+            std::cout << "  " ;
+
+            simulator.printCalculatedTime();
+            std::cout << "------" << std::endl;
+        }
+        std::cout << "----------------------------------------------------------------" <<std::endl;
+    }
+
+}
+
 int main(int argc, char* argv[]){
     // bool doAll = false; //対話型にせず全実行するか
     bool useBin = false; //バイナリを使うかアセンブリか
     bool forGUI = false; // GUI用の出力か
     bool searchParam = false; // パラメタ探索モードか
-    int cacheWay = 1;
+    bool forDebug = false;
+    bool timeMode = false; // 時間予測モード
     std::vector<std::string> fileNames;
+    std::string dataPath = RECV_DATA_FILE;
 
     if(argc < 2){
         std::cout << LACK_ARGUMENT << std::endl;
         return -1;
     }
+    uint32_t cacheWay = 1;
+    uint32_t offsetLen = 8;
+    uint32_t tagLen = 14;
     int optionN = 1;
     while(optionN < argc){
         std::string arg = argv[optionN++];
@@ -124,12 +170,27 @@ int main(int argc, char* argv[]){
             useBin = true;
         }else if(arg == OPTION_GUI){
             forGUI = true;          
-        }else if(startsWith(arg, OPTION_CASH)){    
-            cacheWay = std::stoi(arg.substr(2));
+        }else if(arg == OPTION_DEBUG){
+            forDebug = true;    
+        }else if(arg == OPTION_TIME){
+            timeMode = true;  
+        }else if(startsWith(arg, OPTION_DATA)){
+            // データファイルの指定
+            dataPath = arg.substr(OPTION_DATA.length()+1);
+        }else if(startsWith(arg, OPTION_PARAM)){
+            std::stringstream ss(arg.substr(OPTION_PARAM.length() + 1));
+            std::string param;
+            std::getline(ss,param, PARAM_DELIM);
+            cacheWay = std::stoul(param);
             if(!isPowerOf2(cacheWay, CACHE_MAX_SIZE)){
                 // ウェイ数が2べきではない
                 std::cout << INVALID_CASH_WAY << std::endl;
+                return -1;
             }
+            std::getline(ss,param, PARAM_DELIM);
+            offsetLen = std::stoul(param);
+            std::getline(ss,param, PARAM_DELIM);
+            tagLen = std::stoul(param);
         }else if(arg == OPTION_SEARCH_P){
             searchParam = true;
         }else{
@@ -137,18 +198,19 @@ int main(int argc, char* argv[]){
         }
     }
 
-    uint32_t offsetLen = 4;
-    uint32_t tagLen = 14;
-    
+    if(timeMode){
+        expectTime();
+        return 0;
+    }
 
     try{
-        MMIO mmio;
+        MMIO mmio(dataPath);
         AssemblyParser parser(fileNames, useBin, forGUI);
         if(searchParam){
-            paramCheck(parser, useBin, mmio);
+            searchParameters(parser, useBin, mmio);
         }else{
             AssemblySimulator simulator(parser, useBin, forGUI, mmio, cacheWay, offsetLen, tagLen);
-            InteractiveShell shell(simulator, parser, forGUI);
+            InteractiveShell shell(simulator, parser, forGUI, forDebug);
             shell.start();
             simulator.mmio.outputPPM();
             if(forGUI) std::cout << "Exited" << std::endl;

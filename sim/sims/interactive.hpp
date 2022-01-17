@@ -18,6 +18,7 @@ const std::string COMMAND_BREAK_LIST = "bl";
 const std::string COMMAND_BREAK_DELETE = "bd";
 const std::string COMMAND_CACHE = "c";
 const std::string COMMAND_CHECK_DIF = "dif";
+const std::string COMMAND_LABEL_RANK = "lr";
 const std::string COMMAND_REG_READ = "rr";
 const std::string COMMAND_REG_WRITE = "rw";
 const std::string COMMAND_BACK = "ba";
@@ -28,6 +29,8 @@ const std::string COMMAND_MEM_READ = "mr";
 const std::string COMMAND_MEM_LIST = "ml";
 const std::string COMMAND_IOPRINT = "io";
 const std::string COMMAND_OUTPUT = "out";
+const std::string COMMAND_INPUT = "in";
+const std::string COMMAND_PROGRAM_PROFILE = "pp";
 
 // const std::string GUI_ERROR = "Error";
 
@@ -41,16 +44,19 @@ enum class Command{
     BreakDelete,  
     CacheInfo,
     CheckDif,
+    LabelRanking,
     RegRead, 
     RegWrite, 
     Back, 
     Reset,  // 初期状態へ
     Info, //統計データを見る
+    Input,
     MemRead,
     MemList,
     Quit,
     IOPrint,
     Output,
+    ProgramProfile,
     Invalid
 };
 
@@ -62,6 +68,7 @@ class InteractiveShell
 private:
     /* data */
     bool forGUI;
+    bool forDebug;
     std::pair<int, int> getRROptionInput(std::string, const bool &)const;
     std::pair<int, bool> getRRRegisterInput(std::string)const;
     std::pair<Command, std::vector<int>> getRRInput(const std::string &) const;
@@ -74,7 +81,8 @@ public:
     AssemblySimulator &simulator;
     AssemblyParser &parser;
 
-    InteractiveShell(AssemblySimulator& sim, AssemblyParser& pars, const bool &forGUI);
+    InteractiveShell(AssemblySimulator& sim, AssemblyParser& pars,
+         const bool &forGUI, const bool &forDebug);
     void start();
     std::pair<Command, std::vector<int>> getInput()const;
 

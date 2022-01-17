@@ -32,5 +32,6 @@ struct output_flags_t {
 void assembler_main(std::ofstream& ofs, std::istream& ifs, struct output_flags_t output_flags);
 void init_opcode_map();
 void init_label_map();
-void check_labels_many_files(const std::vector<std::string> &files, std::map<std::string, int> &label_map);
+void check_labels_many_files(const std::vector<std::string> &files,
+         std::map<std::string, int> &label_map);
 std::int32_t assemble_op(const std::string & op, const int& line, const int addr, const std::map<std::string, int> &label_dict);

@@ -8,7 +8,6 @@
 #include <iomanip>
 
 const std::string NO_INPUT_FILE = "data/contest.sldファイルが存在しません．";
-const std::string RECV_DATA_FILE = "data/contest.sld";
 const std::string OUTPUT_FILE = "data/output.ppm";
 const std::string SEND_PRINT = "送信数: ";
 const std::string RECEIVE_PRINT = "受信数: ";
@@ -23,12 +22,16 @@ constexpr int SLD_OBJ_END = -1;
 
 static constexpr int PPM_INT_W = 3;
 static constexpr bool CLEAR_ZERO = true;
+static constexpr double BAUD_RATE = 576000;
+static constexpr int BYTE_BIT_N = 8;
 
 // 時間予測用
-constexpr double recvTime = 0.002;
-constexpr double sendTime = 0.002;
+constexpr double recvTime = 1 / BAUD_RATE;
+constexpr double sendTime = 1 / BAUD_RATE;
 
-MMIO::MMIO(){
+MMIO::MMIO(){}
+
+MMIO::MMIO(const std::string &dataPath): dataPath(dataPath){
     initRecvData();    
     sendData.reserve(ABOUT_OUTPUT_SIZE);
 }
@@ -121,7 +124,7 @@ void MMIO::readSld(std::ifstream & iss){
 // RECV_DATA_FILEを読み込んで，vectorに格納する
 void MMIO::initRecvData(){
     recvData.reserve(ABOUT_INPUT_SIZE);
-    std::ifstream ifs(RECV_DATA_FILE);
+    std::ifstream ifs(dataPath);
     if(!ifs){
         throw std::invalid_argument(NO_INPUT_FILE);
     }
@@ -142,6 +145,7 @@ char MMIO::recv(){
 // MMIOでデータを送る
 void MMIO::send(const char &value){
     sendData.emplace_back(value);
+    ++sendNum;
 
 }
 
@@ -189,6 +193,7 @@ void MMIO::back(bool isSend){
 // 状態を初期化
 void MMIO::reset(){
     nowInd = 0;
+    sendNum  = 0;
     valid = true;
     sendData.clear();
 }
@@ -225,8 +230,20 @@ void MMIO::printSended(const bool &forGUI)const{
 double MMIO::calculateTime(){
     double ans = 0;
     // 受信時間
-    ans += nowInd * recvTime;
-    ans += sendData.size() * sendTime; 
+    ans += nowInd * recvTime * BYTE_BIT_N;
+    ans += sendNum * sendTime * BYTE_BIT_N; 
 
     return ans;
+}
+
+void MMIO::outputMMIOInfo(std::ostream &stream){
+    stream << nowInd << " " << sendNum;
+}
+void MMIO::inputMMIOInfo(std::istream &stream){
+    std::string line, unit1, unit2;
+    std::getline(stream, line);
+    std::istringstream iss(line);
+    iss >> unit1 >> unit2;
+    nowInd = stoi(unit1);
+    sendNum = stoi(unit2);
 }

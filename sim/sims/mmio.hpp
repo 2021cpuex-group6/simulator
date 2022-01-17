@@ -6,6 +6,8 @@
 
 class MMIO{
     public:
+        std::string dataPath;
+        MMIO(const std::string &dataPath);
         MMIO();
         bool valid = true; // 読みだせるか
         char recv();
@@ -25,11 +27,15 @@ class MMIO{
         void readSldOrNetwork(const std::vector<std::string>&, int &);
         void readSld(std::ifstream &);
 
+        void outputMMIOInfo(std::ostream &stream);
+        void inputMMIOInfo(std::istream &stream);
+
         double calculateTime();
 
 
     private:
         int nowInd = 0;
+        int sendNum = 0;
         std::vector<char> recvData; //(simulator目線で)受け取るデータ
         std::vector<char> sendData; //( .. )送るデータ
 

@@ -18,7 +18,8 @@ static const std::string IO_CONTINUE = "何か入力すると送信内容全体�
 static const std::string UNEXPECTED_ERROR = "想定外のエラーのため，内部状態が不正な値になっている可能性があります．";
 
 
-InteractiveShell::InteractiveShell(AssemblySimulator & sim, AssemblyParser& parse, const bool &  forGUI):  forGUI(forGUI), simulator(sim), parser(parse){}
+InteractiveShell::InteractiveShell(AssemblySimulator & sim, AssemblyParser& parse,
+ const bool &  forGUI, const bool &forDebug):  forGUI(forGUI), forDebug(forDebug), simulator(sim), parser(parse){}
 
 void InteractiveShell::start(){
     std::pair<Command, std::vector<int>> input;
@@ -90,6 +91,9 @@ void InteractiveShell::start(){
                                                     << std::endl;
                 }
                 break;
+            case Command::LabelRanking:
+                simulator.printJumpLabelRanking(input.second[0]);
+                break;
             case Command::MemRead:
                 if(input.second[0] + WORD_BYTE_N * input.second[1] >= MEM_BYTE_N || 
                     input.second[0] < 0){
@@ -114,6 +118,9 @@ void InteractiveShell::start(){
             case Command::Info:
                 simulator.printOpCounter();
                 break;
+            case Command::Input:
+                simulator.inputProfile();
+                break;
             case Command::CacheInfo:
                 simulator.cache.printCacheSystem();
                 break;
@@ -128,6 +135,9 @@ void InteractiveShell::start(){
                 break;
             case Command::Quit:
                 continueFlag = false;
+                break;
+            case Command::ProgramProfile:
+                simulator.outputProfile();
                 break;
             case Command::IOPrint:
                 simulator.mmio.printInfo();
@@ -200,10 +210,18 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
         return {Command::Quit, {}};
     }else if(inputString == COMMAND_IOPRINT){
         return {Command::IOPrint, {}};
+    }else if(inputString == COMMAND_INPUT){
+        return {Command::Input, {}};
     }else if(inputString == COMMAND_OUTPUT){
         return {Command::Output, {}};
     }else if(inputString == COMMAND_MEM_LIST){
         return {Command::MemList, {}};
+    }else if(inputString == COMMAND_PROGRAM_PROFILE){
+        if(forDebug){
+            return {Command::ProgramProfile, {}};
+        }else{
+            return {Command::Invalid, {}};
+        }
     }else{
         if(startsWith(inputString, COMMAND_NEXT)){
             std::istringstream stream(inputString.substr(2));
@@ -229,6 +247,15 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
             }catch(const std::invalid_argument &e){
                 return{Command::Invalid, {}};
             }
+        }else if(startsWith(inputString, COMMAND_LABEL_RANK)){
+            std::string input = inputString.substr(2);
+            try{
+                int printN = std::stoi(input);
+                return {Command::LabelRanking, {printN}};
+            }catch(const std::invalid_argument &e){
+                return{Command::LabelRanking, {10}};
+            }
+
         }else if(startsWith(inputString, COMMAND_REG_READ)){
             return getRRInput(inputString);
         }else if(startsWith(inputString, COMMAND_REG_WRITE)){
