@@ -17,13 +17,13 @@ static const std::string PARAM_FILE_ERROR = "パラメータファイルが存�
 static const int WORD_BIT_N = 32;
 static const uint32_t FLOAT_ONE = 0b00111111100000000000000000000000;
 
-FPUUnit::FPUUnit(){
+FPU::FPU(){
     initFsqrtParam();
     initFdivParam();
 }
 
 // fsqrt のパラメータをロード
-void FPUUnit::initFsqrtParam(){
+void FPU::initFsqrtParam(){
     fsqrtParamA = {}; fsqrtParamB = {};
     std::ifstream ifs1(PARAM_DIR + FSQRT_PARAM_A_FILE);
     if(ifs1){
@@ -49,7 +49,7 @@ void FPUUnit::initFsqrtParam(){
 }
 
 // fdiv のパラメータをロード
-void FPUUnit::initFdivParam(){
+void FPU::initFdivParam(){
     fdivParamA = {}; fdivParamB = {};
     std::ifstream ifs1(PARAM_DIR + FDIV_PARAM_A_FILE);
     if(ifs1){
@@ -143,14 +143,14 @@ uint32_t faddsub(const uint32_t & x1, const uint32_t& x2, const bool &isSub){
     
 }
 
-uint32_t FPUUnit::fadd(const uint32_t & x1, const uint32_t& x2){
+uint32_t FPU::fadd(const uint32_t & x1, const uint32_t& x2){
     return faddsub(x1, x2, false);
 }
-uint32_t FPUUnit::fsub(const uint32_t & x1, const uint32_t& x2){
+uint32_t FPU::fsub(const uint32_t & x1, const uint32_t& x2){
     return faddsub(x1, x2, true);
 }
 
-uint32_t FPUUnit::fmul(const uint32_t & x1, const uint32_t& x2){
+uint32_t FPU::fmul(const uint32_t & x1, const uint32_t& x2){
     // 浮動小数点の積
 
     // 0
@@ -217,7 +217,7 @@ uint32_t FPUUnit::fmul(const uint32_t & x1, const uint32_t& x2){
 }
 
 // 旧バージョンのfdiv
-uint32_t FPUUnit::fdivOld(const uint32_t & x1, const uint32_t& x2){
+uint32_t FPU::fdivOld(const uint32_t & x1, const uint32_t& x2){
     auto x1_ =  separateFloat(x1);
     auto x2_ =  separateFloat(x2);
 
@@ -263,7 +263,7 @@ uint32_t FPUUnit::fdivOld(const uint32_t & x1, const uint32_t& x2){
 }
 
 // 改良版のfdiv
-uint32_t FPUUnit::fdiv(const uint32_t & x1, const uint32_t& x2)const{
+uint32_t FPU::fdiv(const uint32_t & x1, const uint32_t& x2)const{
 
 
     uint32_t a, b;
@@ -312,7 +312,7 @@ uint32_t FPUUnit::fdiv(const uint32_t & x1, const uint32_t& x2)const{
 }
 
 // 平方根
-uint32_t FPUUnit::fsqrt(const uint32_t & x)const{
+uint32_t FPU::fsqrt(const uint32_t & x)const{
     uint32_t address = (shiftRightLogical(x, 14)) & 0x3ff;
     uint32_t a = fsqrtParamA[address];
     uint32_t b = fsqrtParamB[address];
@@ -328,7 +328,7 @@ uint32_t FPUUnit::fsqrt(const uint32_t & x)const{
 // 返り値
 //  int ... verilogの実装の返り値
 //  bool ... c++の実装と異なる可能性がある場合（解が2つある場合） true
-std::pair<uint32_t, bool> FPUUnit::itofDebug(const uint32_t & x, const bool &forDebug){
+std::pair<uint32_t, bool> FPU::itofDebug(const uint32_t & x, const bool &forDebug){
     uint32_t it = 0x7fffffff & (~x);
     uint32_t ita = 0x7fffffff & (it + 1);
     uint64_t ml = (x & 0x80000000) != 0 ? (static_cast<uint64_t>(ita) << 24) : (static_cast<uint64_t>(x) << 24);
@@ -368,7 +368,7 @@ std::pair<uint32_t, bool> FPUUnit::itofDebug(const uint32_t & x, const bool &for
 
 // 整数レジスタの値に一番近い浮動小数点値を浮動小数点レジスタへ
 // 最適化のため，上のコードのコピペとなっている．
-uint32_t FPUUnit::itof(const uint32_t & x){
+uint32_t FPU::itof(const uint32_t & x){
     uint32_t it = 0x7fffffff & (~x);
     uint32_t ita = 0x7fffffff & (it + 1);
     uint64_t ml = (x & 0x80000000) != 0 ? (static_cast<uint64_t>(ita) << 24) : (static_cast<uint64_t>(x) << 24);
@@ -396,7 +396,7 @@ uint32_t FPUUnit::itof(const uint32_t & x){
 }
 
 // 浮動小数点レジスタからなるべく近い値を保持したまま整数レジスタへ
-int32_t FPUUnit::ftoi(const uint32_t & x){
+int32_t FPU::ftoi(const uint32_t & x){
     auto x1_ =  separateFloat(x);
     uint32_t s1 = shiftRightLogical(x1_[0], INT_BIT_N-1);
     uint32_t e1 = x1_[1] >> (INT_BIT_N - 9u);
@@ -413,7 +413,7 @@ int32_t FPUUnit::ftoi(const uint32_t & x){
     return static_cast<int32_t>(ans);
 }
 
-int32_t FPUUnit::flt(const uint32_t &x1, const uint32_t &x2){
+int32_t FPU::flt(const uint32_t &x1, const uint32_t &x2){
     auto x1_ =  separateFloat(x1);
     auto x2_ =  separateFloat(x2);
     uint32_t s1 = shiftRightLogical(x1_[0], INT_BIT_N-1);
@@ -445,7 +445,7 @@ int32_t FPUUnit::flt(const uint32_t &x1, const uint32_t &x2){
 
 }
 
-int32_t FPUUnit::fle(const uint32_t &x1, const uint32_t &x2){
+int32_t FPU::fle(const uint32_t &x1, const uint32_t &x2){
     auto x1_ =  separateFloat(x1);
     auto x2_ =  separateFloat(x2);
     uint32_t s1 = shiftRightLogical(x1_[0], INT_BIT_N-1);
@@ -481,7 +481,14 @@ int32_t FPUUnit::fle(const uint32_t &x1, const uint32_t &x2){
 
 }
 
-uint32_t FPUUnit::floor(const uint32_t &x1){
+int32_t FPU::feq(const uint32_t &x1, const uint32_t &x2){
+    bool flg1 = x1 == x2;
+    uint32_t mask = 0b11111111 << 23;
+    bool flg2 = ((x1 & mask ) | (x2 & mask)) == 0;
+    return flg1 || flg2;
+}
+
+uint32_t FPU::floor(const uint32_t &x1){
     bool flg1 = ((x1 >> 23) & 0xff) > 149u;
 
     uint32_t f1 = itof(ftoi(x1));
@@ -544,7 +551,7 @@ bool mulCheck(const uint32_t& input1, const uint32_t& input2){
     if(!isNormalized(ans)){
         return true;
     }
-    uint32_t myAns = FPUUnit::fmul(in1.u32, in2.u32);
+    uint32_t myAns = FPU::fmul(in1.u32, in2.u32);
     Float32 myAns_;
     myAns_.u32 = myAns;
     float dif = fabs(myAns_.f32 - ans);
@@ -554,7 +561,7 @@ bool mulCheck(const uint32_t& input1, const uint32_t& input2){
     return dif < standard;
 }
 
-bool FPUUnit::divCheck(const uint32_t& input1, const uint32_t& input2)const{
+bool FPU::divCheck(const uint32_t& input1, const uint32_t& input2)const{
     // 商の結果が合うかを調べる
     // c++の実装の結果で答えが非正規化数になるものは結果によらずtrue
     Float32 in1, in2;
@@ -577,7 +584,7 @@ bool FPUUnit::divCheck(const uint32_t& input1, const uint32_t& input2)const{
 
 bool itofCheck(const uint32_t& input1){
     float ans = static_cast<int32_t>(input1);
-    auto myAns = FPUUnit::itofDebug(input1, true);
+    auto myAns = FPU::itofDebug(input1, true);
     Float32 myAns_;
     myAns_.u32 = myAns.first;
     if(ans != myAns_.f32 && myAns.second){
@@ -594,12 +601,12 @@ bool ftoiCheck(const uint32_t& input1){
     in1.u32 = input1;
     if(in1.f32 < (1 -pow(2, 31)) || (pow(2, 31) -1) < in1.f32) return true;
     int32_t ans = std::round(in1.f32);
-    int32_t myAns = FPUUnit::ftoi(in1.f32);
+    int32_t myAns = FPU::ftoi(in1.f32);
 
     return ans == myAns;
 }
 
-bool FPUUnit::sqrtCheck(const uint32_t& input1)const{
+bool FPU::sqrtCheck(const uint32_t& input1)const{
     // 平方根の結果が合うかを調べる
     // // 入力が負なら問答無用でtrue
     // c++の実装の結果で答えが非正規化数になるものは結果によらずtrue
@@ -629,10 +636,10 @@ bool flteCheck(const uint32_t& input1, const uint32_t& input2, const bool &isFlt
 
     bool ans, myAns;
     if(isFlt){
-        myAns = FPUUnit::flt(in1.u32, in2.u32) != 0;
+        myAns = FPU::flt(in1.u32, in2.u32) != 0;
         ans = in1.f32 < in2.f32;
     }else{
-        myAns = FPUUnit::fle(in1.u32, in2.u32) != 0;
+        myAns = FPU::fle(in1.u32, in2.u32) != 0;
         ans = in1.f32 <= in2.f32;
     }
     return myAns == ans;
@@ -646,12 +653,12 @@ bool floorCheck(const uint32_t& input1){
     in1.u32 = input1;
     float ans = std::floor(in1.f32);
     Float32 myAns_;
-    myAns_.u32 =  FPUUnit::floor(input1);;
+    myAns_.u32 =  FPU::floor(input1);;
 
     return ans == myAns_.f32;
 }
 
-CheckResult FPUUnit::printOperationCheck(const Float32 &f1, const Float32 &f2,
+CheckResult FPU::printOperationCheck(const Float32 &f1, const Float32 &f2,
                                              const CheckedOperation & op)const{
     // add, subの結果が正しいか調べ、print
     if(isNormalized(f1.f32) && isNormalized(f2.f32)){
@@ -682,7 +689,7 @@ CheckResult FPUUnit::printOperationCheck(const Float32 &f1, const Float32 &f2,
                 break;
             case CheckedOperation::MUL:
                 res = mulCheck(f1.u32, f2.u32);
-                myAns.u32 = FPUUnit::fmul(f1.u32, f2.u32);
+                myAns.u32 = FPU::fmul(f1.u32, f2.u32);
                 trueAns.f32 = f1.f32 * f2.f32;
                 break;
             case CheckedOperation::DIV:
@@ -692,22 +699,22 @@ CheckResult FPUUnit::printOperationCheck(const Float32 &f1, const Float32 &f2,
                 break;
             case CheckedOperation::SQRT:
                 res = sqrtCheck(f1.u32);
-                myAns.u32 = FPUUnit::fsqrt(f1.u32);
+                myAns.u32 = FPU::fsqrt(f1.u32);
                 trueAns.f32 = sqrt(f1.f32);
                 break;
             case CheckedOperation::FTOI:
                 res = ftoiCheck(f1.u32);
-                myAns.u32 = static_cast<int32_t>(FPUUnit::ftoi(f1.u32));
+                myAns.u32 = static_cast<int32_t>(FPU::ftoi(f1.u32));
                 trueAns.u32 = std::round(f1.f32);
                 break;
             case CheckedOperation::ITOF:
                 res = itofCheck(f1.u32);
-                myAns.u32 = FPUUnit::itof(f1.u32);
+                myAns.u32 = FPU::itof(f1.u32);
                 trueAns.f32 = static_cast<int32_t>(f1.u32);
                 break;
             case CheckedOperation::FLOOR:
                 res = floorCheck(f1.u32);
-                myAns.u32 = FPUUnit::floor(f1.u32);
+                myAns.u32 = FPU::floor(f1.u32);
                 trueAns.f32 = std::floor(f1.f32);
                 break;
             default:
@@ -729,7 +736,7 @@ CheckResult FPUUnit::printOperationCheck(const Float32 &f1, const Float32 &f2,
 }
 
 
-void FPUUnit::randomOperationCheck(const int iterN, const CheckedOperation &op)const{
+void FPU::randomOperationCheck(const int iterN, const CheckedOperation &op)const{
     // ランダムでadd, subの実装とc++の結果を比べる
     std::random_device rnd;
     int checkedN = 0;

@@ -30,9 +30,9 @@ enum class CheckedOperation{
     ITOF = 6, 
     FLOOR = 7
 };
-class FPUUnit{
+class FPU{
     public:
-        FPUUnit();
+        FPU();
         static uint32_t fadd(const uint32_t & x1, const uint32_t& x2);
         static uint32_t fsub(const uint32_t & x1, const uint32_t& x2);
         static uint32_t fmul(const uint32_t & x1, const uint32_t& x2);
@@ -41,6 +41,7 @@ class FPUUnit{
         static std::pair<uint32_t, bool> itofDebug(const uint32_t & x, const bool &);
         static uint32_t itof(const uint32_t & x);
         static int32_t ftoi(const uint32_t & x);
+        static int32_t feq(const uint32_t &x1, const uint32_t &x2);
         static int32_t flt(const uint32_t &x1, const uint32_t &x2);
         static int32_t fle(const uint32_t &x1, const uint32_t &x2);
         static uint32_t floor(const uint32_t &x1);

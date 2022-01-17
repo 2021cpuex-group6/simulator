@@ -191,7 +191,7 @@ AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &u
         efficientOpCounter.insert({static_cast<uint8_t>(item.second[5]), 0});
     }
     wordAccessCheckN = 0;
-    fpu = FPUUnit();
+    fpu = FPU();
     inverseOpMap = AssemblyParser::getInverseOpMap();
     lastPC = static_cast<long>(parser.instructionVector.size()) * INST_BYTE_N;
 }

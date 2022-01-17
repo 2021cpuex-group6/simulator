@@ -211,7 +211,7 @@ class AssemblySimulator{
         int64_t wordAccessCheckN;      // ワードアクセスされた箇所の総数
         std::array<bool, MEM_BYTE_N / WORD_BYTE_N> *wordAccessCheckMem;  //どこにアクセスされたか
 
-        FPUUnit fpu;
+        FPU fpu;
         std::map<uint8_t, std::string> inverseOpMap; // uint8_tのopcodeから文字列へ変換
 
         MMIO mmio;
@@ -538,11 +538,7 @@ void AssemblySimulator::efficientDoFALU(const uint8_t &opcode, const int &target
         case 0b01000:
             ans = fpu.fle(source0, source1); break;
         case 0b01001:
-            // feq 仮実装
-            mu0.i =  source0;
-            mu1.i =  source1;
-            ans = mu0.f == mu1.f ? 1 : 0;
-            break;
+            ans = fpu.feq(source0, source1); break;
         case 0b10000:
             ans = fpu.fsqrt(source0); break;
         case 0b10100:
