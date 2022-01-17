@@ -1,5 +1,5 @@
 # 初項, 公比-1/3の等比級数の和
-calcQuater:＃x4に-0.25が入る
+calcQuater: # x4に-0.25が入る
     addi x1 x0 3
     addi x2 x0 -1 
     itof f1 x1
