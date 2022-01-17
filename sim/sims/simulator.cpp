@@ -174,7 +174,7 @@ AssemblySimulator::AssemblySimulator(const AssemblyParser& parser, const bool &u
                                       const uint32_t &offsetLen, const uint32_t &tagLen):
         useBinary(useBin), forGUI(forGUI), pc(0), fcsr(0), end(false),
         parser(parser), iRegisters(), fRegisters(),
-        instCount(0), opCounter({}), efficientOpCounter({}), expectMissN(0), hazardN(0), breakPoints({}), historyN(0),
+        instCount(0), opCounter({}), efficientOpCounter({}), expectMissN(0), hazardStallN(0), breakPoints({}), historyN(0),
         historyPoint(0), beforeHistory(), mmio(mmio), cache(cacheWay, offsetLen, tagLen){
     dram = new std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N>;
     wordAccessCheckMem = new std::array<bool, MEM_BYTE_N / WORD_BYTE_N>;
@@ -233,7 +233,7 @@ void AssemblySimulator::reset(){
     mmio.reset();
     cache.reset();
     expectMissN = 0;
-    hazardN = 0;
+    hazardStallN = 0;
 }
 
 // レジスタ番号を受け取り，その情報を文字列で返す
@@ -1191,7 +1191,7 @@ double AssemblySimulator::calculateTime(){
         uint8_t key = count.second[5];
         ans += (efficientOpCounter[key]) * (count.second[6] + 1);
     }
-    ans += hazardN;
+    ans += hazardStallN;
     ans += expectMissN * EXPECT_MISS_PENALTY;
     ans /= HZ;
 
@@ -1280,7 +1280,7 @@ void AssemblySimulator::outputProfile(){
     programDataFile.open(pdFilePath, std::ios::out);
     printOpCounterWithParam(programDataFile, true);
     programDataFile << PROF_SEPARATOR << std::endl;
-    programDataFile << hazardN << " " << expectMissN << std::endl;
+    programDataFile << hazardStallN << " " << expectMissN << std::endl;
     mmio.outputMMIOInfo(programDataFile);
     programDataFile.close();
 
@@ -1318,7 +1318,7 @@ void AssemblySimulator::inputProfileFromFiles(std::string &dataPath, std::string
     std::istringstream iss(line);
     std::string hazardS, expectMissS;
     iss >> hazardS >> expectMissS;
-    hazardN = std::stoull(hazardS);
+    hazardStallN = std::stoull(hazardS);
     expectMissN = std::stoull(expectMissS);
 
     mmio.inputMMIOInfo(programDataFile);
