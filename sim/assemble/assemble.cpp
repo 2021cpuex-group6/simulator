@@ -508,7 +508,7 @@ void init_opcode_map(){
     output = 0b10100;
     output |= (0b101000<< 26);
     opecode_map.insert({"fle", {R, output}});
-    output |= (0b1 << 11);
+    output |= (0b111000 << 26);
     opecode_map.insert({"feq", {R, output}});
     output = 0b10100;
     output |= (0b110100<< 26);

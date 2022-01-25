@@ -298,12 +298,7 @@ Instruction FRParse(const uint32_t &code){
     uint8_t funct3 = (code >> FUNCT_3_SHIFT_N) & FUNCT_3_MASK;
     uint32_t funct7 = shiftRightLogical(code & FUNCT_7_MASK, 26);
     if(funct3 != 0u){
-        if(funct3 == 0b1 && funct7 == 0x28){
-            inst.opcode = "feq";
-            return inst;
-        }else{
-            printError("FRParse: " + INVALID_CODE);
-        }
+        printError("FRParse: " + INVALID_CODE);
     }
     switch(funct7){
         case 0u:
@@ -316,6 +311,8 @@ Instruction FRParse(const uint32_t &code){
             inst.opcode = "fdiv"; break;
         case 0x28:
             inst.opcode = "fle"; break;
+        case 0x38:
+            inst.opcode = "feq"; break;
         default:
             inst.operandN = 2;
             if(inst.regInd[2] != 0u){
