@@ -6,6 +6,7 @@
 #include <tuple>
 #include <regex>
 #include <cmath>
+#include <iomanip>
 #include "../utils/utils.hpp"
 #include "assemble.hpp"
 
@@ -14,6 +15,9 @@ static constexpr int START_ADDRESS = 4; //ファイルのはじめの命令が�
 static constexpr int INSTRUCTION_BYTE_N = 4;
 static constexpr int32_t NOP = 0x13;
 static constexpr int32_t MASK_BITS = ~(1 << 31); // 右シフトが不定にならないように最上位以外1
+static constexpr int BYTE_HEX_DIGITS_N = 2;
+static constexpr int WORD_HEX_DIGITS_N = 8;
+
 static constexpr int32_t MAX_SHIFT_N = 31;
 static constexpr int SHAMT_SHIFT_N = 20;
 static const std::string INVALID_REGISTER = "不正なレジスタ名です";
@@ -65,16 +69,26 @@ void addEntryPoint(std::ofstream& ofs, struct output_flags_t output_flags){
 
 
 void output_file(std::ofstream& ofs, int32_t binary_op ,struct output_flags_t output_flags) {
-    for (int i = 0; i < INSTRUCTION_BYTE_N; i++) {
-        unsigned int byte = (binary_op >> (8*(3-i))) & 0xff;
-        if (output_flags.output_as_binary) {
-            ofs << (unsigned char)byte << std::flush;
-        } 
-        else {
-            ofs << std::hex << (unsigned int)byte << std::endl;
-        }
+    if(output_flags.output_mode == out_mode::WORD){
+        ofs  << std::setw(WORD_HEX_DIGITS_N) << std::setfill('0') 
+             << std::hex << (unsigned int)binary_op << std::endl;
         if (output_flags.output_log)
-            std::cout << std::hex << (unsigned int)byte << std::endl;
+            std::cout  << std::setw(WORD_HEX_DIGITS_N) << std::setfill('0') 
+                << std::hex << (unsigned int)binary_op << std::endl;        
+    }else{
+        for (int i = 0; i < INSTRUCTION_BYTE_N; i++) {
+            unsigned int byte = (binary_op >> (8*(3-i))) & 0xff;
+            if (output_flags.output_mode == out_mode::BINARY) {
+                ofs << (unsigned char)byte << std::flush;
+            } 
+            else {
+                ofs << std::setw(BYTE_HEX_DIGITS_N) << std::setfill('0') 
+                    << std::hex << (unsigned int)byte << std::endl;
+            }
+            if (output_flags.output_log)
+                std::cout  << std::setw(BYTE_HEX_DIGITS_N) << std::setfill('0')
+                      <<  std::hex << (unsigned int)byte << std::endl;
+        }
     }
 }
 

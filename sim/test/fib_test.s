@@ -1,6 +1,5 @@
 # x1が引数、x2-x5が一時的に使われ、x1に出力
     addi x1 x0 10 #10番目のフィボナッチ数を計算
-    nop
     addi x5 x0 1
     addi x3 zero 3 
     blt  x1 x3   ret

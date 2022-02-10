@@ -3,6 +3,12 @@
 #include <fstream>
 #include <map>
 
+const std::string ASSEMBLER_MODE_BYTE = "--byte";
+const std::string ASSEMBLER_MODE_WORD = "--word";
+const std::string ASSEMBLER_MODE_BINARY = "-b";
+const std::string ASSEMBLY_BYTE_EXT = ".outb";
+const std::string ASSEMBLY_WORD_EXT = ".outw";
+const std::string ASSEMBLY_BINARY_EXT = ".out";
 
 enum op_style {
     R,
@@ -16,12 +22,18 @@ enum op_style {
     J
 };
 
+enum out_mode{
+    BINARY, 
+    BYTE, 
+    WORD
+};
+
 struct output_flags_t {
     bool output_log;
-    bool output_as_binary;
+    out_mode output_mode;
     output_flags_t() {
         output_log = false;
-        output_as_binary = false;
+        output_mode = out_mode::BYTE;
         return;
     };
 };

@@ -1,5 +1,10 @@
 *.o
 *.s.out
+*.s.outw
+*.s.outb
+core
+assembler
+*.out
 main
 *.param
 *.sld
