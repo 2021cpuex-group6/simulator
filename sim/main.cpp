@@ -25,6 +25,7 @@ constexpr char PARAM_DELIM = '_';
 
 const std::string RECV_DATA_FILE = "data/contest.sld";
 const std::string EMPTY_FILE = "test/no.s";
+static constexpr uint32_t wayListN = 1; // パラメタ探索用
 
 // パラメータ探索
 void searchParameters(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
@@ -37,7 +38,6 @@ void searchParameters(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
     uint32_t optOffset[2] = {0, 0};
     uint64_t optHitN[2] = {707395530, 176263670};
 
-    uint32_t wayListN = 1;
     uint32_t wayList[wayListN] = {2};
 
     bool first = true;
@@ -83,14 +83,14 @@ void searchParameters(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
 }
 
 // 与えたパラメータでの性能をチェックする
+static constexpr int paramN = 2;
 void checkParam(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
 // パラメタの下限
     constexpr uint32_t offsetMin = 4; 
     constexpr uint32_t tagMin = 14;
     // 最適値が入る
 
-    int paramN = 2;
-    uint32_t tags[paramN] = {tagMin, tagMin, tagMin + 1, tagMin + 1};
+    uint32_t tags[paramN] = {tagMin, tagMin + 1};
     uint32_t ways[paramN] = {1, 1};
     uint32_t offsets[paramN] = {8, 10};
 
