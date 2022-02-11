@@ -7,7 +7,7 @@
 #include <regex>
 #include <filesystem>
 
-namespace fs = std::filesystem;
+namespace fs = std::__fs::filesystem;
 
 const std::string LACK_ARGUMENT = "引数にアセンブリファイルを入力してください";                                                                                                           
 const std::string INVALID_CASH_WAY = "ウェイ数が不適切です．";    
@@ -38,7 +38,7 @@ void searchParameters(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
     uint32_t optOffset[2] = {0, 0};
     uint64_t optHitN[2] = {707395530, 176263670};
 
-    uint32_t wayList[wayListN] = {2};
+    uint32_t wayList[1] = {2};
 
     bool first = true;
     uint64_t accessN[2] = {0, 0};
@@ -90,9 +90,9 @@ void checkParam(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
     constexpr uint32_t tagMin = 14;
     // 最適値が入る
 
-    uint32_t tags[paramN] = {tagMin, tagMin + 1};
-    uint32_t ways[paramN] = {1, 1};
-    uint32_t offsets[paramN] = {8, 10};
+    uint32_t tags[2] = {tagMin, tagMin + 1};
+    uint32_t ways[2] = {1, 1};
+    uint32_t offsets[2] = {8, 10};
 
     bool first = true;
     uint64_t accessN[2] = {0, 0};

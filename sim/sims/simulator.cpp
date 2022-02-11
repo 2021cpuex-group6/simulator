@@ -13,7 +13,7 @@
 #include <chrono>
 #include <algorithm>
 
-namespace fs = std::filesystem;
+namespace fs = std::__fs::filesystem;
 
 static const std::string NOT_IMPLEMENTED_FOR_MULTI_FILES = "この機能は複数ファイル実行時に使えません";
 static const std::string TIME_FORMAT = "Time: %.10lfms\n";
