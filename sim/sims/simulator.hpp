@@ -696,7 +696,7 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
             before.isMMIO = true;
             before.MMIOvalid = false;
             before.MMIOsend = true;
-            mmio.send(static_cast<char>(value));
+            mmio.send(static_cast<char>(value), instCount);
             return before;
         }else if(address >= MMIO_RECV && address < MMIO_SEND ){
             launchError(ILEGAL_MEM_WRITE);
