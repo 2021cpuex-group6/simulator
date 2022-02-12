@@ -30,7 +30,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/sim/main",
-            "args": ["test/2ndtest.s"], 
+            "args": ["test/min-rt_cpuexp.s", "--debug"], 
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/sim",
             "environment": [],
