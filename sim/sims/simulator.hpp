@@ -15,6 +15,7 @@
 #include <bitset>
 #include <iomanip>
 #include <cmath>
+#include <algorithm>
 
 constexpr int REGISTERS_N = 64;
 constexpr int PRINT_REGISTERS_COL = 4;
@@ -33,7 +34,7 @@ constexpr int OPKIND_BIT_N = 3;
 constexpr bool USE_EFFICIENT = true;
 constexpr int32_t DATA_START = 0x100000; // データの始まるアドレス (2^20)
 constexpr int EXPECT_MISS_PENALTY = 2;
-constexpr int MAX_STALL_N = 2;
+constexpr int MAX_STALL_N = 3;
 
 // MMIOのアドレス．
 // この順でかつ3つのアドレスが連続していれば自由に変更可能．
@@ -831,26 +832,57 @@ bool AssemblySimulator::wordAccessCheck(const uint32_t &address){
 //     return hazard;
 // };
 
-// 1stのハザード検出
-// WB -> IDへのフォワーディングしかないので，使われるのがEXかMEMかに関係なく，1つ前で出てくるか
-// 2つ前で出てくるかにしか依存しない？
+// 2ndのデータハザード検出
+// 3つ前まで考えればOK
 // 返り値はいくつのストールが発生するか
 int AssemblySimulator::checkHazard(const int &regInd1, const int &regInd2){
-    // 1つ前から見ていく
+    // 1つ前から見ていく → 厳しい条件から調べるので，一番ストールが長いものが出たらそこで打ち切ってよい
+    int maxStall = 0; // すべての条件のうち，最も長いものが採用される
     for(int i = 1; i <= MAX_STALL_N; i++){
         int stallN = (MAX_STALL_N - i + 1);
         BeforeData before = beforeHistory[(historyPoint-i + HISTORY_RESERVE_N) % HISTORY_RESERVE_N];
         if(before.regInd > 0){
-            if(before.regInd == regInd1){
-                hazardStallN += stallN;
-                return stallN;  
-            }else if(before.regInd == regInd2){
-                hazardStallN += stallN;
-                return stallN;  
+            if(before.regInd == regInd1 || before.regInd == regInd2){
+                // かぶった
+                // 前の命令別に場合分け
+                uint8_t opcodeType = before.opcodeInt & 0b111;
+                if(opcodeType == 0b0100){  
+                    // メモリ 3つ前ならMA2からフォワーディングできる
+                    maxStall = std::max(stallN -1, maxStall);
+                    if(i > 1) goto LOOP_END; // この場合はこれ以上長いものが出ることはない
+                }else if(opcodeType == 0b110){
+                    // 浮動小数
+                    switch((before.opcodeInt & 0b11111000 >> 3)){
+                        case 0b10001:
+                        case 0b01000:
+                        case 0b01001:
+                            // ftoi, fle, feq
+                            // 2つ前までOK
+                            maxStall = std::max(maxStall, stallN-2);
+                            break;
+                        case 0b00001:
+                        case 0b10000:
+                        case 0b10010:
+                            // fmul, fsq, itof
+                            // 1つ前まで
+                            maxStall = std::max(maxStall, stallN-1);
+                            if(i > 1) goto LOOP_END; // この場合はこれ以上長いものが出ることはない
+                            break;
+                        default:
+                            // それ以外
+                            // これ以上厳しい条件は出ないのでここで返してしまう
+                            maxStall = std::max(maxStall, stallN);
+                            goto LOOP_END;
+                            
+                    }
+                }
+                // 以上．ALUは前の命令からフォワーディング可
             }
         }
     }
-    return 0;
+    LOOP_END:
+        hazardStallN += maxStall;
+        return maxStall;
 };
 
 
