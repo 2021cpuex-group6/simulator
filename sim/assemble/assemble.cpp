@@ -18,8 +18,10 @@ static constexpr int32_t MASK_BITS = ~(1 << 31); // 右シフトが不定にな�
 static constexpr int BYTE_HEX_DIGITS_N = 2;
 static constexpr int WORD_HEX_DIGITS_N = 8;
 
+
 static constexpr int32_t MAX_SHIFT_N = 31;
 static constexpr int SHAMT_SHIFT_N = 20;
+
 static const std::string INVALID_REGISTER = "不正なレジスタ名です";
 static const std::string INVALID_ADDRESSING = "不正なアドレッシングです";
 static const std::string DOUBLE_LABEL = "ラベルが重複しています";

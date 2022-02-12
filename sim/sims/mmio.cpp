@@ -26,8 +26,15 @@ static constexpr double BAUD_RATE = 576000;
 static constexpr int BYTE_BIT_N = 8;
 
 // 時間予測用
-constexpr double recvTime = 1 / BAUD_RATE;
-constexpr double sendTime = 1 / BAUD_RATE;
+constexpr double recvTime = BYTE_BIT_N / BAUD_RATE;
+constexpr double sendTime = recvTime;
+
+constexpr double jamTime = 50.0 / 100000; // sbが連続してくるときの消費時間
+constexpr int maxWaitClock = jamTime / (1/HZ); // sbが連続してくるときの最大待機クロック数
+
+//仮想キュー回り
+constexpr int queueLen = 200; // sendの時間予測をするために仮想的に考えるキューの長さ
+
 
 MMIO::MMIO(){}
 
@@ -143,9 +150,39 @@ char MMIO::recv(){
 }
 
 // MMIOでデータを送る
-void MMIO::send(const char &value){
+// 送信時に現在の総命令数を入れ，どれだけ近い間隔でやっているかを記録
+void MMIO::send(const char &value, const uint64_t & instructionN){
     sendData.emplace_back(value);
     ++sendNum;
+    uint64_t dif = (instructionN - queueLastN);
+    if(dif > maxWaitClock){
+        // キューがクリアされる
+        queueNowN = 1;
+        queueTopN = instructionN;
+    }else{
+        dif = (instructionN - queueTopN);
+        if(dif > maxWaitClock){
+            // キューの先頭が開く
+            // ここでどれくらい抜けるかを線形近似
+            int l_ = (instructionN - maxWaitClock - queueTopN) * ((double) queueNowN - 1) / (queueLastN - queueTopN) + 1;
+            if(l_ > queueNowN) l_ = queueNowN;
+            uint64_t l = queueTopN + (double) (l_ -1) / (queueNowN-1) * (queueLastN - queueTopN);
+            if(l > queueLastN) l = queueLastN;
+            queueNowN -= l_;
+            queueTopN = l_ == queueNowN ? instructionN : l;
+
+        }
+
+        if(queueNowN < queueLen){
+            // キューに余裕あり
+            ++queueNowN;
+        }else{
+            //余裕なし，ペナルティ
+            sendWaitTimeSum += maxWaitClock - (instructionN - queueLastN);
+        }
+    }
+    
+    queueLastN = instructionN;
 
 }
 
@@ -196,6 +233,10 @@ void MMIO::reset(){
     sendNum  = 0;
     valid = true;
     sendData.clear();
+    sendWaitTimeSum = 0;
+    queueTopN = 0;
+    queueLastN = 0;
+    queueNowN = 0;
 }
 
 char MMIO::getLast()const{
@@ -230,20 +271,22 @@ void MMIO::printSended(const bool &forGUI)const{
 double MMIO::calculateTime(){
     double ans = 0;
     // 受信時間
-    ans += nowInd * recvTime * BYTE_BIT_N;
-    ans += sendNum * sendTime * BYTE_BIT_N; 
+    ans += nowInd * recvTime ;
+    ans += sendNum * sendTime ; 
+    ans += sendWaitTimeSum / HZ;
 
     return ans;
 }
 
 void MMIO::outputMMIOInfo(std::ostream &stream){
-    stream << nowInd << " " << sendNum;
+    stream << nowInd << " " << sendNum << " " << sendWaitTimeSum;
 }
 void MMIO::inputMMIOInfo(std::istream &stream){
-    std::string line, unit1, unit2;
+    std::string line, unit1, unit2, unit3;
     std::getline(stream, line);
     std::istringstream iss(line);
-    iss >> unit1 >> unit2;
+    iss >> unit1 >> unit2 >> unit3;
     nowInd = stoi(unit1);
     sendNum = stoi(unit2);
+    sendWaitTimeSum = stoull(unit3);
 }

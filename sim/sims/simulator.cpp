@@ -27,7 +27,6 @@ static constexpr int CACHE_PRINT_W = 10;
 // 時間予測のパラメータ
 static const double  WRITE_MISS_TIME = 0.002; 
 static const double  READ_MISS_TIME = 0.002;
-static const double  HZ = 50000000;
 
 // ラベルのジャンプ回数表示
 static const std::string PRINT_JUMP_LABEL_ERROR = "まだ一度もラベルにジャンプしていません";
@@ -963,7 +962,7 @@ void AssemblySimulator::launchError(const std::string &message)const{
     }else{
         printRegisters(NumberBase::HEX, false, true);
     }
-    // throw SimException(linePair.first + ": " + std::to_string(linePair.second) + "行目:" + message);
+    throw SimException(linePair.first + ": " + std::to_string(linePair.second) + "行目:" + message);
 }
 void AssemblySimulator::launchWarning(const std::string &message)const{
     if(onWarning && (!forGUI)){
