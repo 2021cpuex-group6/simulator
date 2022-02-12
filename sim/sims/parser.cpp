@@ -66,9 +66,9 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     {"jal",      {2, -1, 1, -1, INST_CONTROL, 0b00010011, 0}}, 
     {"jr",       {1, 0, -1, 12, INST_CONTROL, 0b00001011, 0}}, 
     {"jalr",     {2, 1, -1, 12, INST_CONTROL, 0b00011011, 0}}, 
-    {"lw",       {2, 1, -1, 12, INST_LOAD, 0b00001100, 1}}, 
+    {"lw",       {2, 1, -1, 12, INST_LOAD, 0b00001100, 0}}, 
     {"lbu",       {2, 1, -1, 12, INST_LOAD, 0b00010100, 0}},
-    {"sw",       {2, 1, -1, 12, INST_STORE,  0b00000101, 1}},
+    {"sw",       {2, 1, -1, 12, INST_STORE,  0b00000101, 0}},
     {"sb",       {2, 1, -1, 12, INST_STORE,  0b00010101, 0}},
     {"lui",       {2, 1, -1, 21, INST_REGIMM,  0b00000111, 0}}
 };
