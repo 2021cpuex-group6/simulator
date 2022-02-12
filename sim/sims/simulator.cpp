@@ -962,7 +962,7 @@ void AssemblySimulator::launchError(const std::string &message)const{
     }else{
         printRegisters(NumberBase::HEX, false, true);
     }
-    // throw SimException(linePair.first + ": " + std::to_string(linePair.second) + "行目:" + message);
+    throw SimException(linePair.first + ": " + std::to_string(linePair.second) + "行目:" + message);
 }
 void AssemblySimulator::launchWarning(const std::string &message)const{
     if(onWarning && (!forGUI)){
