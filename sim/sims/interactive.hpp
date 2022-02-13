@@ -31,6 +31,7 @@ const std::string COMMAND_IOPRINT = "io";
 const std::string COMMAND_OUTPUT = "out";
 const std::string COMMAND_INPUT = "in";
 const std::string COMMAND_PROGRAM_PROFILE = "pp";
+const std::string COMMAND_FLOAT_RANKING = "fr";
 
 // const std::string GUI_ERROR = "Error";
 
@@ -57,6 +58,7 @@ enum class Command{
     IOPrint,
     Output,
     ProgramProfile,
+    FloatRanking,
     Invalid
 };
 

@@ -139,6 +139,9 @@ void InteractiveShell::start(){
             case Command::ProgramProfile:
                 simulator.outputProfile();
                 break;
+            case Command::FloatRanking:
+                simulator.printFloatTableAccessRanking(0);
+                break;
             case Command::IOPrint:
                 simulator.mmio.printInfo();
                 if(!forGUI){
@@ -216,6 +219,8 @@ std::pair<Command, std::vector<int>> InteractiveShell::getInput()const{
         return {Command::Output, {}};
     }else if(inputString == COMMAND_MEM_LIST){
         return {Command::MemList, {}};
+    }else if(inputString == COMMAND_FLOAT_RANKING){
+        return {Command::FloatRanking, {}};
     }else if(inputString == COMMAND_PROGRAM_PROFILE){
         if(forDebug){
             return {Command::ProgramProfile, {}};

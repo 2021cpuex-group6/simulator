@@ -10,7 +10,7 @@ static constexpr int SHIFT_MASK31 = 0x7fffffff;
 static constexpr int INT_BIT_N = 32;
 constexpr int INST_BYTE_N = 4;
 constexpr int WORD_BYTE_N = 4;
-constexpr double  HZ = 50000000;
+constexpr double  HZ = 100000000;
 union MemoryUnit{ // メモリの1ワードに対応するユニット
     float f;
     uint32_t i;
