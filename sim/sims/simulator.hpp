@@ -44,6 +44,12 @@ constexpr int32_t MMIO_SEND = DATA_START - 1; // MMIOの送信アドレス
 //キャッシュの定数
 constexpr int CACHE_MAX_SIZE = 0x40000; // キャッシュの最大行数　これ以下の2べきの数でキャッシュの行数を決められる
 
+// 浮動小数点テーブル
+constexpr uint32_t FLOAT_TABLE_START = 0x200000;
+constexpr uint32_t FLOAT_TABLE_RANGE = 256;
+constexpr uint32_t FLOAT_TABLE_END = FLOAT_TABLE_START + FLOAT_TABLE_RANGE;
+constexpr uint32_t FLOAT_TABLE_MASK = 0b11111100;
+
 // デバッグ用
 static const std::string PROF_FOLDER = "prof/";
 static const std::string PROF_DATA = "programData";
@@ -213,6 +219,7 @@ class AssemblySimulator{
         std::array<MemoryUnit, MEM_BYTE_N / WORD_BYTE_N> *dram;
         int64_t wordAccessCheckN;      // ワードアクセスされた箇所の総数
         std::array<bool, MEM_BYTE_N / WORD_BYTE_N> *wordAccessCheckMem;  //どこにアクセスされたか
+        std::array<uint64_t, FLOAT_TABLE_RANGE / WORD_BYTE_N> floatTableAccessMem; // 浮動小数点テーブルでのアクセス回数を保持
 
         FPUUnit fpu;
         std::map<uint8_t, std::string> inverseOpMap; // uint8_tのopcodeから文字列へ変換
@@ -280,6 +287,7 @@ class AssemblySimulator{
         BeforeData popHistory();
         void checkDif();
         void makeDif(const std::string &path);
+        void printFloatTableAccessRanking(const unsigned int &printN);
 
     // private:
         inline BeforeData efficientDoInst(const Instruction &);
@@ -851,8 +859,15 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
 }
 
 // ワードアクセスする際にどこにアクセスしたかを記録しておく
+// 浮動小数点テーブルへのアクセスかもここでチェック
 // キャッシュで初期参照ミスかを調べるので，キャッシュへの記録の前にこれを行うこと
 bool AssemblySimulator::wordAccessCheck(const uint32_t &address){
+    if(FLOAT_TABLE_START <= address && address < FLOAT_TABLE_END){
+        // 浮動小数点テーブルへのアクセス
+        uint32_t floatInd = (address & FLOAT_TABLE_MASK) >> 2;
+        floatTableAccessMem[floatInd] = floatTableAccessMem[floatInd] + 1;
+        
+    }
     uint32_t ind = address / WORD_BYTE_N;
     if(!(*wordAccessCheckMem)[ind]){
         (*wordAccessCheckMem)[ind] = true;

@@ -33,6 +33,12 @@ static const std::string PRINT_JUMP_LABEL_ERROR = "まだ一度もラベルに�
 static const std::string PRINT_JUMP_INTERVAL = "   ";
 static constexpr int PRINT_JUMP_INT_W = 12;
 
+// 浮動小数点テーブルランキング表示
+static constexpr int PRINT_FLOAT_TABLE_INT_W = 12;
+static constexpr int PRINT_FLOAT_TABLE_HEX_W = 8;
+static const std::string PRINT_FLOAT_TABLE_INT_SUB = "     ";
+static const std::string PRINT_FLOAT_BELOW_0 = "以下アクセス回数0";
+
 // デバッグ用
 static const std::string PROF_SEPARATOR = "---";
 static const std::string PROF_PARAM_SEP = "_";
@@ -229,6 +235,7 @@ void AssemblySimulator::reset(){
     beforeHistory.fill({});
     (*dram).fill({0});
     (*wordAccessCheckMem).fill(false);
+    floatTableAccessMem.fill(0);
     mmio.reset();
     cache.reset();
     expectMissN = 0;
@@ -1262,6 +1269,39 @@ void AssemblySimulator::printJumpLabelRanking(const unsigned int &printN){
          << PRINT_JUMP_INTERVAL << parser.invLabelMap.at(address) << std::endl;
         
     }
+}
+
+// 浮動小数点テーブルアクセスが多い順に表示
+void AssemblySimulator::printFloatTableAccessRanking(const unsigned int &printN){
+    // 一度もラベルにジャンプしていない
+    unsigned int printCount = printN;
+    if(printN == 0) printCount = floatTableAccessMem.size();
+
+    std::cout << std::setw(PRINT_FLOAT_TABLE_INT_W) << std::setfill(' ') << "Times"
+        << std::setw(PRINT_FLOAT_TABLE_INT_W) << "Address" << std::endl;
+
+    // マップをソートするためにvectorを作る
+    std::vector<std::pair<uint32_t, uint64_t>> floatTableVector;
+    floatTableVector.reserve(floatTableAccessMem.size());
+    for(int i = 0; i < floatTableAccessMem.size(); i++){
+        std::pair<uint32_t, uint64_t> pair = {FLOAT_TABLE_START + i * WORD_BYTE_N, floatTableAccessMem[i]};
+        floatTableVector.emplace_back(pair);
+    }
+    std::sort(floatTableVector.begin(), floatTableVector.end(), 
+            [](const auto &x, const auto &y){return x.second > y.second;});
+    
+    for(unsigned int  i = 0 ;i < printCount; i++){
+        int32_t address = floatTableVector[i].first;
+        uint32_t count = floatTableVector[i].second;
+        if(count == 0) break;
+        std::cout << std::setw(PRINT_FLOAT_TABLE_INT_W) << std::setfill(' ') 
+         <<  std::dec << count
+         <<  PRINT_FLOAT_TABLE_INT_SUB  << "0x"
+         <<  std::setw(PRINT_FLOAT_TABLE_HEX_W) << std::setfill('0') 
+         <<  std::hex << address << std::endl;
+        
+    }
+    std::cout << PRINT_FLOAT_TABLE_INT_SUB << PRINT_FLOAT_BELOW_0 << std::endl;
 }
 
 // デバッグ用
