@@ -23,7 +23,7 @@ label5:
     jal x7 label6
     addi x6 x5 x1
 label6:
-    jalr x8 12(x7)
+    jalr x8 12(x7) # 50
     addi x6 x5 x1
 label7:
     addi x4 x4 1024
