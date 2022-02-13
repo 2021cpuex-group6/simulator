@@ -5,11 +5,10 @@
 #include <map>
 #include <tuple>
 #include <regex>
-#include <cmath>
 #include <iomanip>
+#include <math.h>
 #include "../utils/utils.hpp"
 #include "assemble.hpp"
-
 static constexpr bool ELIMINATE_NOP = true; // コメント等を飛ばすか
 static constexpr int START_ADDRESS = 4; //ファイルのはじめの命令が配置されるアドレス (エントリポイント分ずらしておく)
 static constexpr int INSTRUCTION_BYTE_N = 4;

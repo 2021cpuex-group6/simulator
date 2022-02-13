@@ -3,7 +3,6 @@
 #include "sims/interactive.hpp"
 #include "sims/mmio.hpp"
 #include <iostream>
-#include <cmath>
 #include <regex>
 #include <filesystem>
 

@@ -6,8 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <regex>
-#include <cmath>
-
+#include <math.h>
 
 static const std::string SOME_BINARY_FILES = "バイナリファイルは複数入力できません.";
 static const std::string INVALID_BINARY = "バイナリファイルは4バイトの倍数のサイズである必要があります.";

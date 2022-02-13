@@ -14,7 +14,6 @@
 #include <sstream>
 #include <bitset>
 #include <iomanip>
-#include <cmath>
 
 constexpr int REGISTERS_N = 32;
 constexpr int PRINT_REGISTERS_COL = 4;

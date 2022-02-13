@@ -8,7 +8,7 @@
 #include <sstream>
 #include <bitset>
 #include <iomanip>
-#include <cmath>
+#include <math.h>
 #include <set>
 #include <chrono>
 #include <algorithm>
