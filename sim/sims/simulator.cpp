@@ -132,7 +132,7 @@ void Cache::printCacheSystem()const{
 // 128, 512, 2048, 8192bitの時のデータに基づく
 double Cache::calcStallN(const int &forWrite)const{
     double con = 53;
-    double exp = offsetLen >= 4 ? (std::pow(4.0, ((double)offsetLen-4) / 2 + 1) - 1) / 3 : 0 ;
+    double exp = offsetLen >= 5 ? (std::pow(2.0, ((double)offsetLen-2)) - 1) / 3 : 0 ;
     double ans = con + exp;
     return forWrite == WRITE ? ans * 1.5 : ans;
 }

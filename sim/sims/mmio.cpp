@@ -22,18 +22,18 @@ constexpr int SLD_OBJ_END = -1;
 
 static constexpr int PPM_INT_W = 3;
 static constexpr bool CLEAR_ZERO = true;
-static constexpr double BAUD_RATE = 576000;
+static constexpr double BAUD_RATE = 460800;
 static constexpr int BYTE_BIT_N = 8;
 
 // 時間予測用
 constexpr double recvTime = BYTE_BIT_N / BAUD_RATE;
 constexpr double sendTime = recvTime;
 
-constexpr double jamTime = 50.0 / 100000; // sbが連続してくるときの消費時間
+constexpr double jamTime = 2.3 / 100000; // sbが連続してくるときの消費時間
 constexpr int maxWaitClock = jamTime / (1/HZ); // sbが連続してくるときの最大待機クロック数
 
 //仮想キュー回り
-constexpr int queueLen = 200; // sendの時間予測をするために仮想的に考えるキューの長さ
+constexpr int queueLen = 2048; // sendの時間予測をするために仮想的に考えるキューの長さ
 
 
 MMIO::MMIO(){}
