@@ -141,6 +141,7 @@ struct BeforeData{
     // bool isHazard; //　ハザードが発生したか
     // bool hazardForIntReg; // ハザードが整数レジスタで起きたか 
     // int loadRegInd; // ハザードが起きたレジスタのインデックス
+    int stallN; // おこしたストール数
 };
 
 // キャッシュのクラス
@@ -584,10 +585,10 @@ BeforeData AssemblySimulator::efficientDoJump(const uint8_t &opcode, const Instr
         if(opcode & 0b10){
             // jalr
             nextPC += registers[instruction.regInd[1]].si;
-            checkHazard(-1,instruction.regInd[1]);
+            ans.stallN = checkHazard(-1,instruction.regInd[1]);
         }else{
             nextPC += registers[instruction.regInd[0]].si;
-            checkHazard(instruction.regInd[0], -1);
+            ans.stallN = checkHazard(instruction.regInd[0], -1);
         }
         nextPC &= (~0) << 2;
         pc = nextPC;
@@ -617,7 +618,7 @@ BeforeData AssemblySimulator::efficientDoJump(const uint8_t &opcode, const Instr
 BeforeData AssemblySimulator::efficientDoControl(const uint8_t &opcode, const Instruction &instruction){
     int reg0 = registers[instruction.regInd[0]].si;
     int reg1 = registers[instruction.regInd[1]].si;
-    checkHazard(instruction.regInd[0], instruction.regInd[1]);
+    int stallN = checkHazard(instruction.regInd[0], instruction.regInd[1]);
     bool jumpFlag;
     switch(opcode){
         case 0b001:
@@ -633,9 +634,12 @@ BeforeData AssemblySimulator::efficientDoControl(const uint8_t &opcode, const In
     }
     if(jumpFlag){
         // j命令と同じ
-        return efficientDoJump(0b0000, instruction);
+        BeforeData ans =  efficientDoJump(0b0000, instruction);
+        ans.stallN = stallN;
+        return ans;
     }else{
         BeforeData ans = {pc, -1, -1, false, 0, 0, instruction.opcodeInt};
+        ans.stallN = stallN;
         incrementPC();
         return ans;
     }
@@ -646,12 +650,12 @@ BeforeData AssemblySimulator::efficientDoLoad(const uint8_t &opcode, const Instr
     // ロード命令を実行
     uint32_t address = instruction.immediate;
     address +=registers[instruction.regInd[1]].i;
-    checkHazard( -1, instruction.regInd[1]); // アドレスの値を読むときにハザードの可能性
+    int stallN = checkHazard( -1, instruction.regInd[1]); // アドレスの値を読むときにハザードの可能性
 
     int32_t loadRegInd = instruction.regInd[0];
     int32_t beforeValue = registers[loadRegInd].si;
     BeforeData before = { pc, loadRegInd, beforeValue, false, 0u, 0u, instruction.opcodeInt};
-
+    before.stallN = stallN;
     if(opcode & 0b1){
         // lw
         uint32_t value = readMemWithCacheCheck(address, MemAccess::WORD, before);
@@ -692,7 +696,7 @@ BeforeData AssemblySimulator::efficientDoStore(const uint8_t &opcode, const Inst
 
     int regInd = instruction.regInd[0];
     uint32_t value = registers[regInd].i;
-    checkHazard(regInd , instruction.regInd[1]);
+    before.stallN = checkHazard(regInd , instruction.regInd[1]);
     MemAccess memAccess = MemAccess::WORD;
     if(opcode & 0b10){
         // sbの時
@@ -744,7 +748,7 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             source0 = registers[instruction.regInd[1]].si;
             source1 = registers[instruction.regInd[2]].si;
             efficientDoALU(opFunct, targetR, source0, source1);
-            checkHazard(instruction.regInd[1], instruction.regInd[2]);
+            ans.stallN = checkHazard(instruction.regInd[1], instruction.regInd[2]);
             break;
         case 0b001:
             // 整数I
@@ -755,7 +759,7 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             source0 = registers[instruction.regInd[1]].si;
             source1 = instruction.immediate;
             efficientDoALU(opFunct, targetR, source0, source1);
-            checkHazard(instruction.regInd[1], -1);
+            ans.stallN = checkHazard(instruction.regInd[1], -1);
             break;
         case 0b010:
             // 制御B
@@ -785,10 +789,10 @@ BeforeData AssemblySimulator::efficientDoInst(const Instruction &instruction){
             if(opFunct & 0b10000){
                 // fsqrtなど，入力が１つ
                 sourceU1 = 0;
-                checkHazard(instruction.regInd[1], -1);
+                ans.stallN = checkHazard(instruction.regInd[1], -1);
             }else{
                 sourceU1 = registers[instruction.regInd[2]].i;
-                checkHazard(instruction.regInd[1], instruction.regInd[2]);
+                ans.stallN = checkHazard(instruction.regInd[1], instruction.regInd[2]);
             }
             
             efficientDoFALU(opFunct, targetR, sourceU0, sourceU1);
@@ -851,11 +855,14 @@ bool AssemblySimulator::wordAccessCheck(const uint32_t &address){
 // 3つ前まで考えればOK
 // 返り値はいくつのストールが発生するか
 int AssemblySimulator::checkHazard(const int &regInd1, const int &regInd2){
-    // 1つ前から見ていく → 厳しい条件から調べるので，一番ストールが長いものが出たらそこで打ち切ってよい
+    // 1つ前から見ていく → 厳しい条件から調べるので，途中で切れるところがある．
     int maxStall = 0; // すべての条件のうち，最も長いものが採用される
+    int nextMinus = 0;
     for(int i = 1; i <= MAX_STALL_N; i++){
-        int stallN = (MAX_STALL_N - i + 1);
+        int stallN = (MAX_STALL_N - i + 1) - nextMinus;
+        if(stallN <= 0) break;
         BeforeData before = beforeHistory[(historyPoint-i + HISTORY_RESERVE_N) % HISTORY_RESERVE_N];
+        nextMinus = before.stallN;
         if(before.regInd > 0){
             if(before.regInd == regInd1 || before.regInd == regInd2){
                 // かぶった
@@ -863,31 +870,34 @@ int AssemblySimulator::checkHazard(const int &regInd1, const int &regInd2){
                 uint8_t opcodeType = before.opcodeInt & 0b111;
                 if(opcodeType == 0b0100){  
                     // メモリ 3つ前ならMA2からフォワーディングできる
-                    maxStall = std::max(stallN -1, maxStall);
-                    if(i > 1) goto LOOP_END; // この場合はこれ以上長いものが出ることはない
+                    maxStall = std::max(stallN-1, maxStall);
+                    break;
                 }else if(opcodeType == 0b110){
                     // 浮動小数
-                    switch((before.opcodeInt & 0b11111000 >> 3)){
+                    switch(((before.opcodeInt & 0b11111000) >> 3)){
+                        case 0b00000:
+                        case 0b00100:
+                        case 0b00010:
+                            // fadd fsub fdiv
+                            // 3つ前ならOK
+                            maxStall = stallN;
+                            goto LOOP_END;
                         case 0b10001:
-                        case 0b01000:
-                        case 0b01001:
-                            // ftoi, fle, feq
-                            // 2つ前までOK
-                            maxStall = std::max(maxStall, stallN-2);
-                            break;
+                        case 0b10010:
                         case 0b00001:
                         case 0b10000:
-                        case 0b10010:
-                            // fmul, fsq, itof
-                            // 1つ前まで
-                            maxStall = std::max(maxStall, stallN-1);
-                            if(i > 1) goto LOOP_END; // この場合はこれ以上長いものが出ることはない
-                            break;
-                        default:
-                            // それ以外
-                            // これ以上厳しい条件は出ないのでここで返してしまう
-                            maxStall = std::max(maxStall, stallN);
+                        case 0b10100:
+                            // fmul, fsqrt, ftoi, ftoi, itof, floor
+                            // 2つ前ならOK
+                            maxStall = stallN-1;
                             goto LOOP_END;
+                        case 0b01000:
+                        case 0b01001:
+                            // fle, feq
+                            // 2つ前までOK
+                            maxStall = std::max(maxStall, stallN-2);
+                            if(i > 1) goto LOOP_END;
+                            break;
                             
                     }
                 }

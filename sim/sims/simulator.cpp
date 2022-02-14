@@ -1108,10 +1108,12 @@ void AssemblySimulator::printMem(const uint32_t &address, const uint32_t &wordN,
 double AssemblySimulator::calculateTime(){
     double ans = 0;
     // 命令の実行数
-    for(auto count: opcodeInfoMap){
-        uint8_t key = count.second[5];
-        ans += (efficientOpCounter[key]) * (count.second[6] + 1);
-    }
+    // for(auto count: opcodeInfoMap){
+    //     uint8_t key = count.second[5];
+    //     ans += (efficientOpCounter[key]) * (count.second[6] + 1);
+    // }
+    ans += efficientOpCounter[opcodeInfoMap["fdiv"][5]]; // fdivは一回ストール
+    ans += instCount;
     ans += hazardStallN;
     ans += expectMissN * EXPECT_MISS_PENALTY;
     ans /= HZ;
