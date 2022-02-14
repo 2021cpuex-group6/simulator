@@ -38,7 +38,7 @@ void searchParameters(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
     uint32_t optOffset[2] = {0, 0};
     uint64_t optHitN[2] = {707395530, 176263670};
 
-    uint32_t wayList[wayListN] = {2};
+    uint32_t wayList[wayListN] = {1};
 
     bool first = true;
     uint64_t accessN[2] = {0, 0};
@@ -91,7 +91,7 @@ void checkParam(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
     // 最適値が入る
 
     uint32_t tags[paramN] = {tagMin, tagMin + 1};
-    uint32_t ways[paramN] = {1, 1};
+    uint32_t ways[paramN] = {2, };
     uint32_t offsets[paramN] = {8, 10};
 
     bool first = true;
