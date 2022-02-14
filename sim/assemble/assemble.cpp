@@ -389,7 +389,7 @@ static int32_t get_B_imm(int32_t  input){
     // B形式の即値を並び変える
     input = input << 1;
     int32_t ans = (input & 0x3f00) << 18; //12
-    ans |= (input & 0xf3) << 3; //10-5
+    ans |= (input & 0xfc) << 3; //10-5
     return ans;
 }
 
