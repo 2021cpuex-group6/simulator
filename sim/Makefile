@@ -1,4 +1,4 @@
-CFLAGS := -O3 -std=c++2a -Wall -mtune=native -march=native -mfpmath=both
+CFLAGS := -O0 -g -std=c++17 -Wall -mtune=native -march=native -mfpmath=both
 # -O3 -mtune=native -march=native -mfpmath=both
 # -pg -Wall -O2 -std=c++17
 SIMSRCS := $(wildcard sims/*.cpp) $(wildcard utils/*.cpp) $(wildcard assemble/*.cpp) main.cpp

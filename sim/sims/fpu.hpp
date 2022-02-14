@@ -45,6 +45,7 @@ class FPU{
         static int32_t flt(const uint32_t &x1, const uint32_t &x2);
         static int32_t fle(const uint32_t &x1, const uint32_t &x2);
         static uint32_t floor(const uint32_t &x1);
+        static uint32_t floor2(const uint32_t &x1);
         uint32_t fsqrt(const uint32_t &x)const;
         
         bool divCheck(const uint32_t &, const uint32_t &)const;

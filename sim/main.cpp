@@ -40,6 +40,7 @@ void searchParameters(AssemblyParser &parser, const bool &useBin, MMIO &mmio){
 
     uint32_t wayList[1] = {2};
 
+
     bool first = true;
     uint64_t accessN[2] = {0, 0};
     for(uint32_t way: wayList){

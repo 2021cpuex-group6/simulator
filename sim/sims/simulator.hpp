@@ -551,7 +551,7 @@ void AssemblySimulator::efficientDoFALU(const uint8_t &opcode, const int &target
         case 0b10000:
             ans = fpu.fsqrt(source0); break;
         case 0b10100:
-            ans = fpu.floor(source0);
+            ans = fpu.floor2(source0);
             break;
         case 0b10010:
             ans = fpu.itof(source0); break;

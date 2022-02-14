@@ -16,6 +16,7 @@ static const std::string FDIV_PARAM_B_FILE = "fdiv_paramb.txt";
 static const std::string PARAM_FILE_ERROR = "パラメータファイルが存在しません";
 static const int WORD_BIT_N = 32;
 static const uint32_t FLOAT_ONE = 0b00111111100000000000000000000000;
+static const uint32_t FLOOR_MASK = 0x7fffff; // 1が23
 
 FPU::FPU(){
     initFsqrtParam();
@@ -499,6 +500,69 @@ uint32_t FPU::floor(const uint32_t &x1){
 
 }
 
+uint32_t FPU::floor2(const uint32_t &x1){
+
+    auto x1_ =  separateFloat(x1);
+    uint32_t sx = shiftRightLogical(x1_[0], INT_BIT_N-1);
+    uint32_t ex = x1_[1] >> (INT_BIT_N - 9u);
+    uint32_t mx = x1_[2];
+    uint32_t ey, my;
+    uint32_t sy = x1_[0];
+
+    if(sx == 0){
+        if(ex < 127){
+            ey = 0;
+            my = 0;
+        }else{
+            ey = ex;
+            if(ex <= 149){
+                my = (FLOOR_MASK & (FLOOR_MASK << (150-ex))) & mx;
+            }else{
+                my = mx;
+            }
+        }
+    }else{
+        if(ex == 0){
+            ey = 0;
+            my = 0;
+        }else if(ex < 127){
+            ey = 127;
+            my = 0;
+        }else if(ex == 127){
+            if(mx == 0){
+                ey = ex;
+                my = mx;
+            }else{
+                ey = ex + 1;
+                my = 0;
+            }
+        }else if(ex <= 149){
+            uint32_t zeroCheck = mx  & (shiftRightLogical(FLOOR_MASK, ex-127));
+            if(zeroCheck == 0){
+                ey = ex;
+                my = mx;
+            }else{
+                uint32_t innerMask = (FLOOR_MASK & (FLOOR_MASK << (150 - ex)));
+                uint32_t allOneCheck = mx & innerMask;
+                if((innerMask & (~allOneCheck)) !=0){
+                    ey = ex;
+                    my = (mx & innerMask) + (1 << (150 -ex));
+                }else{
+                    ey = (ex + 1);
+                    my = 0;
+                }
+            }
+        }else{
+            ey = ex;
+            my = mx;
+        }
+
+    }
+
+    return sy | (ey << 23) | my;
+}
+
+
 bool isNormalized(const float & input){
     // 入力された値が正規化数か調べる
     Float32 float32;
@@ -646,14 +710,11 @@ bool flteCheck(const uint32_t& input1, const uint32_t& input2, const bool &isFlt
 }
 
 bool floorCheck(const uint32_t& input1){
-    // 平方根の結果が合うかを調べる
-    // // 入力が負なら問答無用でtrue
-    // c++の実装の結果で答えが非正規化数になるものは結果によらずtrue
     Float32 in1;
     in1.u32 = input1;
     float ans = std::floor(in1.f32);
     Float32 myAns_;
-    myAns_.u32 =  FPU::floor(input1);;
+    myAns_.u32 =  FPU::floor2(input1);;
 
     return ans == myAns_.f32;
 }
@@ -714,7 +775,7 @@ CheckResult FPU::printOperationCheck(const Float32 &f1, const Float32 &f2,
                 break;
             case CheckedOperation::FLOOR:
                 res = floorCheck(f1.u32);
-                myAns.u32 = FPU::floor(f1.u32);
+                myAns.u32 = FPU::floor2(f1.u32);
                 trueAns.f32 = std::floor(f1.f32);
                 break;
             default:

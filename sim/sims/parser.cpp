@@ -26,7 +26,7 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     //  3 ...即値のビット数（なければ-1）
     //  4 ...命令種別
     //  5 ...opcodeInt
-    //  6 ...命令の後にストールがいくつ入るか (0~)
+    //  6 ...命令の後にストールがいくつ入るか (0~) depleted
 
     {"nop",     {0, -1, -1, -1, INST_OTHERS,  0b11111001, 0}}, 
     {"add",     {3, -1, -1, -1, INST_REGONLY, 0b0000000, 0}}, 
@@ -41,15 +41,15 @@ std::map<std::string, std::vector<int>>opcodeInfoMap = {
     {"srl",     {3, -1, -1, -1, INST_REGONLY, 0b10010000, 0}}, 
     {"or",      {3, -1, -1, -1, INST_REGONLY, 0b00010000, 0}}, 
     {"xor",     {3, -1, -1, -1, INST_REGONLY, 0b00011000, 0}},
-    {"fadd",     {3, -1, -1, -1, INST_REGONLY, 0b0000110, 2}}, 
-    {"fsub",     {3, -1, -1, -1, INST_REGONLY, 0b0100110, 2}}, 
-    {"fmul",     {3, -1, -1, -1, INST_REGONLY, 0b0001110, 1}}, 
-    {"fdiv",     {3, -1, -1, -1, INST_REGONLY, 0b0010110, 3}}, 
+    {"fadd",     {3, -1, -1, -1, INST_REGONLY, 0b0000110, 0}}, 
+    {"fsub",     {3, -1, -1, -1, INST_REGONLY, 0b0100110, 0}}, 
+    {"fmul",     {3, -1, -1, -1, INST_REGONLY, 0b0001110, 0}}, 
+    {"fdiv",     {3, -1, -1, -1, INST_REGONLY, 0b0010110, 0}}, 
     {"fle",     {3, -1, -1, -1, INST_2REGF,   0b01000110, 0}}, 
     {"feq",     {3, -1, -1, -1, INST_2REGF,   0b01001110, 0}}, 
-    {"fsqrt",     {2, -1, -1, -1, INST_2REGF, 0b10000110, 1}}, 
-    {"floor",     {2, -1, -1, -1, INST_2REGF, 0b10100110, 5}}, 
-    {"itof",     {2, -1, -1, -1, INST_2REGF,  0b10010110, 1}}, 
+    {"fsqrt",     {2, -1, -1, -1, INST_2REGF, 0b10000110, 0}}, 
+    {"floor",     {2, -1, -1, -1, INST_2REGF, 0b10100110, 0}}, 
+    {"itof",     {2, -1, -1, -1, INST_2REGF,  0b10010110, 0}}, 
     {"ftoi",     {2, -1, -1, -1, INST_2REGF,  0b10001110, 0}}, 
     {"addi",    {3, 2, -1, 12, INST_REGIMM, 0b00000001, 0}}, 
     {"andi",    {3, 2, -1, 12, INST_REGIMM, 0b00001001, 0}}, 

@@ -222,7 +222,7 @@ std::int32_t assemble_op(const std::string & op, const int& line, const int addr
             iss >> op1 >> op2 >> op3;
             rg1 = static_cast<int32_t>(register_to_binary(op1, line));
             rg2 = static_cast<int32_t>(register_to_binary(op2, line));
-            label_addr = get_relative_address_with_check(op3, addr, 13, line, label_dict);
+            label_addr = get_relative_address_with_check(op3, addr, 14, line, label_dict);
             label_addr = get_B_imm(label_addr);
             output |= label_addr | (rg1 << 14) | (rg2 << 20);
             break;
@@ -388,8 +388,8 @@ static int32_t get_J_imm(int32_t  input){
 static int32_t get_B_imm(int32_t  input){
     // B形式の即値を並び変える
     input = input << 1;
-    int32_t ans = (input & 0xfc0) << 20; //12
-    ans |= (input & 0x3f) << 5; //10-5
+    int32_t ans = (input & 0x3f00) << 18; //12
+    ans |= (input & 0xfc) << 3; //10-5
     return ans;
 }
 

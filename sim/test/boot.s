@@ -1,4 +1,8 @@
-    addi x6 x0 144  # send data
+    addi x12 x0 0
+    addi x11 x0 0
+    addi x10 x0 0
+    addi x9 x0 0
+    addi x6 x0 153  # send data
     lui  x7 1048576  # 0x10_0000
     sb   x6 -1(x7)    # send 144
     addi x6 x0 4 # for loop count
@@ -31,6 +35,8 @@ load_inst: # x6 instruction place, x7 mmio base addr, x9 has size, x10 loop coun
     addi x10 x0 4
     addi x11 x0 24
     bne x9 x0 load_inst
+    addi x6 x0 170
+    sb x6 -1(x7)
     jr 512(x0)
     addi x0 x0 0
     addi x0 x0 0
